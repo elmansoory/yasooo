@@ -310,67 +310,211 @@ def analyze_video(uploaded_file, skater_id, analysis_mode, program_type, config,
 
 def show_skaters_page(db_manager):
     """صفحة إدارة المتزلجين"""
-    st.title("👥 إدارة المتزلجين")
+    st.title("👥 إدارة المتزلجين والمدربين")
 
-    tab1, tab2 = st.tabs(["➕ إضافة متزلج", "📋 المتزلجون الحاليون"])
+    # إحصائيات سريعة
+    try:
+        with db_manager.get_session() as session:
+            total_skaters = session.query(Skater).count()
+            total_coaches = session.query(Skater).filter(
+                Skater.notes.like('%مدرب%')
+            ).count()
+            total_players = total_skaters - total_coaches
 
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("👥 إجمالي اللاعبين", total_players)
+        with col2:
+            st.metric("🎓 إجمالي المدربين", total_coaches)
+        with col3:
+            st.metric("📊 الإجمالي الكلي", total_skaters)
+
+        st.markdown("---")
+
+    except Exception as e:
+        st.error(f"❌ خطأ في تحميل الإحصائيات: {e}")
+
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "👥 اللاعبون",
+        "🎓 المدربون",
+        "➕ إضافة جديد",
+        "📥 استيراد البيانات"
+    ])
+
+    # تبويب اللاعبين
     with tab1:
+        st.subheader("👥 قائمة اللاعبين")
+
+        # بحث وفلترة
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            search_query = st.text_input("🔍 البحث عن لاعب", placeholder="ادخل اسم اللاعب...")
+        with col2:
+            sort_by = st.selectbox("الترتيب حسب", ["الاسم", "الأحدث"])
+
+        try:
+            with db_manager.get_session() as session:
+                # استعلام اللاعبين (غير المدربين)
+                query = session.query(Skater).filter(
+                    ~Skater.notes.like('%مدرب%')
+                )
+
+                if search_query:
+                    query = query.filter(Skater.name.like(f'%{search_query}%'))
+
+                if sort_by == "الاسم":
+                    players = query.order_by(Skater.name).all()
+                else:
+                    players = query.order_by(Skater.created_at.desc()).all()
+
+                if players:
+                    st.info(f"📊 عدد اللاعبين: {len(players)}")
+
+                    # عرض اللاعبين في جدول
+                    for idx, player in enumerate(players, 1):
+                        with st.expander(f"{idx}. {player.name} - {player.country or 'مصر'}"):
+                            col1, col2, col3 = st.columns(3)
+
+                            with col1:
+                                st.write(f"**الدولة:** {player.country or 'مصر'}")
+                                st.write(f"**التخصص:** {player.discipline or 'Singles'}")
+
+                            with col2:
+                                st.write(f"**المدرب:** {player.coach_name or 'غير محدد'}")
+                                st.write(f"**النادي:** {player.club or 'غير محدد'}")
+
+                            with col3:
+                                st.write(f"**عدد الفيديوهات:** {player.total_videos or 0}")
+                                st.write(f"**عدد التحليلات:** {player.total_analyses or 0}")
+
+                            if player.notes:
+                                st.caption(f"📝 {player.notes}")
+                else:
+                    st.warning("⚠️ لا يوجد لاعبون حالياً")
+
+        except Exception as e:
+            st.error(f"❌ خطأ في تحميل اللاعبين: {e}")
+
+    # تبويب المدربين
+    with tab2:
+        st.subheader("🎓 قائمة المدربين")
+
+        try:
+            with db_manager.get_session() as session:
+                coaches = session.query(Skater).filter(
+                    Skater.notes.like('%مدرب%')
+                ).order_by(Skater.name).all()
+
+                if coaches:
+                    st.info(f"📊 عدد المدربين: {len(coaches)}")
+
+                    # عرض المدربين
+                    cols = st.columns(3)
+                    for idx, coach in enumerate(coaches):
+                        col = cols[idx % 3]
+                        with col:
+                            with st.container():
+                                st.markdown(f"""
+                                <div style='padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;'>
+                                    <h4>🎓 {coach.name}</h4>
+                                    <p>📍 {coach.country or 'مصر'}</p>
+                                    <p>👥 لاعبين: {coach.total_videos or 0}</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ لا يوجد مدربون حالياً")
+
+        except Exception as e:
+            st.error(f"❌ خطأ في تحميل المدربين: {e}")
+
+    # تبويب إضافة جديد
+    with tab3:
+        st.subheader("➕ إضافة متزلج جديد")
+
         with st.form("add_skater_form"):
             col1, col2 = st.columns(2)
 
             with col1:
                 name = st.text_input("الاسم الكامل*")
-                country = st.text_input("الدولة", value="السعودية")
-                gender = st.selectbox("الجنس", ["ذكر", "أنثى"])
+                country = st.text_input("الدولة", value="مصر")
+                gender = st.selectbox("الجنس", ["أنثى", "ذكر"])
                 category = st.selectbox("الفئة", ["Junior", "Senior"])
 
             with col2:
-                discipline = st.selectbox("التخصص", ["Men", "Women", "Pairs", "Ice Dance"])
+                discipline = st.selectbox("التخصص", ["Singles", "Pairs", "Ice Dance", "Coach"])
                 coach_name = st.text_input("اسم المدرب")
                 club = st.text_input("النادي")
+                is_coach = st.checkbox("مدرب")
 
-            submitted = st.form_submit_button("➕ إضافة المتزلج")
+            notes = st.text_area("ملاحظات")
+
+            submitted = st.form_submit_button("➕ إضافة", use_container_width=True, type="primary")
 
             if submitted and name:
                 try:
                     with db_manager.get_session() as session:
-                        skater = Skater(
-                            name=name,
-                            country=country,
-                            gender=gender,
-                            category=category,
-                            discipline=discipline,
-                            coach_name=coach_name,
-                            club=club
-                        )
-                        session.add(skater)
+                        # التحقق من عدم التكرار
+                        existing = session.query(Skater).filter_by(name=name).first()
+                        if existing:
+                            st.warning(f"⚠️ اللاعب {name} موجود مسبقاً")
+                        else:
+                            final_notes = notes
+                            if is_coach:
+                                final_notes = f"مدرب\n{notes}" if notes else "مدرب"
 
-                    st.success(f"✅ تمت إضافة المتزلج: {name}")
+                            skater = Skater(
+                                name=name,
+                                country=country,
+                                gender=gender,
+                                category=category,
+                                discipline="Coach" if is_coach else discipline,
+                                coach_name=coach_name,
+                                club=club,
+                                notes=final_notes,
+                                total_videos=0,
+                                total_analyses=0
+                            )
+                            session.add(skater)
+
+                        st.success(f"✅ تمت إضافة {'المدرب' if is_coach else 'اللاعب'}: {name}")
+                        st.rerun()
+
                 except Exception as e:
                     st.error(f"❌ خطأ في الإضافة: {e}")
 
-    with tab2:
-        try:
-            with db_manager.get_session() as session:
-                skaters = session.query(Skater).all()
+    # تبويب استيراد البيانات
+    with tab4:
+        st.subheader("📥 استيراد البيانات من Excel")
 
-                if skaters:
-                    for skater in skaters:
-                        with st.expander(f"{skater.name} - {skater.country}"):
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.write(f"**الجنس:** {skater.gender}")
-                                st.write(f"**الفئة:** {skater.category}")
-                            with col2:
-                                st.write(f"**التخصص:** {skater.discipline}")
-                                st.write(f"**المدرب:** {skater.coach_name or 'غير محدد'}")
-                            with col3:
-                                st.write(f"**النادي:** {skater.club or 'غير محدد'}")
-                                st.write(f"**الفيديوهات:** {skater.total_videos}")
-                else:
-                    st.info("لا يوجد متزلجون مسجلون")
-        except Exception as e:
-            st.error(f"❌ خطأ: {e}")
+        st.info("""
+        💡 **تم استيراد البيانات مسبقاً!**
+
+        - ✅ 91 لاعب
+        - ✅ 20 مدرب
+        - 📊 المجموع: 111 سجل
+
+        البيانات مستخرجة من ملفات الحضور والعضوية.
+        """)
+
+        if st.button("🔄 إعادة الاستيراد", type="secondary"):
+            with st.spinner("جاري الاستيراد..."):
+                try:
+                    import subprocess
+                    result = subprocess.run(
+                        ["python", "import_players_coaches_to_db.py"],
+                        capture_output=True,
+                        text=True
+                    )
+
+                    if result.returncode == 0:
+                        st.success("✅ تم إعادة الاستيراد بنجاح!")
+                        st.code(result.stdout)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ خطأ: {result.stderr}")
+
+                except Exception as e:
+                    st.error(f"❌ خطأ في الاستيراد: {e}")
 
 
 def show_history_page(db_manager):
