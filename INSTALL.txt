@@ -1,0 +1,112 @@
+===============================================================
+    Figure Skating Analysis System - Installation Guide
+===============================================================
+
+📦 Package Contents:
+───────────────────────────────────────────────────────────────
+✓ yasooo-complete.tar.gz (42 KB) - Linux/Mac
+✓ yasooo-complete.zip (56 KB) - Windows  
+✓ INSTALL.txt (This file)
+✓ تعليمات-التشغيل.txt (Arabic instructions)
+
+===============================================================
+⚡ Quick Start (3 minutes)
+===============================================================
+
+Step 1: Extract
+───────────────────────────────────────────────────────────────
+Windows:
+  - Double-click yasooo-complete.zip
+  - Or use WinRAR/7-Zip
+
+Linux/Mac:
+  tar -xzf yasooo-complete.tar.gz
+  cd yasooo
+
+Step 2: Verify Python
+───────────────────────────────────────────────────────────────
+python --version  # Should be 3.10+
+
+Download from: https://www.python.org/downloads/
+
+Step 3: Run!
+───────────────────────────────────────────────────────────────
+Option A - Demo (No installation required):
+  python demo.py
+
+Option B - Full Version:
+  pip install -r requirements.txt
+  streamlit run app.py
+  # Open: http://localhost:8501
+
+===============================================================
+📂 Project Structure
+===============================================================
+
+yasooo/
+├── app.py              # Main application
+├── demo.py            # Interactive demo ⭐
+├── requirements.txt   # Dependencies
+├── src/               # Source code (3,680+ lines)
+│   ├── config/       # Settings & ISU standards
+│   ├── core/         # Video & pose detection
+│   ├── database/     # Database models
+│   ├── analysis/     # Scoring engine
+│   └── utils/        # Utilities
+├── tests/            # Unit tests
+└── docs/             # Documentation
+
+===============================================================
+🎯 Features
+===============================================================
+
+✨ Smart Analysis:
+   - 33 body landmarks detection
+   - Angle & distance calculation
+   - Center of mass tracking
+
+📊 ISU Scoring:
+   - 24 jumps (Single → Quad)
+   - 7 spin types × 5 levels
+   - GOE (-5 to +5)
+   - 5 program components
+
+💾 Database:
+   - Track skaters
+   - Save analyses
+   - Statistics & reports
+
+===============================================================
+🧪 Usage Examples
+===============================================================
+
+Example 1: Demo
+───────────────────────────────────────────────────────────────
+$ python demo.py
+Choose: 2 (Show ISU standards)
+[Displays all jumps and spins with values]
+
+Example 2: Full App
+───────────────────────────────────────────────────────────────
+$ streamlit run app.py
+# Upload video → Analyze → View results
+
+===============================================================
+🐳 Docker (Advanced)
+===============================================================
+
+docker-compose up -d
+# Open: http://localhost:8501
+
+===============================================================
+📞 Support
+===============================================================
+
+📚 Docs: README.md, QUICKSTART.md
+🐛 Issues: github.com/elmansoory/yasooo/issues
+
+===============================================================
+
+              🎉 Enjoy Skating Analysis! ⛸️
+
+===============================================================
