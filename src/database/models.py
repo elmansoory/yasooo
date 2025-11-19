@@ -93,7 +93,7 @@ class Analysis(Base):
     # نتائج عامة
     overall_score = Column(Float)
     confidence = Column(Float)
-    metadata = Column(JSON)
+    analysis_metadata = Column(JSON)
 
     # العلاقات
     video = relationship('Video', back_populates='analyses')
