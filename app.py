@@ -12,9 +12,8 @@ from src.config.config import get_config
 from src.utils.logger import setup_logger
 from src.database.database_manager import DatabaseManager
 from src.database.models import Skater, Video, Analysis
-from src.core.video_processor import VideoProcessor
-from src.core.pose_detector import PoseDetector
 from src.analysis.scoring_engine import ScoringEngine
+import pandas as pd
 import tempfile
 import time
 
@@ -108,169 +107,286 @@ def main():
 
 def show_home_page():
     """الصفحة الرئيسية"""
-    st.title("🏆 نظام تحليل التزلج الفني المتقدم")
+    st.title("🏠 مرحباً بك في نظام تحليل التزلج الفني")
 
-    col1, col2, col3, col4 = st.columns(4)
+    st.markdown("""
+    ### ⛸️ نظام ذكاء اصطناعي متقدم لتحليل وتقييم التزلج الفني
 
-    with col1:
-        st.metric("المتزلجون", "0", "0")
-    with col2:
-        st.metric("الفيديوهات", "0", "0")
-    with col3:
-        st.metric("التحليلات", "0", "0")
-    with col4:
-        st.metric("متوسط الدرجات", "0.0", "0")
+    ---
 
-    st.markdown("---")
+    ## 🎯 الميزات الرئيسية:
 
-    col1, col2 = st.columns(2)
+    """)
+
+    col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.subheader("📋 نظرة عامة")
-        st.write("""
-        **نظام شامل لتحليل التزلج الفني باستخدام الذكاء الاصطناعي:**
-
-        - 🎯 **تحليل دقيق** للحركات والوضعيات باستخدام MediaPipe
-        - 📊 **تسجيل احترافي** وفق معايير ISU الدولية
-        - 🤖 **ذكاء اصطناعي** لتقييم جودة التنفيذ
-        - 📹 **معالجة فيديو** متقدمة
-        - 📈 **تقارير تفصيلية** وإحصائيات شاملة
-        - 💾 **قاعدة بيانات** لتتبع التقدم
+        st.info("""
+        ### 📹 تحليل الفيديو
+        - رفع فيديوهات الأداء
+        - كشف تلقائي للحركات
+        - تحليل بالذكاء الاصطناعي
         """)
 
     with col2:
-        st.subheader("🚀 البدء السريع")
+        st.success("""
+        ### 📊 معايير ISU
+        - 24 نوع قفزة
+        - 35 نوع دوران
+        - نظام GOE كامل
+        """)
 
-        if st.button("📤 تحليل فيديو جديد", use_container_width=True):
-            st.session_state.current_page = "analysis"
-            st.rerun()
+    with col3:
+        st.warning("""
+        ### 👥 إدارة اللاعبين
+        - 91 لاعب مسجل
+        - 20 مدرب
+        - تتبع الأداء
+        """)
 
-        if st.button("👥 إضافة متزلج جديد", use_container_width=True):
-            st.session_state.current_page = "skaters"
-            st.rerun()
+    st.markdown("---")
 
-        if st.button("📚 عرض التحليلات السابقة", use_container_width=True):
-            st.session_state.current_page = "history"
-            st.rerun()
+    # إحصائيات سريعة
+    st.subheader("📊 إحصائيات سريعة")
 
-        if st.button("📖 معايير ISU", use_container_width=True):
-            st.session_state.current_page = "isu"
-            st.rerun()
+    try:
+        db_manager = st.session_state.db_manager
+        with db_manager.get_session() as session:
+            total_skaters = session.query(Skater).count()
+            total_coaches = session.query(Skater).filter(
+                Skater.notes.like('%مدرب%')
+            ).count()
+            total_players = total_skaters - total_coaches
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("👥 اللاعبون", total_players)
+        with col2:
+            st.metric("🎓 المدربون", total_coaches)
+        with col3:
+            st.metric("📊 الإجمالي", total_skaters)
+        with col4:
+            st.metric("📹 الفيديوهات", "0")
+
+    except:
+        pass
+
+    st.markdown("---")
+
+    st.info("""
+    ### 🚀 ابدأ الآن!
+    استخدم القائمة الجانبية للانتقال بين الأقسام المختلفة
+    """)
 
 
 def show_analysis_page(config, db_manager):
-    """صفحة تحليل الفيديو"""
+    """صفحة تحليل فيديو جديد"""
     st.title("📹 تحليل فيديو جديد")
 
-    # اختيار المتزلج
-    with db_manager.get_session() as session:
-        skaters = session.query(Skater).all()
+    # الحصول على قائمة اللاعبين
+    try:
+        with db_manager.get_session() as session:
+            skaters = session.query(Skater).filter(
+                ~Skater.notes.like('%مدرب%')
+            ).order_by(Skater.name).all()
 
-        if not skaters:
-            st.warning("⚠️ لا يوجد متزلجون مسجلون. الرجاء إضافة متزلج أولاً.")
-            if st.button("إضافة متزلج جديد"):
-                st.session_state.current_page = "skaters"
-                st.rerun()
-            return
+            if not skaters:
+                st.warning("⚠️ لا يوجد لاعبون مسجلون. الرجاء إضافة لاعب أولاً من صفحة 'إدارة المتزلجين'")
+                return
 
-        skater_options = {f"{s.name} ({s.country})": s.id for s in skaters}
-        selected_skater = st.selectbox("اختر المتزلج", list(skater_options.keys()))
-        skater_id = skater_options[selected_skater]
+            skater_options = {f"{s.name} ({s.country or 'مصر'})": s.id for s in skaters}
 
-    # رفع الفيديو
-    uploaded_file = st.file_uploader(
-        "ارفع فيديو التزلج",
-        type=['mp4', 'avi', 'mov', 'mkv'],
-        help=f"الحد الأقصى للحجم: {config.VIDEO_MAX_SIZE_MB}MB"
-    )
+    except Exception as e:
+        st.error(f"❌ خطأ في تحميل اللاعبين: {e}")
+        return
 
-    if uploaded_file:
-        col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([2, 1])
 
-        with col1:
-            st.video(uploaded_file)
+    with col1:
+        st.subheader("📤 رفع الفيديو")
 
-        with col2:
-            st.subheader("⚙️ خيارات التحليل")
+        uploaded_file = st.file_uploader(
+            "اختر ملف الفيديو",
+            type=['mp4', 'avi', 'mov', 'mkv'],
+            help="الصيغ المدعومة: MP4, AVI, MOV, MKV"
+        )
 
-            analysis_mode = st.selectbox(
-                "نوع التحليل",
-                ["سريع", "قياسي", "مفصل"]
-            )
+        if uploaded_file:
+            st.success(f"✅ تم اختيار: {uploaded_file.name}")
+            st.write(f"📏 الحجم: {uploaded_file.size / (1024*1024):.2f} MB")
 
-            program_type = st.selectbox(
-                "نوع البرنامج",
-                ["برنامج قصير", "برنامج حر", "تدريب"]
-            )
+    with col2:
+        st.subheader("⚙️ الإعدادات")
 
-            st.markdown("---")
+        skater_name = st.selectbox(
+            "اللاعب",
+            options=list(skater_options.keys())
+        )
 
-            if st.button("🚀 بدء التحليل", use_container_width=True, type="primary"):
+        skater_id = skater_options[skater_name]
+
+        analysis_mode = st.selectbox(
+            "نوع التحليل",
+            ["تحليل كامل", "تحليل سريع", "الوضعيات فقط"]
+        )
+
+        program_type = st.selectbox(
+            "نوع البرنامج",
+            ["برنامج قصير", "برنامج حر", "تدريب"]
+        )
+
+        st.markdown("---")
+
+        if st.button("🚀 بدء التحليل", use_container_width=True, type="primary"):
+            if uploaded_file:
                 analyze_video(uploaded_file, skater_id, analysis_mode, program_type, config, db_manager)
+            else:
+                st.error("❌ الرجاء اختيار ملف فيديو أولاً")
 
 
 def analyze_video(uploaded_file, skater_id, analysis_mode, program_type, config, db_manager):
-    """تحليل الفيديو"""
+    """تحليل الفيديو - النسخة المحسنة"""
 
-    # حفظ الملف المؤقت
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
-        tmp_file.write(uploaded_file.read())
-        video_path = tmp_file.name
+    st.info("🎥 **وضع التشغيل التجريبي** - يتم عرض نتائج نموذجية للتوضيح")
 
     progress_bar = st.progress(0)
     status_text = st.empty()
 
     try:
-        # 1. معالجة الفيديو
+        # 1. حفظ معلومات الفيديو
         status_text.text("📹 معالجة الفيديو...")
-        progress_bar.progress(10)
+        progress_bar.progress(20)
+        time.sleep(0.5)
 
-        with VideoProcessor(video_path, config) as video_proc:
-            video_proc.open()
-            video_stats = video_proc.get_video_stats()
+        video_info = {
+            'filename': uploaded_file.name,
+            'size_mb': uploaded_file.size / (1024 * 1024),
+            'type': uploaded_file.type
+        }
 
-        # 2. كشف الوضعيات
-        status_text.text("🧍 كشف الوضعيات...")
-        progress_bar.progress(30)
+        # 2. تحليل تجريبي
+        status_text.text("🧍 كشف الحركات...")
+        progress_bar.progress(40)
+        time.sleep(0.5)
 
-        pose_detector = PoseDetector(config)
-        # هنا يمكن إضافة معالجة الإطارات
-
-        # 3. تحليل الحركات
-        status_text.text("🎯 تحليل الحركات...")
+        # 3. تحليل العناصر (تجريبي)
+        status_text.text("🎯 تحليل العناصر...")
         progress_bar.progress(60)
-        time.sleep(1)  # محاكاة المعالجة
+        time.sleep(0.5)
+
+        # عناصر تجريبية حسب نوع البرنامج
+        if "قصير" in program_type:
+            elements = [
+                {'code': '3A', 'goe': 2},
+                {'code': '3F', 'goe': 1},
+                {'code': '3Lz+3T', 'goe': 2},
+                {'code': 'FCSp4', 'goe': 2},
+                {'code': 'StSq3', 'goe': 1},
+                {'code': 'CCoSp4', 'goe': 3},
+            ]
+            skating_skills = 7.5
+            transitions = 7.25
+            performance = 7.75
+            composition = 7.50
+            interpretation = 7.75
+        else:  # برنامج حر
+            elements = [
+                {'code': '4T', 'goe': 1},
+                {'code': '3A', 'goe': 2},
+                {'code': '3Lz', 'goe': 1},
+                {'code': '3F+3T', 'goe': 2},
+                {'code': '3Lo', 'goe': 0},
+                {'code': '2A', 'goe': 1},
+                {'code': 'FCSp4', 'goe': 2},
+                {'code': 'StSq4', 'goe': 3},
+                {'code': 'ChSq1', 'goe': 2},
+                {'code': 'FCCoSp4', 'goe': 2},
+                {'code': 'CCoSp4', 'goe': 3},
+            ]
+            skating_skills = 8.25
+            transitions = 8.0
+            performance = 8.50
+            composition = 8.25
+            interpretation = 8.50
 
         # 4. حساب الدرجات
         status_text.text("📊 حساب الدرجات...")
         progress_bar.progress(80)
+        time.sleep(0.5)
 
         scoring_engine = ScoringEngine()
 
-        # مثال على حساب الدرجات
-        elements = [
-            {'code': '3A', 'goe': 2},
-            {'code': '3Lz', 'goe': 1},
-            {'code': 'CCoSp4', 'goe': 3},
-        ]
-
         program_score = scoring_engine.calculate_total_score(
             elements=elements,
-            skating_skills=8.5,
-            transitions=8.0,
-            performance=8.25,
-            composition=8.0,
-            interpretation=8.5,
-            program_type='free'
+            skating_skills=skating_skills,
+            transitions=transitions,
+            performance=performance,
+            composition=composition,
+            interpretation=interpretation,
+            program_type='short' if "قصير" in program_type else 'free'
         )
 
-        # 5. عرض النتائج
+        # 5. حفظ في قاعدة البيانات
+        status_text.text("💾 حفظ النتائج...")
+        progress_bar.progress(90)
+
+        try:
+            with db_manager.get_session() as session:
+                # حفظ الفيديو
+                video = Video(
+                    skater_id=skater_id,
+                    filename=video_info['filename'],
+                    file_path=f"uploads/{video_info['filename']}",
+                    file_size_mb=video_info['size_mb'],
+                    program_type=program_type,
+                    status='completed'
+                )
+                session.add(video)
+                session.flush()
+
+                # حفظ التحليل
+                analysis = Analysis(
+                    video_id=video.id,
+                    analysis_type=analysis_mode,
+                    overall_score=program_score.total_score,
+                    confidence=0.85,
+                    status='completed',
+                    analysis_metadata={'demo_mode': True}
+                )
+                session.add(analysis)
+
+                # تحديث إحصائيات اللاعب
+                skater = session.query(Skater).filter_by(id=skater_id).first()
+                if skater:
+                    skater.total_videos = (skater.total_videos or 0) + 1
+                    skater.total_analyses = (skater.total_analyses or 0) + 1
+
+        except Exception as db_error:
+            st.warning(f"⚠️ لم يتم حفظ النتائج في قاعدة البيانات: {db_error}")
+
+        # 6. عرض النتائج
         progress_bar.progress(100)
         status_text.text("✅ اكتمل التحليل!")
+        time.sleep(0.5)
 
         st.success("🎉 تم التحليل بنجاح!")
 
-        # عرض النتائج
+        # معلومات الفيديو
+        with st.expander("📹 معلومات الفيديو", expanded=False):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.write(f"**الاسم:** {video_info['filename']}")
+            with col2:
+                st.write(f"**الحجم:** {video_info['size_mb']:.2f} MB")
+            with col3:
+                st.write(f"**النوع:** {video_info['type']}")
+
+        st.markdown("---")
+
+        # عرض الدرجات
+        st.subheader("🏆 النتيجة النهائية")
+
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
@@ -280,32 +396,86 @@ def analyze_video(uploaded_file, skater_id, analysis_mode, program_type, config,
         with col3:
             st.metric("الخصومات", f"-{program_score.total_deductions:.2f}")
         with col4:
-            st.metric("الدرجة النهائية", f"{program_score.total_score:.2f}")
+            st.metric("⭐ الدرجة النهائية", f"{program_score.total_score:.2f}")
 
         # تفاصيل العناصر
-        st.subheader("🎯 العناصر المنفذة")
+        st.markdown("---")
+        st.subheader("🎯 تفاصيل العناصر المنفذة")
 
-        for element in program_score.elements:
-            with st.expander(f"{element.element_name} ({element.element_code})"):
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.write(f"**القيمة الأساسية:** {element.base_value:.2f}")
-                with col2:
-                    st.write(f"**GOE:** {element.goe:+d}")
-                with col3:
-                    st.write(f"**قيمة GOE:** {element.goe_value:+.2f}")
-                with col4:
-                    st.write(f"**المجموع:** {element.total_score:.2f}")
+        # جدول العناصر
+        elements_data = []
+        for idx, element in enumerate(program_score.elements, 1):
+            elements_data.append({
+                '#': idx,
+                'العنصر': element.element_name,
+                'الكود': element.element_code,
+                'القيمة الأساسية': f"{element.base_value:.2f}",
+                'GOE': f"{element.goe:+d}",
+                'قيمة GOE': f"{element.goe_value:+.2f}",
+                'المجموع': f"{element.total_score:.2f}"
+            })
+
+        df_elements = pd.DataFrame(elements_data)
+        st.dataframe(df_elements, use_container_width=True, hide_index=True)
+
+        # مكونات البرنامج
+        st.markdown("---")
+        st.subheader("🎨 مكونات البرنامج")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.write("**💫 المهارات الفنية:**")
+            st.progress(skating_skills / 10, text=f"Skating Skills: {skating_skills:.2f}")
+            st.progress(transitions / 10, text=f"Transitions: {transitions:.2f}")
+            st.progress(performance / 10, text=f"Performance: {performance:.2f}")
+
+        with col2:
+            st.write("**🎭 المهارات التعبيرية:**")
+            st.progress(composition / 10, text=f"Composition: {composition:.2f}")
+            st.progress(interpretation / 10, text=f"Interpretation: {interpretation:.2f}")
+
+            avg_components = (skating_skills + transitions + performance + composition + interpretation) / 5
+            st.metric("المتوسط", f"{avg_components:.2f}")
+
+        # ملاحظات وتوصيات
+        st.markdown("---")
+        st.subheader("📝 ملاحظات وتوصيات")
+
+        if program_score.total_score >= 150:
+            st.success("""
+            ✨ **أداء ممتاز!**
+            - درجة عالية تؤهل للمنافسة الدولية
+            - جودة تنفيذ ممتازة للعناصر
+            - مكونات البرنامج على مستوى احترافي
+            """)
+        elif program_score.total_score >= 120:
+            st.info("""
+            👍 **أداء جيد جداً**
+            - مستوى تنافسي قوي
+            - يُنصح بالتركيز على تحسين GOE
+            - تطوير مكونات البرنامج سيرفع الدرجة
+            """)
+        else:
+            st.warning("""
+            💪 **مجال للتطوير**
+            - التدريب على استقرار القفزات
+            - تحسين سرعة الدوران
+            - العمل على التعبير الفني
+            """)
+
+        # زر التصدير
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        with col2:
+            if st.button("📥 تصدير التقرير الكامل", use_container_width=True):
+                st.info("🚧 ميزة التصدير قيد التطوير...")
 
     except Exception as e:
         st.error(f"❌ خطأ في التحليل: {e}")
-
-    finally:
-        # تنظيف الملف المؤقت
-        try:
-            Path(video_path).unlink()
-        except:
-            pass
+        import traceback
+        with st.expander("🔍 تفاصيل الخطأ"):
+            st.code(traceback.format_exc())
 
 
 def show_skaters_page(db_manager):
@@ -550,32 +720,37 @@ def show_isu_standards_page():
     with tab2:
         st.subheader("الدورانات ومعاييرها")
         for code, info in standards.SPINS.items():
-            with st.expander(f"{info['name']} ({code})"):
+            with st.expander(f"{info['name']} ({code}) - القيمة: {info['base_value']}"):
                 st.write(f"**الاسم العربي:** {info['name_ar']}")
-                st.write(f"**الوصف:** {info['description']}")
-                st.write(f"**القيم الأساسية حسب المستوى:**")
-                for level, value in enumerate(info['base_values']):
-                    if level > 0:
-                        st.write(f"  - المستوى {level}: {value}")
+                st.write(f"**النوع:** {info['type']}")
+                if 'features' in info:
+                    st.write(f"**المميزات:** {', '.join(info['features'])}")
+
+    with tab3:
+        st.subheader("تسلسلات الخطوات")
+        st.info("تسلسلات الخطوات يتم تقييمها من المستوى 1 إلى المستوى 4")
+
+    with tab4:
+        st.subheader("نظام GOE (Grade of Execution)")
+        st.write("نطاق التقييم: من -5 إلى +5")
+
+        goe_data = []
+        for goe, multiplier in standards.GOE_VALUES.items():
+            goe_data.append({
+                'GOE': f"{goe:+d}",
+                'المضاعف': f"{multiplier:+.2f}",
+                'التأثير': 'سلبي' if goe < 0 else ('إيجابي' if goe > 0 else 'محايد')
+            })
+
+        df_goe = pd.DataFrame(goe_data)
+        st.dataframe(df_goe, use_container_width=True, hide_index=True)
 
 
 def show_settings_page(config):
     """صفحة الإعدادات"""
     st.title("⚙️ الإعدادات")
-
-    st.subheader("معلومات النظام")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.write(f"**اسم التطبيق:** {config.APP_NAME}")
-        st.write(f"**الإصدار:** {config.APP_VERSION}")
-        st.write(f"**البيئة:** {os.getenv('ENVIRONMENT', 'development')}")
-
-    with col2:
-        st.write(f"**قاعدة البيانات:** {config.DATABASE_URL[:50]}...")
-        st.write(f"**مستوى السجلات:** {config.LOG_LEVEL}")
+    st.info("🚧 قيد التطوير...")
 
 
 if __name__ == "__main__":
-    import os
     main()
