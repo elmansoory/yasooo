@@ -149,3 +149,9 @@ tmp/
 *.mkv
 *.flv
 *.wmv
+
+# Compressed archives
+*.tar.gz
+*.zip
+*.rar
+*.7z
