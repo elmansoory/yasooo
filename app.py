@@ -823,6 +823,30 @@ def generate_ai_recommendations(detected_elements, program_score, confidence):
     return "\n".join(recommendations) if recommendations else "✨ أداء جيد - استمر في التدريب!"
 
 
+def display_player_info(player):
+    """عرض معلومات اللاعب"""
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.write(f"**الدولة:** {player.country or 'مصر'}")
+        st.write(f"**التخصص:** {player.discipline or 'Singles'}")
+        if player.level:
+            st.write(f"**المستوى:** {player.level}")
+
+    with col2:
+        st.write(f"**المدرب:** {player.coach_name or 'غير محدد'}")
+        st.write(f"**النادي:** {player.club or 'غير محدد'}")
+        if player.bundle:
+            st.write(f"**الباقة:** {player.bundle}")
+
+    with col3:
+        st.write(f"**عدد الفيديوهات:** {player.total_videos or 0}")
+        st.write(f"**عدد التحليلات:** {player.total_analyses or 0}")
+        if player.membership_status:
+            status_emoji = "✅" if player.membership_status == "active" else "⏸️"
+            st.write(f"**الحالة:** {status_emoji} {player.membership_status}")
+
+
 def show_skaters_page(db_manager):
     """صفحة إدارة المتزلجين"""
     st.title("👥 إدارة المتزلجين والمدربين")
@@ -888,19 +912,19 @@ def show_skaters_page(db_manager):
                     # عرض اللاعبين في جدول
                     for idx, player in enumerate(players, 1):
                         with st.expander(f"{idx}. {player.name} - {player.country or 'مصر'}"):
-                            col1, col2, col3 = st.columns(3)
-
-                            with col1:
-                                st.write(f"**الدولة:** {player.country or 'مصر'}")
-                                st.write(f"**التخصص:** {player.discipline or 'Singles'}")
-
-                            with col2:
-                                st.write(f"**المدرب:** {player.coach_name or 'غير محدد'}")
-                                st.write(f"**النادي:** {player.club or 'غير محدد'}")
-
-                            with col3:
-                                st.write(f"**عدد الفيديوهات:** {player.total_videos or 0}")
-                                st.write(f"**عدد التحليلات:** {player.total_analyses or 0}")
+                            # عرض الصورة إذا كانت موجودة
+                            if player.photo_path:
+                                import os
+                                if os.path.exists(player.photo_path):
+                                    col_photo, col_data = st.columns([1, 3])
+                                    with col_photo:
+                                        st.image(player.photo_path, width=150, caption=player.name)
+                                    with col_data:
+                                        display_player_info(player)
+                                else:
+                                    display_player_info(player)
+                            else:
+                                display_player_info(player)
 
                             if player.notes:
                                 st.caption(f"📝 {player.notes}")
@@ -946,6 +970,23 @@ def show_skaters_page(db_manager):
     with tab3:
         st.subheader("➕ إضافة متزلج جديد")
 
+        # قسم رفع الصورة (خارج النموذج)
+        st.markdown("### 📸 الصورة الشخصية")
+        uploaded_photo = st.file_uploader(
+            "اختر صورة العضو",
+            type=['jpg', 'jpeg', 'png', 'webp'],
+            help="الصيغ المدعومة: JPG, PNG, WEBP",
+            key="member_photo_uploader"
+        )
+
+        if uploaded_photo:
+            col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
+            with col_img2:
+                st.image(uploaded_photo, caption="معاينة الصورة", use_column_width=True)
+
+        st.markdown("---")
+        st.markdown("### 📋 البيانات الأساسية")
+
         with st.form("add_skater_form"):
             col1, col2 = st.columns(2)
 
@@ -954,11 +995,20 @@ def show_skaters_page(db_manager):
                 country = st.text_input("الدولة", value="مصر")
                 gender = st.selectbox("الجنس", ["أنثى", "ذكر"])
                 category = st.selectbox("الفئة", ["Junior", "Senior"])
+                level = st.selectbox("المستوى", ["", "Beta", "Gamma", "Delta", "Epsilon"])
 
             with col2:
                 discipline = st.selectbox("التخصص", ["Singles", "Pairs", "Ice Dance", "Coach"])
                 coach_name = st.text_input("اسم المدرب")
                 club = st.text_input("النادي")
+                bundle = st.selectbox("الباقة", [
+                    "",
+                    "On-Ice Bronze",
+                    "On-Ice Silver",
+                    "On-Ice Gold",
+                    "Off-Ice Basic",
+                    "Off-Ice Advanced"
+                ])
                 is_coach = st.checkbox("مدرب")
 
             notes = st.text_area("ملاحظات")
@@ -977,6 +1027,25 @@ def show_skaters_page(db_manager):
                             if is_coach:
                                 final_notes = f"مدرب\n{notes}" if notes else "مدرب"
 
+                            # حفظ الصورة إذا تم رفعها
+                            photo_path = None
+                            if uploaded_photo is not None:
+                                import os
+                                from pathlib import Path
+
+                                # إنشاء مجلد الصور
+                                photos_dir = Path("uploads/photos")
+                                photos_dir.mkdir(parents=True, exist_ok=True)
+
+                                # حفظ الصورة
+                                photo_filename = f"{name.replace(' ', '_')}_{int(time.time())}.{uploaded_photo.name.split('.')[-1]}"
+                                photo_path = photos_dir / photo_filename
+
+                                with open(photo_path, "wb") as f:
+                                    f.write(uploaded_photo.getbuffer())
+
+                                photo_path = str(photo_path)
+
                             skater = Skater(
                                 name=name,
                                 country=country,
@@ -985,6 +1054,9 @@ def show_skaters_page(db_manager):
                                 discipline="Coach" if is_coach else discipline,
                                 coach_name=coach_name,
                                 club=club,
+                                level=level if level else None,
+                                bundle=bundle if bundle else None,
+                                photo_path=photo_path,
                                 notes=final_notes,
                                 total_videos=0,
                                 total_analyses=0
@@ -992,10 +1064,15 @@ def show_skaters_page(db_manager):
                             session.add(skater)
 
                         st.success(f"✅ تمت إضافة {'المدرب' if is_coach else 'اللاعب'}: {name}")
+                        st.balloons()
+                        time.sleep(1)
                         st.rerun()
 
                 except Exception as e:
                     st.error(f"❌ خطأ في الإضافة: {e}")
+                    import traceback
+                    with st.expander("🔍 تفاصيل الخطأ"):
+                        st.code(traceback.format_exc())
 
     # تبويب استيراد البيانات
     with tab4:

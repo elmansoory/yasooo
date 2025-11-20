@@ -32,6 +32,14 @@ class Skater(Base):
     club = Column(String(200))
     notes = Column(Text)
 
+    # بيانات العضوية
+    level = Column(String(50))  # Beta, Gamma, etc.
+    bundle = Column(String(100))  # On-Ice Silver, Bronze, etc.
+    membership_status = Column(String(50), default='active')  # active, inactive, suspended
+
+    # الصورة الشخصية
+    photo_path = Column(String(500))  # مسار الصورة
+
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
