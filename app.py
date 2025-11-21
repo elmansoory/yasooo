@@ -489,9 +489,16 @@ def analyze_video(uploaded_file, skater_id, analysis_mode, program_type, config,
 
 
 def analyze_video_with_ai(uploaded_file, skater_id, analysis_mode, program_type, config, db_manager):
-    """تحليل الفيديو باستخدام الذكاء الاصطناعي"""
+    """تحليل الفيديو باستخدام الذكاء الاصطناعي - وضع تجريبي"""
 
-    st.info("🤖 **وضع التحليل الذكي** - يستخدم نماذج الذكاء الاصطناعي للتعرف على الحركات")
+    st.warning("""
+    ⚠️ **ملاحظة هامة: وضع العرض التجريبي**
+
+    هذا الوضع يعرض قدرات نظام التعرف على الحركات بشكل تجريبي.
+    - ✅ النظام يحتوي على 24 قفزة + 35 دوران + تسلسلات الخطوات
+    - ⚠️ لاستخدام التحليل الحقيقي، يتطلب تثبيت MediaPipe و OpenCV
+    - 📊 النتائج المعروضة هي نماذج تعليمية توضح طريقة عمل النظام
+    """)
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -516,38 +523,22 @@ def analyze_video_with_ai(uploaded_file, skater_id, analysis_mode, program_type,
             'type': uploaded_file.type
         }
 
-        # 2. محاكاة استخراج الوضعيات (في النسخة الكاملة سيتم استخدام MediaPipe)
-        status_text.text("🧍 استخراج الوضعيات من الفيديو...")
+        # 2. **وضع العرض** - توليد نتائج نموذجية (في النسخة الكاملة: MediaPipe)
+        status_text.text("🎭 توليد نتائج نموذجية للعرض...")
         progress_bar.progress(30)
         time.sleep(0.5)
 
-        # محاكاة بيانات الوضعيات
-        simulated_poses = generate_simulated_poses(program_type)
+        # توليد عناصر نموذجية واقعية
+        detected_elements = generate_realistic_demo_elements(program_type)
 
-        # 3. تحليل الحركات باستخدام الذكاء الاصطناعي
-        status_text.text("🤖 التعرف على الحركات باستخدام الذكاء الاصطناعي...")
+        # 3. **عرض تجريبي** - في النسخة الحقيقية: تحليل الحركات باستخدام AI
+        status_text.text("🎯 تحليل الحركات المكتشفة...")
         progress_bar.progress(50)
+        time.sleep(0.8)
 
-        detected_elements = []
-        movement_segments = segment_movements(simulated_poses, program_type)
-
-        for segment in movement_segments:
-            # استخراج الخصائص
-            features = feature_extractor.extract_features(segment['poses'])
-
-            # التصنيف
-            result = classifier.classify_movement(features)
-
-            # إضافة العنصر المكتشف
-            detected_elements.append({
-                'code': result.get('code', 'Unknown'),
-                'goe': result.get('estimated_goe', 0),
-                'confidence': result.get('confidence', 0.0),
-                'type': result.get('type', 'transition')
-            })
-
+        # إظهار الحركات المكتشفة
         progress_bar.progress(70)
-        time.sleep(0.5)
+        time.sleep(0.3)
 
         # 4. حساب مكونات البرنامج من التحليل
         status_text.text("📊 حساب مكونات البرنامج...")
@@ -737,50 +728,37 @@ def analyze_video_with_ai(uploaded_file, skater_id, analysis_mode, program_type,
             st.code(traceback.format_exc())
 
 
-def generate_simulated_poses(program_type):
-    """توليد بيانات وضعيات محاكاة (في النسخة الكاملة سيتم استخدام MediaPipe)"""
-    # محاكاة بسيطة لبيانات الوضعيات
-    num_frames = 300 if "قصير" in program_type else 500
+def generate_realistic_demo_elements(program_type):
+    """توليد عناصر نموذجية واقعية للعرض التجريبي"""
 
-    poses = []
-    for i in range(num_frames):
-        pose = {
-            'frame': i,
-            'landmarks': {
-                'left_shoulder': {'x': 0.3 + np.random.randn() * 0.05, 'y': 0.4 + np.random.randn() * 0.05},
-                'right_shoulder': {'x': 0.7 + np.random.randn() * 0.05, 'y': 0.4 + np.random.randn() * 0.05},
-                'left_hip': {'x': 0.35 + np.random.randn() * 0.05, 'y': 0.6 + np.random.randn() * 0.05},
-                'right_hip': {'x': 0.65 + np.random.randn() * 0.05, 'y': 0.6 + np.random.randn() * 0.05},
-                'left_knee': {'x': 0.35 + np.random.randn() * 0.05, 'y': 0.75 + np.random.randn() * 0.05},
-                'left_ankle': {'x': 0.35 + np.random.randn() * 0.05, 'y': 0.9 + np.random.randn() * 0.05},
-                'left_wrist': {'x': 0.2 + np.random.randn() * 0.05, 'y': 0.5 + np.random.randn() * 0.05},
-            }
-        }
-        poses.append(pose)
+    # عناصر واقعية حسب نوع البرنامج
+    if "قصير" in program_type:
+        # برنامج قصير - 6 عناصر نموذجية
+        elements = [
+            {'code': '3A', 'type': 'jump', 'confidence': 0.88, 'goe': 2, 'name': 'Triple Axel'},
+            {'code': '3Lz+3T', 'type': 'jump', 'confidence': 0.85, 'goe': 1, 'name': 'Triple Lutz + Triple Toe'},
+            {'code': '3F', 'type': 'jump', 'confidence': 0.82, 'goe': 1, 'name': 'Triple Flip'},
+            {'code': 'FCSp4', 'type': 'spin', 'confidence': 0.90, 'goe': 2, 'name': 'Flying Camel Spin Level 4'},
+            {'code': 'StSq4', 'type': 'step_sequence', 'confidence': 0.87, 'goe': 2, 'name': 'Step Sequence Level 4'},
+            {'code': 'CCoSp4', 'type': 'spin', 'confidence': 0.92, 'goe': 3, 'name': 'Change Combination Spin Level 4'}
+        ]
+    else:
+        # برنامج حر - 11 عنصر نموذجي
+        elements = [
+            {'code': '4T', 'type': 'jump', 'confidence': 0.80, 'goe': 0, 'name': 'Quad Toe Loop'},
+            {'code': '3A', 'type': 'jump', 'confidence': 0.89, 'goe': 2, 'name': 'Triple Axel'},
+            {'code': '3Lz', 'type': 'jump', 'confidence': 0.84, 'goe': 1, 'name': 'Triple Lutz'},
+            {'code': '3F+3T', 'type': 'jump', 'confidence': 0.86, 'goe': 2, 'name': 'Triple Flip + Triple Toe'},
+            {'code': '3Lo', 'type': 'jump', 'confidence': 0.81, 'goe': 0, 'name': 'Triple Loop'},
+            {'code': '2A', 'type': 'jump', 'confidence': 0.91, 'goe': 1, 'name': 'Double Axel'},
+            {'code': 'FCSp4', 'type': 'spin', 'confidence': 0.90, 'goe': 2, 'name': 'Flying Camel Spin Level 4'},
+            {'code': 'StSq4', 'type': 'step_sequence', 'confidence': 0.88, 'goe': 3, 'name': 'Step Sequence Level 4'},
+            {'code': 'ChSq1', 'type': 'step_sequence', 'confidence': 0.85, 'goe': 2, 'name': 'Choreographic Sequence'},
+            {'code': 'FCCoSp4', 'type': 'spin', 'confidence': 0.91, 'goe': 2, 'name': 'Flying Change Combination Spin Level 4'},
+            {'code': 'CCoSp4', 'type': 'spin', 'confidence': 0.93, 'goe': 3, 'name': 'Change Combination Spin Level 4'}
+        ]
 
-    return poses
-
-
-def segment_movements(poses, program_type):
-    """تقسيم الوضعيات إلى حركات منفصلة"""
-    # في النسخة الكاملة، سيتم كشف الحدود بين الحركات تلقائياً
-    # هنا نستخدم تقسيم بسيط
-
-    num_elements = 6 if "قصير" in program_type else 11
-    segment_size = len(poses) // num_elements
-
-    segments = []
-    for i in range(num_elements):
-        start = i * segment_size
-        end = min((i + 1) * segment_size, len(poses))
-
-        segments.append({
-            'start_frame': start,
-            'end_frame': end,
-            'poses': poses[start:end]
-        })
-
-    return segments
+    return elements
 
 
 def generate_ai_recommendations(detected_elements, program_score, confidence):
@@ -928,6 +906,85 @@ def show_skaters_page(db_manager):
 
                             if player.notes:
                                 st.caption(f"📝 {player.notes}")
+
+                            # أزرار التعديل والحذف
+                            st.markdown("---")
+                            col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 2])
+
+                            with col_btn1:
+                                if st.button("✏️ تعديل", key=f"edit_player_{player.id}", use_container_width=True):
+                                    st.session_state[f'editing_player_{player.id}'] = True
+                                    st.rerun()
+
+                            with col_btn2:
+                                if st.button("🗑️ حذف", key=f"delete_player_{player.id}", use_container_width=True, type="secondary"):
+                                    st.session_state[f'confirm_delete_{player.id}'] = True
+                                    st.rerun()
+
+                            # نموذج التعديل
+                            if st.session_state.get(f'editing_player_{player.id}', False):
+                                st.markdown("### ✏️ تعديل البيانات")
+                                with st.form(f"edit_form_{player.id}"):
+                                    col_e1, col_e2 = st.columns(2)
+                                    with col_e1:
+                                        new_name = st.text_input("الاسم", value=player.name)
+                                        new_country = st.text_input("الدولة", value=player.country or "مصر")
+                                        new_level = st.selectbox("المستوى", ["", "Pre-Alpha", "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Freestyle 1", "Freestyle 2", "Freestyle 3", "Freestyle 4"], index=0 if not player.level else (["", "Pre-Alpha", "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Freestyle 1", "Freestyle 2", "Freestyle 3", "Freestyle 4"].index(player.level) if player.level in ["", "Pre-Alpha", "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Freestyle 1", "Freestyle 2", "Freestyle 3", "Freestyle 4"] else 0))
+
+                                    with col_e2:
+                                        new_coach = st.text_input("المدرب", value=player.coach_name or "")
+                                        new_club = st.text_input("النادي", value=player.club or "")
+                                        new_bundle = st.selectbox("الباقة", ["", "On-Ice Bronze", "On-Ice Silver", "On-Ice Gold", "Per Session"], index=0 if not player.bundle else (["", "On-Ice Bronze", "On-Ice Silver", "On-Ice Gold", "Per Session"].index(player.bundle) if player.bundle in ["", "On-Ice Bronze", "On-Ice Silver", "On-Ice Gold", "Per Session"] else 0))
+
+                                    col_submit, col_cancel = st.columns(2)
+                                    with col_submit:
+                                        if st.form_submit_button("💾 حفظ التعديلات", use_container_width=True, type="primary"):
+                                            try:
+                                                with db_manager.get_session() as edit_session:
+                                                    player_to_edit = edit_session.query(Skater).filter_by(id=player.id).first()
+                                                    if player_to_edit:
+                                                        player_to_edit.name = new_name
+                                                        player_to_edit.country = new_country
+                                                        player_to_edit.coach_name = new_coach if new_coach else None
+                                                        player_to_edit.club = new_club if new_club else None
+                                                        player_to_edit.level = new_level if new_level else None
+                                                        player_to_edit.bundle = new_bundle if new_bundle else None
+
+                                                st.success(f"✅ تم تحديث بيانات {new_name}")
+                                                del st.session_state[f'editing_player_{player.id}']
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"❌ خطأ: {e}")
+
+                                    with col_cancel:
+                                        if st.form_submit_button("❌ إلغاء", use_container_width=True):
+                                            del st.session_state[f'editing_player_{player.id}']
+                                            st.rerun()
+
+                            # تأكيد الحذف
+                            if st.session_state.get(f'confirm_delete_{player.id}', False):
+                                st.warning(f"⚠️ هل أنت متأكد من حذف **{player.name}**؟")
+                                col_yes, col_no = st.columns(2)
+
+                                with col_yes:
+                                    if st.button("✅ نعم، احذف", key=f"confirm_yes_{player.id}", use_container_width=True, type="primary"):
+                                        try:
+                                            with db_manager.get_session() as del_session:
+                                                player_to_delete = del_session.query(Skater).filter_by(id=player.id).first()
+                                                if player_to_delete:
+                                                    del_session.delete(player_to_delete)
+
+                                            st.success(f"✅ تم حذف {player.name}")
+                                            del st.session_state[f'confirm_delete_{player.id}']
+                                            time.sleep(0.5)
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"❌ خطأ: {e}")
+
+                                with col_no:
+                                    if st.button("❌ لا، إلغاء", key=f"confirm_no_{player.id}", use_container_width=True):
+                                        del st.session_state[f'confirm_delete_{player.id}']
+                                        st.rerun()
                 else:
                     st.warning("⚠️ لا يوجد لاعبون حالياً")
 
