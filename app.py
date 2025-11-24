@@ -15,6 +15,9 @@ from src.database.models import Skater, Video, Analysis
 from src.analysis.scoring_engine import ScoringEngine
 from src.models.movement_classifier import MovementClassifier, MovementFeatures
 from src.models.training_engine import TrainingEngine, FeatureExtractor
+from src.pages.attendance_page import show_attendance_page
+from src.pages.payment_page import show_payments_page
+from src.pages.schedule_page import show_schedule_page
 import pandas as pd
 import tempfile
 import time
@@ -77,6 +80,9 @@ def main():
                 "👥 إدارة المتزلجين",
                 "📊 التحليلات السابقة",
                 "📈 الإحصائيات",
+                "📅 الحضور والغياب",
+                "💰 المدفوعات",
+                "📆 جدول التدريبات",
                 "📖 معايير ISU",
                 "⚙️ الإعدادات"
             ]
@@ -100,6 +106,15 @@ def main():
 
     elif page == "📈 الإحصائيات":
         show_statistics_page(db_manager)
+
+    elif page == "📅 الحضور والغياب":
+        show_attendance_page(db_manager)
+
+    elif page == "💰 المدفوعات":
+        show_payments_page(db_manager)
+
+    elif page == "📆 جدول التدريبات":
+        show_schedule_page(db_manager)
 
     elif page == "📖 معايير ISU":
         show_isu_standards_page()

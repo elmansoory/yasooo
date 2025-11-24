@@ -193,3 +193,93 @@ class Score(Base):
 
     def __repr__(self):
         return f"<Score(id={self.id}, total={self.total_score:.2f})>"
+
+
+class Attendance(Base):
+    """نموذج الحضور"""
+    __tablename__ = 'attendance'
+
+    id = Column(Integer, primary_key=True)
+    skater_id = Column(Integer, ForeignKey('skaters.id'), nullable=False, index=True)
+    date = Column(DateTime, nullable=False, index=True)
+    status = Column(String(20), nullable=False)  # present, absent, excused, late
+    session_type = Column(String(50))  # on-ice, off-ice, competition
+    notes = Column(Text)
+    recorded_by = Column(String(100))  # اسم المدرب أو الإداري
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # العلاقات
+    skater = relationship('Skater', backref='attendance_records')
+
+    __table_args__ = (
+        Index('idx_skater_date', 'skater_id', 'date'),
+    )
+
+    def __repr__(self):
+        return f"<Attendance(id={self.id}, skater_id={self.skater_id}, status='{self.status}')>"
+
+
+class Payment(Base):
+    """نموذج المدفوعات"""
+    __tablename__ = 'payments'
+
+    id = Column(Integer, primary_key=True)
+    skater_id = Column(Integer, ForeignKey('skaters.id'), nullable=False, index=True)
+
+    amount = Column(Float, nullable=False)
+    payment_date = Column(DateTime, nullable=False, index=True)
+    payment_method = Column(String(50))  # cash, instapay, credit_card, bank_transfer
+
+    bundle_type = Column(String(100))  # On-Ice Bronze, On-Ice Silver, etc.
+    period_start = Column(DateTime)  # بداية فترة الاشتراك
+    period_end = Column(DateTime)    # نهاية فترة الاشتراك
+
+    status = Column(String(20), default='completed')  # pending, completed, refunded
+    discount = Column(Float, default=0.0)
+    notes = Column(Text)
+    received_by = Column(String(100))  # من استلم الدفعة
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # العلاقات
+    skater = relationship('Skater', backref='payments')
+
+    __table_args__ = (
+        Index('idx_skater_payment_date', 'skater_id', 'payment_date'),
+        Index('idx_payment_status', 'status'),
+    )
+
+    def __repr__(self):
+        return f"<Payment(id={self.id}, amount={self.amount}, status='{self.status}')>"
+
+
+class Schedule(Base):
+    """نموذج جدول التدريبات"""
+    __tablename__ = 'schedules'
+
+    id = Column(Integer, primary_key=True)
+
+    day_of_week = Column(Integer, nullable=False)  # 0=Monday, 6=Sunday
+    start_time = Column(String(10), nullable=False)  # "09:00"
+    end_time = Column(String(10), nullable=False)    # "10:00"
+
+    session_type = Column(String(50))  # on-ice, off-ice
+    level = Column(String(50))  # Beta, Gamma, Delta, etc.
+    coach_id = Column(Integer, ForeignKey('skaters.id'))  # المدرب
+
+    max_capacity = Column(Integer, default=15)
+    is_active = Column(Boolean, default=True)
+    notes = Column(Text)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # العلاقات
+    coach = relationship('Skater', foreign_keys=[coach_id])
+
+    __table_args__ = (
+        Index('idx_day_time', 'day_of_week', 'start_time'),
+    )
+
+    def __repr__(self):
+        return f"<Schedule(id={self.id}, day={self.day_of_week}, time={self.start_time})>"
