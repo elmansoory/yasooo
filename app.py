@@ -11,17 +11,20 @@ sys.path.insert(0, str(Path(__file__).parent))
 from src.config.config import get_config
 from src.utils.logger import setup_logger
 from src.database.database_manager import DatabaseManager
-from src.database.models import Skater, Video, Analysis
+from src.database.models import Skater, Video, Analysis, Attendance, Payment, Schedule
 from src.analysis.scoring_engine import ScoringEngine
 from src.models.movement_classifier import MovementClassifier, MovementFeatures
 from src.models.training_engine import TrainingEngine, FeatureExtractor
 from src.pages.attendance_page import show_attendance_page
 from src.pages.payment_page import show_payments_page
 from src.pages.schedule_page import show_schedule_page
+from src.pages.member_profile_page import show_member_profile_page
 import pandas as pd
 import tempfile
 import time
 import numpy as np
+from datetime import datetime, date, timedelta
+from sqlalchemy import func
 
 # إعداد الصفحة
 st.set_page_config(
@@ -78,6 +81,7 @@ def main():
                 "🏠 الرئيسية",
                 "📹 تحليل فيديو جديد",
                 "👥 إدارة المتزلجين",
+                "👤 ملف العضو الشامل",
                 "📊 التحليلات السابقة",
                 "📈 الإحصائيات",
                 "📅 الحضور والغياب",
@@ -100,6 +104,9 @@ def main():
 
     elif page == "👥 إدارة المتزلجين":
         show_skaters_page(db_manager)
+
+    elif page == "👤 ملف العضو الشامل":
+        show_member_profile_page(db_manager)
 
     elif page == "📊 التحليلات السابقة":
         show_history_page(db_manager)
@@ -124,78 +131,214 @@ def main():
 
 
 def show_home_page():
-    """الصفحة الرئيسية"""
-    st.title("🏠 مرحباً بك في نظام تحليل التزلج الفني")
+    """لوحة التحكم الرئيسية - Dashboard"""
+    st.title("🏠 لوحة التحكم")
 
-    st.markdown("""
-    ### ⛸️ نظام ذكاء اصطناعي متقدم لتحليل وتقييم التزلج الفني
-
-    ---
-
-    ## 🎯 الميزات الرئيسية:
-
-    """)
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.info("""
-        ### 📹 تحليل الفيديو
-        - رفع فيديوهات الأداء
-        - كشف تلقائي للحركات
-        - تحليل بالذكاء الاصطناعي
-        """)
-
-    with col2:
-        st.success("""
-        ### 📊 معايير ISU
-        - 24 نوع قفزة
-        - 35 نوع دوران
-        - نظام GOE كامل
-        """)
-
-    with col3:
-        st.warning("""
-        ### 👥 إدارة اللاعبين
-        - 91 لاعب مسجل
-        - 20 مدرب
-        - تتبع الأداء
-        """)
-
+    # عرض التاريخ والوقت
+    now = datetime.now()
+    st.markdown(f"**📅 {now.strftime('%A, %d %B %Y')} | ⏰ {now.strftime('%I:%M %p')}**")
     st.markdown("---")
-
-    # إحصائيات سريعة
-    st.subheader("📊 إحصائيات سريعة")
 
     try:
         db_manager = st.session_state.db_manager
         with db_manager.get_session() as session:
+
+            # ==================== القسم 1: إحصائيات عامة ====================
+            st.subheader("📊 نظرة عامة")
+
+            # حساب الإحصائيات
             total_skaters = session.query(Skater).count()
-            total_coaches = session.query(Skater).filter(
-                Skater.notes.like('%مدرب%')
-            ).count()
+            total_coaches = session.query(Skater).filter(Skater.notes.like('%مدرب%')).count()
             total_players = total_skaters - total_coaches
 
-        col1, col2, col3, col4 = st.columns(4)
+            # الحضور اليوم
+            today = date.today()
+            today_attendance = session.query(Attendance).filter(
+                func.date(Attendance.date) == today,
+                Attendance.status == 'present'
+            ).count()
 
-        with col1:
-            st.metric("👥 اللاعبون", total_players)
-        with col2:
-            st.metric("🎓 المدربون", total_coaches)
-        with col3:
-            st.metric("📊 الإجمالي", total_skaters)
-        with col4:
-            st.metric("📹 الفيديوهات", "0")
+            # إيرادات الشهر
+            first_day = today.replace(day=1)
+            monthly_revenue = session.query(func.sum(Payment.amount)).filter(
+                Payment.payment_date >= first_day,
+                Payment.status == 'completed'
+            ).scalar() or 0
 
-    except:
-        pass
+            # عدد التحليلات
+            total_analyses = session.query(Analysis).count()
 
-    st.markdown("---")
+            # عرض البطاقات
+            col1, col2, col3, col4, col5 = st.columns(5)
 
-    st.info("""
-    ### 🚀 ابدأ الآن!
-    استخدم القائمة الجانبية للانتقال بين الأقسام المختلفة
-    """)
+            with col1:
+                st.metric(
+                    label="👥 اللاعبون",
+                    value=total_players,
+                    delta=None
+                )
+
+            with col2:
+                st.metric(
+                    label="🎓 المدربون",
+                    value=total_coaches,
+                    delta=None
+                )
+
+            with col3:
+                st.metric(
+                    label="✅ حضور اليوم",
+                    value=today_attendance,
+                    delta=None
+                )
+
+            with col4:
+                st.metric(
+                    label="💰 إيرادات الشهر",
+                    value=f"{monthly_revenue:,.0f} EGP",
+                    delta=None
+                )
+
+            with col5:
+                st.metric(
+                    label="📹 التحليلات",
+                    value=total_analyses,
+                    delta=None
+                )
+
+            st.markdown("---")
+
+            # ==================== القسم 2: تنبيهات مهمة ====================
+            st.subheader("⚠️ تنبيهات وإشعارات")
+
+            col_alert1, col_alert2 = st.columns(2)
+
+            with col_alert1:
+                # الاشتراكات المنتهية خلال 7 أيام
+                week_later = today + timedelta(days=7)
+                expiring_soon = session.query(
+                    Skater.name,
+                    func.max(Payment.period_end).label('expiry')
+                ).join(Payment).group_by(Skater.id).having(
+                    func.max(Payment.period_end).between(today, week_later)
+                ).all()
+
+                st.warning(f"**🔔 اشتراكات تنتهي قريباً: {len(expiring_soon)}**")
+                if expiring_soon:
+                    with st.expander("عرض التفاصيل"):
+                        for name, expiry in expiring_soon[:5]:
+                            days_left = (expiry - datetime.now()).days
+                            st.write(f"• {name} - متبقي {days_left} يوم")
+                else:
+                    st.success("✅ لا توجد اشتراكات تنتهي قريباً")
+
+            with col_alert2:
+                # الاشتراكات المنتهية
+                expired = session.query(
+                    func.count(Skater.id)
+                ).join(Payment).group_by(Skater.id).having(
+                    func.max(Payment.period_end) < datetime.now()
+                ).count()
+
+                if expired > 0:
+                    st.error(f"**❌ اشتراكات منتهية: {expired}**")
+                    if st.button("عرض المتأخرات"):
+                        st.info("انتقل إلى صفحة المدفوعات > المتأخرات")
+                else:
+                    st.success("✅ لا توجد اشتراكات منتهية")
+
+            st.markdown("---")
+
+            # ==================== القسم 3: جدول اليوم ====================
+            st.subheader("📆 جدول الحصص اليوم")
+
+            # أيام الأسبوع (0 = Monday)
+            day_of_week = today.weekday()
+
+            today_schedule = session.query(Schedule).filter(
+                Schedule.day_of_week == day_of_week,
+                Schedule.is_active == True
+            ).order_by(Schedule.start_time).all()
+
+            if today_schedule:
+                for schedule in today_schedule:
+                    coach_name = "غير محدد"
+                    if schedule.coach_id:
+                        coach = session.query(Skater).filter(Skater.id == schedule.coach_id).first()
+                        if coach:
+                            coach_name = coach.name
+
+                    col_time, col_type, col_level, col_coach = st.columns([2, 2, 2, 2])
+
+                    with col_time:
+                        st.write(f"⏰ **{schedule.start_time} - {schedule.end_time}**")
+                    with col_type:
+                        emoji = "🧊" if schedule.session_type == "on-ice" else "🏃"
+                        st.write(f"{emoji} {schedule.session_type}")
+                    with col_level:
+                        st.write(f"🎯 {schedule.level or 'الكل'}")
+                    with col_coach:
+                        st.write(f"👨‍🏫 {coach_name}")
+            else:
+                st.info("📝 لا توجد حصص مجدولة اليوم")
+
+            st.markdown("---")
+
+            # ==================== القسم 4: آخر النشاطات ====================
+            col_activity1, col_activity2 = st.columns(2)
+
+            with col_activity1:
+                st.subheader("📋 آخر التحليلات")
+                recent_analyses = session.query(
+                    Analysis, Skater.name
+                ).join(Skater).order_by(
+                    Analysis.analysis_date.desc()
+                ).limit(5).all()
+
+                if recent_analyses:
+                    for analysis, name in recent_analyses:
+                        st.write(f"• {name} - {analysis.analysis_date.strftime('%Y-%m-%d')}")
+                else:
+                    st.info("لا توجد تحليلات حتى الآن")
+
+            with col_activity2:
+                st.subheader("💳 آخر المدفوعات")
+                recent_payments = session.query(
+                    Payment, Skater.name
+                ).join(Skater).order_by(
+                    Payment.payment_date.desc()
+                ).limit(5).all()
+
+                if recent_payments:
+                    for payment, name in recent_payments:
+                        st.write(f"• {name} - {payment.amount:.0f} EGP ({payment.payment_date.strftime('%Y-%m-%d')})")
+                else:
+                    st.info("لا توجد مدفوعات حتى الآن")
+
+            st.markdown("---")
+
+            # ==================== القسم 5: إحصائيات الحضور ====================
+            st.subheader("📊 إحصائيات الحضور (آخر 7 أيام)")
+
+            week_ago = today - timedelta(days=7)
+            weekly_attendance = session.query(
+                func.date(Attendance.date).label('date'),
+                func.count(Attendance.id).label('count')
+            ).filter(
+                Attendance.date >= week_ago,
+                Attendance.status == 'present'
+            ).group_by(func.date(Attendance.date)).all()
+
+            if weekly_attendance:
+                # إنشاء DataFrame للعرض
+                df_attendance = pd.DataFrame(weekly_attendance, columns=['التاريخ', 'عدد الحاضرين'])
+                st.bar_chart(df_attendance.set_index('التاريخ'))
+            else:
+                st.info("لا توجد بيانات حضور لآخر 7 أيام")
+
+    except Exception as e:
+        st.error(f"❌ خطأ في تحميل البيانات: {e}")
+        st.info("تأكد من تشغيل النظام بشكل صحيح")
 
 
 def show_analysis_page(config, db_manager):
@@ -877,12 +1020,17 @@ def show_skaters_page(db_manager):
     with tab1:
         st.subheader("👥 قائمة اللاعبين")
 
-        # بحث وفلترة
-        col1, col2 = st.columns([3, 1])
+        # بحث وفلترة متقدمة
+        st.markdown("### 🔍 البحث والفلترة")
+        col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
         with col1:
-            search_query = st.text_input("🔍 البحث عن لاعب", placeholder="ادخل اسم اللاعب...")
+            search_query = st.text_input("🔍 البحث عن لاعب", placeholder="ادخل اسم اللاعب...", key="search_player")
         with col2:
-            sort_by = st.selectbox("الترتيب حسب", ["الاسم", "الأحدث"])
+            filter_level = st.selectbox("المستوى", ["الكل", "Alpha", "Beta", "Gamma", "Delta", "Epsilon"], key="filter_level")
+        with col3:
+            filter_bundle = st.selectbox("الباقة", ["الكل", "On-Ice Bronze", "On-Ice Silver", "On-Ice Gold", "Off-Ice Bronze", "Off-Ice Silver"], key="filter_bundle")
+        with col4:
+            sort_by = st.selectbox("الترتيب", ["الاسم", "الأحدث"], key="sort_player")
 
         try:
             with db_manager.get_session() as session:
@@ -891,9 +1039,19 @@ def show_skaters_page(db_manager):
                     ~Skater.notes.like('%مدرب%')
                 )
 
+                # تطبيق البحث
                 if search_query:
                     query = query.filter(Skater.name.like(f'%{search_query}%'))
 
+                # تطبيق فلتر المستوى
+                if filter_level != "الكل":
+                    query = query.filter(Skater.level == filter_level)
+
+                # تطبيق فلتر الباقة
+                if filter_bundle != "الكل":
+                    query = query.filter(Skater.bundle.like(f'%{filter_bundle}%'))
+
+                # الترتيب
                 if sort_by == "الاسم":
                     players = query.order_by(Skater.name).all()
                 else:
@@ -1010,11 +1168,30 @@ def show_skaters_page(db_manager):
     with tab2:
         st.subheader("🎓 قائمة المدربين")
 
+        # بحث المدربين
+        st.markdown("### 🔍 البحث")
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            search_coach = st.text_input("🔍 البحث عن مدرب", placeholder="ادخل اسم المدرب...", key="search_coach")
+        with col2:
+            sort_coach = st.selectbox("الترتيب", ["الاسم", "الأحدث"], key="sort_coach")
+
         try:
             with db_manager.get_session() as session:
-                coaches = session.query(Skater).filter(
+                # استعلام المدربين
+                query = session.query(Skater).filter(
                     Skater.notes.like('%مدرب%')
-                ).order_by(Skater.name).all()
+                )
+
+                # تطبيق البحث
+                if search_coach:
+                    query = query.filter(Skater.name.like(f'%{search_coach}%'))
+
+                # الترتيب
+                if sort_coach == "الاسم":
+                    coaches = query.order_by(Skater.name).all()
+                else:
+                    coaches = query.order_by(Skater.created_at.desc()).all()
 
                 if coaches:
                     st.info(f"📊 عدد المدربين: {len(coaches)}")
