@@ -90,21 +90,34 @@ class Analysis(Base):
 
     id = Column(Integer, primary_key=True)
     video_id = Column(Integer, ForeignKey('videos.id'), nullable=False, index=True)
+    skater_id = Column(Integer, ForeignKey('skaters.id'), index=True)  # ربط مباشر باللاعب
 
     analysis_type = Column(String(100))  # full, quick, pose_only
     processing_time_seconds = Column(Float)
 
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    analysis_date = Column(DateTime, default=datetime.utcnow, index=True)  # للتوافق
     completed_at = Column(DateTime)
     status = Column(String(50), default='pending')
 
+    # معلومات البرنامج
+    program_type = Column(String(100))  # short, free, exhibition
+    elements_count = Column(Integer, default=0)
+
     # نتائج عامة
     overall_score = Column(Float)
+    total_score = Column(Float)  # للتوافق
+    technical_score = Column(Float)
+    components_score = Column(Float)
     confidence = Column(Float)
     analysis_metadata = Column(JSON)
 
+    # ملاحظات
+    notes = Column(Text)
+
     # العلاقات
     video = relationship('Video', back_populates='analyses')
+    skater = relationship('Skater', foreign_keys=[skater_id])
     movements = relationship('Movement', back_populates='analysis', cascade='all, delete-orphan')
     scores = relationship('Score', back_populates='analysis', cascade='all, delete-orphan')
 
