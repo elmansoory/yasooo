@@ -25,6 +25,9 @@ import time
 import numpy as np
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
+import plotly.graph_objects as go
+import plotly.express as px
+from src.utils.styles import get_custom_css, get_metric_card_html, get_alert_html
 
 # إعداد الصفحة
 st.set_page_config(
@@ -132,12 +135,24 @@ def main():
 
 def show_home_page():
     """لوحة التحكم الرئيسية - Dashboard"""
-    st.title("🏠 لوحة التحكم")
 
-    # عرض التاريخ والوقت
+    # إضافة CSS المخصص
+    st.markdown(get_custom_css(), unsafe_allow_html=True)
+
+    # العنوان الرئيسي مع تصميم احترافي
+    st.markdown("""
+    <div style="text-align: center; padding: 2rem 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; margin-bottom: 2rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <h1 style="color: white; margin: 0; font-size: 3rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">⛸️ لوحة التحكم</h1>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # عرض التاريخ والوقت بتصميم احترافي
     now = datetime.now()
-    st.markdown(f"**📅 {now.strftime('%A, %d %B %Y')} | ⏰ {now.strftime('%I:%M %p')}**")
-    st.markdown("---")
+    st.markdown(f"""
+    <div style="text-align: center; font-size: 1.1rem; color: #64748b; margin-bottom: 2rem;">
+        📅 {now.strftime('%A, %d %B %Y')} | ⏰ {now.strftime('%I:%M %p')}
+    </div>
+    """, unsafe_allow_html=True)
 
     try:
         db_manager = st.session_state.db_manager
@@ -332,9 +347,136 @@ def show_home_page():
             if weekly_attendance:
                 # إنشاء DataFrame للعرض
                 df_attendance = pd.DataFrame(weekly_attendance, columns=['التاريخ', 'عدد الحاضرين'])
-                st.bar_chart(df_attendance.set_index('التاريخ'))
+
+                # إنشاء رسم بياني تفاعلي احترافي باستخدام Plotly
+                fig = go.Figure()
+
+                fig.add_trace(go.Bar(
+                    x=df_attendance['التاريخ'],
+                    y=df_attendance['عدد الحاضرين'],
+                    text=df_attendance['عدد الحاضرين'],
+                    textposition='outside',
+                    marker=dict(
+                        color=df_attendance['عدد الحاضرين'],
+                        colorscale='Blues',
+                        line=dict(color='rgba(0,0,0,0.2)', width=1)
+                    ),
+                    hovertemplate='<b>التاريخ</b>: %{x}<br><b>الحضور</b>: %{y}<extra></extra>'
+                ))
+
+                fig.update_layout(
+                    title={
+                        'text': 'إحصائيات الحضور الأسبوعية',
+                        'y':0.95,
+                        'x':0.5,
+                        'xanchor': 'center',
+                        'yanchor': 'top',
+                        'font': {'size': 20, 'color': '#1e40af', 'family': 'Cairo'}
+                    },
+                    xaxis_title='التاريخ',
+                    yaxis_title='عدد الحاضرين',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(family='Cairo', size=14),
+                    hovermode='x unified',
+                    showlegend=False,
+                    height=400,
+                    xaxis=dict(
+                        showgrid=True,
+                        gridcolor='rgba(0,0,0,0.05)',
+                        showline=True,
+                        linecolor='rgba(0,0,0,0.2)'
+                    ),
+                    yaxis=dict(
+                        showgrid=True,
+                        gridcolor='rgba(0,0,0,0.05)',
+                        showline=True,
+                        linecolor='rgba(0,0,0,0.2)'
+                    )
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("لا توجد بيانات حضور لآخر 7 أيام")
+
+            st.markdown("---")
+
+            # ==================== القسم 6: رسوم بيانية إضافية ====================
+            col_chart1, col_chart2 = st.columns(2)
+
+            with col_chart1:
+                st.subheader("📊 توزيع الأعضاء")
+                # رسم دائري لتوزيع اللاعبين والمدربين
+                fig_pie = go.Figure(data=[go.Pie(
+                    labels=['اللاعبون', 'المدربون'],
+                    values=[total_players, total_coaches],
+                    hole=.4,
+                    marker=dict(colors=['#667eea', '#f5576c']),
+                    textinfo='label+percent',
+                    textfont=dict(size=14, family='Cairo'),
+                    hovertemplate='<b>%{label}</b><br>العدد: %{value}<br>النسبة: %{percent}<extra></extra>'
+                )])
+
+                fig_pie.update_layout(
+                    showlegend=True,
+                    height=300,
+                    margin=dict(t=0, b=0, l=0, r=0),
+                    font=dict(family='Cairo', size=12),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
+                )
+
+                st.plotly_chart(fig_pie, use_container_width=True)
+
+            with col_chart2:
+                st.subheader("💰 الإيرادات الشهرية (آخر 6 أشهر)")
+                # حساب الإيرادات لآخر 6 أشهر
+                months_data = []
+                for i in range(5, -1, -1):
+                    month_start = (today.replace(day=1) - timedelta(days=i*30)).replace(day=1)
+                    month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+                    month_revenue = session.query(func.sum(Payment.amount)).filter(
+                        Payment.payment_date >= month_start,
+                        Payment.payment_date <= month_end,
+                        Payment.status == 'completed'
+                    ).scalar() or 0
+
+                    months_data.append({
+                        'شهر': month_start.strftime('%b %Y'),
+                        'الإيرادات': month_revenue
+                    })
+
+                df_revenue = pd.DataFrame(months_data)
+
+                fig_line = go.Figure()
+                fig_line.add_trace(go.Scatter(
+                    x=df_revenue['شهر'],
+                    y=df_revenue['الإيرادات'],
+                    mode='lines+markers+text',
+                    name='الإيرادات',
+                    line=dict(color='#43e97b', width=3),
+                    marker=dict(size=10, color='#38f9d7', line=dict(color='#43e97b', width=2)),
+                    text=[f'{v:,.0f}' for v in df_revenue['الإيرادات']],
+                    textposition='top center',
+                    textfont=dict(size=10),
+                    fill='tozeroy',
+                    fillcolor='rgba(67, 233, 123, 0.1)',
+                    hovertemplate='<b>%{x}</b><br>الإيرادات: %{y:,.0f} EGP<extra></extra>'
+                ))
+
+                fig_line.update_layout(
+                    showlegend=False,
+                    height=300,
+                    margin=dict(t=20, b=0, l=0, r=0),
+                    font=dict(family='Cairo', size=12),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    xaxis=dict(showgrid=False, showline=True, linecolor='rgba(0,0,0,0.1)'),
+                    yaxis=dict(showgrid=True, gridcolor='rgba(0,0,0,0.05)', showline=False)
+                )
+
+                st.plotly_chart(fig_line, use_container_width=True)
 
     except Exception as e:
         st.error(f"❌ خطأ في تحميل البيانات: {e}")
