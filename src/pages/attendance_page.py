@@ -153,13 +153,37 @@ def show_attendance_reports(db_manager):
     """تقارير الحضور"""
     st.subheader("📊 تقارير الحضور")
 
+    # تحديد النطاق الزمني للبيانات الموجودة
+    try:
+        with db_manager.get_session() as session:
+            # الحصول على أول وآخر تاريخ في البيانات
+            date_range = session.query(
+                func.min(Attendance.date),
+                func.max(Attendance.date)
+            ).first()
+
+            if date_range[0] and date_range[1]:
+                min_date = date_range[0].date()
+                max_date = date_range[1].date()
+
+                st.info(f"📅 البيانات المتوفرة من {min_date} إلى {max_date}")
+
+                default_start = min_date
+                default_end = max_date
+            else:
+                default_start = date.today() - timedelta(days=30)
+                default_end = date.today()
+    except:
+        default_start = date(2025, 10, 1)  # أكتوبر 2025 كاحتياطي
+        default_end = date(2025, 10, 31)
+
     col1, col2 = st.columns(2)
 
     with col1:
-        start_date = st.date_input("من تاريخ", value=date.today() - timedelta(days=30))
+        start_date = st.date_input("من تاريخ", value=default_start)
 
     with col2:
-        end_date = st.date_input("إلى تاريخ", value=date.today())
+        end_date = st.date_input("إلى تاريخ", value=default_end)
 
     if st.button("🔍 عرض التقرير", use_container_width=True):
         try:

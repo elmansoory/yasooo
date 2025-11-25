@@ -166,17 +166,25 @@ def show_home_page():
             total_coaches = session.query(Skater).filter(Skater.notes.like('%مدرب%')).count()
             total_players = total_skaters - total_coaches
 
-            # الحضور اليوم
-            today = date.today()
+            # تحديد آخر تاريخ للحضور في البيانات
+            latest_date_query = session.query(func.max(Attendance.date)).scalar()
+            if latest_date_query:
+                today = latest_date_query.date()
+            else:
+                today = date.today()
+
+            # الحضور في آخر يوم مسجل
             today_attendance = session.query(Attendance).filter(
                 func.date(Attendance.date) == today,
                 Attendance.status == 'present'
             ).count()
 
-            # إيرادات الشهر
+            # إيرادات الشهر (للشهر الذي به بيانات)
             first_day = today.replace(day=1)
+            last_day = (first_day + timedelta(days=32)).replace(day=1) - timedelta(days=1)
             monthly_revenue = session.query(func.sum(Payment.amount)).filter(
                 Payment.payment_date >= first_day,
+                Payment.payment_date <= last_day,
                 Payment.status == 'completed'
             ).scalar() or 0
 
@@ -201,10 +209,13 @@ def show_home_page():
                 )
 
             with col3:
+                # عرض التاريخ المستخدم
+                date_label = f"✅ حضور {today.strftime('%d/%m')}" if today != date.today() else "✅ حضور اليوم"
                 st.metric(
-                    label="✅ حضور اليوم",
+                    label=date_label,
                     value=today_attendance,
-                    delta=None
+                    delta=None,
+                    help=f"آخر حضور مسجل في {today}"
                 )
 
             with col4:
