@@ -1,31 +1,30 @@
-# 🏒 نظام تحليل التزلج الفني المتقدم
+# 🎿 نظام تحليل أداء لاعبي التزلج
 
-## Figure Skating Analysis System
+## Skating Analysis & Attendance System
 
-نظام متقدم لتحليل فيديوهات التزلج الفني باستخدام الذكاء الاصطناعي ومعايير الاتحاد الدولي للتزلج (ISU).
+نظام متكامل لتحليل وإدارة بيانات لاعبي التزلج مع إمكانية تتبع الحضور وتحليل الأداء.
 
 ---
 
 ## 🌟 الميزات الرئيسية
 
-### ✨ التحليل الذكي
-- 🎯 **كشف الوضعيات** باستخدام MediaPipe
-- 🤖 **تصنيف الحركات** بالذكاء الاصطناعي
-- 📊 **تسجيل احترافي** وفق معايير ISU
-- 🎥 **معالجة فيديو** متقدمة
+### 📊 لوحة تحكم شاملة
+- 📈 **إحصائيات فورية**: عرض عدد الأعضاء ومتوسط الحضور
+- 📉 **رسوم بيانية تفاعلية**: باستخدام Plotly لتحليل البيانات
+- 👥 **تحليل الجنس**: توزيع الأعضاء حسب الجنس
+- 🏆 **أعلى المتدربين**: عرض أكثر 10 أعضاء حضوراً
 
-### 📈 التتبع والتحليل
-- 📉 **تتبع التقدم** عبر الزمن
-- 📊 **إحصائيات مفصلة**
-- 📝 **تقارير شاملة**
-- 💾 **قاعدة بيانات** منظمة
+### 👤 إدارة الأعضاء
+- 📋 **ملفات تفصيلية**: معلومات كاملة لكل عضو
+- 📅 **تتبع الحضور**: سجل كامل لحضور كل عضو
+- 📊 **تحليل شهري**: رسوم بيانية للحضور الشهري
+- 🎂 **حساب العمر**: حساب تلقائي من تاريخ الميلاد
 
-### 🎯 معايير ISU
-- ✅ **جميع القفزات** (Single إلى Quadruple)
-- ✅ **جميع الدورانات** (7 أنواع × 5 مستويات)
-- ✅ **تسلسلات الخطوات**
-- ✅ **حساب GOE** (-5 إلى +5)
-- ✅ **المكونات البرنامجية** (5 عناصر)
+### 🎥 تحليل الفيديو (وضع تجريبي)
+- 📤 **رفع الفيديو**: إمكانية رفع فيديوهات التدريب
+- 🤖 **تحليل بالذكاء الاصطناعي**: استخدام YOLOv8
+- 📊 **تقارير الأداء**: نتائج تحليل مفصلة
+- 🎯 **كشف الحركات**: تتبع الحركة والأداء
 
 ---
 
@@ -34,36 +33,29 @@
 ### المتطلبات الأساسية
 
 - Python 3.10 أو أحدث
-- FFmpeg (لمعالجة الفيديو)
-- 16GB RAM على الأقل
-- GPU (اختياري للتدريب)
+- pip (مدير حزم Python)
+- 4GB RAM على الأقل
+- متصفح حديث (Chrome, Firefox, Edge)
 
-### خطوات التثبيت
+### التثبيت السريع
 
 ```bash
 # 1. استنساخ المشروع
 git clone https://github.com/elmansoory/yasooo.git
 cd yasooo
 
-# 2. إنشاء بيئة افتراضية
-python -m venv venv
+# 2. الانتقال للفرع المناسب
+git checkout claude/skating-analysis-system-019JhsA9HHwcSgQ6oXnujCjf
 
-# 3. تفعيل البيئة
-# Windows
-venv\Scripts\activate
-# Linux/Mac
-source venv/bin/activate
-
-# 4. تثبيت المتطلبات
+# 3. تثبيت المكتبات
 pip install -r requirements.txt
 
-# 5. إعداد المتغيرات البيئية
-cp .env.example .env
-# عدل ملف .env حسب الحاجة
-
-# 6. تشغيل التطبيق
+# 4. تشغيل التطبيق
 streamlit run app.py
 ```
+
+### 🪟 التثبيت على Windows
+راجع ملف [WINDOWS_SETUP.md](WINDOWS_SETUP.md) للحصول على دليل مفصل خطوة بخطوة بالعربية.
 
 ---
 
@@ -71,157 +63,125 @@ streamlit run app.py
 
 ```
 yasooo/
-├── src/                    # الكود المصدري
-│   ├── config/            # الإعدادات ومعايير ISU
-│   ├── core/              # المعالجة الأساسية
-│   ├── models/            # نماذج التصنيف
-│   ├── analysis/          # محرك التحليل
-│   ├── database/          # قاعدة البيانات
-│   ├── ui/                # واجهة المستخدم
-│   └── utils/             # الأدوات المساعدة
-├── data/                   # البيانات
-│   ├── models/            # النماذج المدربة
-│   ├── videos/            # الفيديوهات
-│   ├── cache/             # التخزين المؤقت
-│   └── exports/           # التصديرات
-├── tests/                  # الاختبارات
-├── docs/                   # التوثيق
-├── app.py                 # التطبيق الرئيسي
-├── requirements.txt       # المتطلبات
-└── README.md             # هذا الملف
+├── app.py                      # التطبيق الرئيسي (Streamlit)
+├── skating_database.db         # قاعدة البيانات SQLite
+├── members.csv                 # ملف بيانات الأعضاء
+├── attendance_october_2025.csv # ملف سجلات الحضور
+├── import_members.py           # برنامج استيراد الأعضاء
+├── import_attendance.py        # برنامج استيراد الحضور
+├── requirements.txt            # المكتبات المطلوبة
+├── README.md                   # هذا الملف
+├── WINDOWS_SETUP.md           # دليل التثبيت على Windows
+└── CLAUDE.md                  # دليل المطور
 ```
 
 ---
 
 ## 💡 الاستخدام
 
-### 1. إضافة متزلج
-
-```python
-from src.database.database_manager import DatabaseManager
-from src.database.models import Skater
-
-db = DatabaseManager('sqlite:///skating.db')
-db.init_db()
-
-with db.get_session() as session:
-    skater = Skater(
-        name="محمد أحمد",
-        country="السعودية",
-        gender="ذكر",
-        category="Senior",
-        discipline="Men"
-    )
-    session.add(skater)
-```
-
-### 2. تحليل فيديو
-
-```python
-from src.core.video_processor import VideoProcessor
-from src.core.pose_detector import PoseDetector
-
-# معالجة الفيديو
-with VideoProcessor('video.mp4') as proc:
-    for frame_idx, frame in proc.extract_frames(skip_frames=2):
-        # كشف الوضعيات
-        pose_detector = PoseDetector()
-        pose_data = pose_detector.detect(frame)
-
-        if pose_data:
-            # تحليل الوضعية
-            print(f"Frame {frame_idx}: {pose_data.angles}")
-```
-
-### 3. حساب الدرجات
-
-```python
-from src.analysis.scoring_engine import ScoringEngine
-
-engine = ScoringEngine()
-
-# حساب درجة برنامج كامل
-elements = [
-    {'code': '3A', 'goe': 2},
-    {'code': '3Lz', 'goe': 1},
-    {'code': 'CCoSp4', 'goe': 3}
-]
-
-score = engine.calculate_total_score(
-    elements=elements,
-    skating_skills=8.5,
-    transitions=8.0,
-    performance=8.25,
-    composition=8.0,
-    interpretation=8.5
-)
-
-print(f"الدرجة النهائية: {score.total_score}")
-```
-
----
-
-## 🎯 معايير ISU المدعومة
-
-### القفزات (24 قفزة)
-
-| النوع | Single | Double | Triple | Quad |
-|-------|--------|--------|--------|------|
-| Axel | 1.10 | 3.30 | 8.00 | 12.50 |
-| Lutz | 0.60 | 2.10 | 5.90 | 11.50 |
-| Flip | 0.50 | 1.80 | 5.30 | 11.00 |
-| Loop | 0.50 | 1.70 | 4.90 | 10.50 |
-| Salchow | 0.40 | 1.30 | 4.30 | 9.70 |
-| Toe Loop | 0.40 | 1.30 | 4.20 | 9.50 |
-
-### الدورانات (7 أنواع)
-
-- Upright Spin (USp)
-- Layback Spin (LSp)
-- Camel Spin (CSp)
-- Sit Spin (SSp)
-- Combination Spin (CoSp)
-- Flying Camel Spin (FCSp)
-- Flying Sit Spin (FSSp)
-
-### GOE Scale
-
-```
-+5: استثنائي
-+4: ممتاز جداً
-+3: ممتاز
-+2: جيد جداً
-+1: جيد
- 0: متوسط
--1: ضعيف
--2: ضعيف جداً
--3: سيء
--4: سيء جداً
--5: سقوط/خطأ فادح
-```
-
----
-
-## 🧪 الاختبارات
+### 1. تشغيل البرنامج
 
 ```bash
-# تشغيل جميع الاختبارات
-pytest
-
-# اختبارات مع التغطية
-pytest --cov=src tests/
-
-# اختبارات محددة
-pytest tests/test_video_processor.py
+streamlit run app.py
 ```
+
+سيفتح البرنامج تلقائياً في المتصفح على: `http://localhost:8501`
+
+### 2. لوحة التحكم الرئيسية
+
+الصفحة الرئيسية تعرض:
+- 📊 **إحصائيات عامة**: عدد الأعضاء (153)، متوسط الحضور، أيام التدريب
+- 📈 **رسم بياني**: تطور الحضور عبر الزمن
+- 🎂 **توزيع الجنس**: نسبة الذكور والإناث
+- 🏆 **أعلى 10 أعضاء**: الأكثر حضوراً
+
+### 3. ملفات الأعضاء
+
+اختر عضو من القائمة لعرض:
+- معلومات شخصية (الاسم، الجنس، تاريخ الميلاد، العمر)
+- إحصائيات الحضور (عدد الحضور، آخر حضور، النسبة)
+- رسم بياني للحضور الشهري
+- سجل الحضور الكامل
+
+### 4. تحليل الفيديو
+
+- ارفع فيديو تدريب
+- سيعرض النظام تحليل الأداء (وضع تجريبي حالياً)
+- يمكن تصدير النتائج
+
+### 5. تحديث البيانات
+
+```bash
+# إضافة أعضاء جدد
+python import_members.py
+
+# إضافة سجلات حضور
+python import_attendance.py
+```
+
+---
+
+## 📊 البيانات الحالية
+
+### إحصائيات النظام
+
+- **عدد الأعضاء**: 153 عضو
+- **سجلات الحضور**: 468 سجل
+- **الفترة الزمنية**: أكتوبر 2025
+- **أيام التدريب**: 31 يوم
+
+### توزيع الأعضاء
+
+- **الذكور**: 68% (104 أعضاء)
+- **الإناث**: 32% (49 عضوة)
+
+### متوسطات الحضور
+
+- **متوسط عام**: 3.06 أيام/عضو
+- **أعلى حضور**: 23 يوم
+- **أقل حضور**: 1 يوم
+
+## 🔧 المكتبات المستخدمة
+
+| المكتبة | الإصدار | الاستخدام |
+|---------|---------|-----------|
+| streamlit | 1.31.0 | واجهة المستخدم |
+| pandas | 2.2.0 | معالجة البيانات |
+| plotly | 5.18.0 | الرسوم التفاعلية |
+| opencv-python | 4.9.0 | معالجة الفيديو |
+| ultralytics | 8.1.0 | ذكاء اصطناعي |
+| pillow | 10.2.0 | معالجة الصور |
+
+---
+
+## 🐛 حل المشاكل الشائعة
+
+### البرنامج لا يعمل؟
+1. تأكد من تثبيت Python 3.10 أو أحدث
+2. تحقق من تثبيت جميع المكتبات: `pip install -r requirements.txt`
+3. تأكد من وجود ملف `skating_database.db`
+
+### الرسوم البيانية لا تظهر؟
+1. تحقق من اتصال الإنترنت (Plotly يحتاج اتصال)
+2. امسح cache المتصفح (Ctrl+Shift+Delete)
+3. جرب متصفح آخر (Chrome مفضل)
+
+### خطأ أثناء تثبيت opencv-python؟
+```bash
+pip install opencv-python-headless
+```
+
+### للمزيد من المساعدة
+راجع [WINDOWS_SETUP.md](WINDOWS_SETUP.md) قسم "حل المشاكل الشائعة"
 
 ---
 
 ## 📚 التوثيق
 
-- [دليل المستخدم](docs/user_guide.md)
-- [مرجع API](docs/api_reference.md)
-- [معايير ISU](docs/isu_standards.md)
+- [دليل التثبيت على Windows](WINDOWS_SETUP.md)
+- [دليل المطور](CLAUDE.md)
+- [ملف الأعضاء](members.csv)
+- [ملف الحضور](attendance_october_2025.csv)
 
 ---
 
@@ -251,12 +211,26 @@ pytest tests/test_video_processor.py
 
 ---
 
+## 🎯 الميزات القادمة
+
+- [ ] تصدير التقارير إلى PDF
+- [ ] إشعارات الحضور التلقائية
+- [ ] نظام المستويات والترقيات
+- [ ] تحليل فيديو متقدم بالذكاء الاصطناعي الكامل
+- [ ] تطبيق موبايل (Android & iOS)
+- [ ] نظام الرسائل والإشعارات
+- [ ] مقارنة الأداء بين الأعضاء
+- [ ] تقارير شهرية تلقائية
+
+---
+
 ## 🙏 شكر وتقدير
 
-- [MediaPipe](https://mediapipe.dev/) - كشف الوضعيات
-- [OpenCV](https://opencv.org/) - معالجة الفيديو
-- [Streamlit](https://streamlit.io/) - واجهة المستخدم
-- [ISU](https://www.isu.org/) - معايير التسجيل
+- [Streamlit](https://streamlit.io/) - لتوفير إطار عمل رائع لبناء تطبيقات الويب
+- [Plotly](https://plotly.com/) - للرسوم البيانية التفاعلية الجميلة
+- [Ultralytics](https://ultralytics.com/) - لمكتبة YOLOv8 الرائعة
+- [OpenCV](https://opencv.org/) - لمعالجة الفيديو
+- [Claude AI](https://claude.ai/) - للمساعدة في تطوير المشروع
 
 ---
 
@@ -264,12 +238,16 @@ pytest tests/test_video_processor.py
 
 للدعم والاستفسارات:
 - فتح [Issue](https://github.com/elmansoory/yasooo/issues)
-- البريد الإلكتروني: support@example.com
+- المشروع: [yasooo](https://github.com/elmansoory/yasooo)
 
 ---
 
 <div align="center">
 
-**صنع بـ ❤️ للتزلج الفني**
+**صُنع بـ ❤️ في مصر 🇪🇬**
+
+⭐ لا تنسى عمل Star للمشروع إذا أعجبك! ⭐
+
+[GitHub](https://github.com/elmansoory/yasooo) • [Issues](https://github.com/elmansoory/yasooo/issues) • [Releases](https://github.com/elmansoory/yasooo/releases)
 
 </div>
