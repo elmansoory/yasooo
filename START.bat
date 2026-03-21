@@ -44,6 +44,27 @@ if %errorlevel% neq 0 (
     )
 )
 
+REM التحقق من تثبيت openpyxl (ضرورية لقراءة Excel)
+python -c "import openpyxl" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [تحذير] openpyxl غير مثبتة
+    echo [WARNING] openpyxl not installed
+    echo.
+    echo جاري تثبيت openpyxl...
+    echo Installing openpyxl...
+    pip install openpyxl
+    if %errorlevel% neq 0 (
+        echo.
+        echo [خطأ] فشل تثبيت openpyxl
+        echo [ERROR] Failed to install openpyxl
+        echo.
+        echo يرجى تشغيل: pip install openpyxl
+        echo Please run: pip install openpyxl
+        pause
+        exit /b 1
+    )
+)
+
 echo [✓] جميع المكتبات جاهزة
 echo [✓] All libraries ready
 echo.
@@ -53,10 +74,20 @@ if not exist "skating_database.db" (
     echo [تحذير] قاعدة البيانات غير موجودة
     echo [WARNING] Database not found
     echo.
-    echo جاري إنشاء قاعدة البيانات...
-    echo Creating database...
-    python import_members.py
-    python import_attendance.py
+    echo جاري إنشاء قاعدة البيانات واستيراد البيانات...
+    echo Creating database and importing data...
+    echo.
+    python import_all_data.py
+    if %errorlevel% neq 0 (
+        echo.
+        echo [خطأ] فشل إنشاء قاعدة البيانات
+        echo [ERROR] Failed to create database
+        echo.
+        echo يرجى التأكد من وجود ملفات Excel في مجلد data/
+        echo Please ensure Excel files exist in data/ folder
+        pause
+        exit /b 1
+    )
 )
 
 echo [✓] قاعدة البيانات جاهزة

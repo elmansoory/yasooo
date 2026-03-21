@@ -90,6 +90,17 @@ streamlit run app.py
 
 ## 🔧 حل المشاكل الشائعة
 
+### مشكلة: Missing optional dependency 'openpyxl'
+**الحل**:
+```cmd
+pip install openpyxl
+```
+أو:
+```cmd
+python -m pip install openpyxl
+```
+**السبب**: هذه المكتبة ضرورية لقراءة ملفات Excel. بدونها لن يتم استيراد البيانات.
+
 ### مشكلة: Python is not recognized
 **الحل**:
 1. أعد تثبيت Python وتأكد من تفعيل "Add Python to PATH"
