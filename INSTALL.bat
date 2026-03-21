@@ -55,8 +55,10 @@ REM ============================================================
 echo [3/5] تثبيت المكتبات الأساسية...
 echo [3/5] Installing core libraries...
 echo.
-echo 📦 تثبيت: streamlit, pandas, openpyxl, sqlalchemy...
-pip install streamlit pandas openpyxl sqlalchemy plotly --quiet
+echo 📦 جاري تثبيت المكتبات من requirements-minimal.txt
+echo 📦 Installing libraries from requirements-minimal.txt
+echo.
+pip install -r requirements-minimal.txt
 if %errorlevel% neq 0 (
     echo.
     echo ❌ [خطأ] فشل تثبيت المكتبات الأساسية
@@ -64,7 +66,7 @@ if %errorlevel% neq 0 (
     echo.
     echo جرب التثبيت اليدوي:
     echo Try manual installation:
-    echo pip install streamlit pandas openpyxl sqlalchemy plotly
+    echo pip install -r requirements-minimal.txt
     echo.
     pause
     exit /b 1
@@ -73,22 +75,44 @@ echo ✅ تم تثبيت المكتبات الأساسية
 echo.
 
 REM ============================================================
-REM  الخطوة 4: تثبيت باقي المكتبات
+REM  الخطوة 4: تثبيت المكتبات المتقدمة (اختياري)
 REM ============================================================
-echo [4/5] تثبيت باقي المكتبات من requirements.txt...
-echo [4/5] Installing remaining libraries from requirements.txt...
+echo [4/5] تثبيت المكتبات المتقدمة (اختياري)...
+echo [4/5] Installing advanced libraries (optional)...
 echo.
-echo ⏳ هذا قد يأخذ عدة دقائق...
-echo ⏳ This may take several minutes...
+echo ℹ️ ملاحظة: هذه الخطوة اختيارية - للميزات المتقدمة فقط
+echo ℹ️ Note: This step is optional - for advanced features only
 echo.
-pip install -r requirements.txt
-if %errorlevel% neq 0 (
+echo المكتبات المتقدمة تشمل: TensorFlow, PyTorch, OpenCV
+echo Advanced libraries include: TensorFlow, PyTorch, OpenCV
+echo.
+echo ⚠️ قد تأخذ 10-30 دقيقة وتحتاج 5+ GB مساحة
+echo ⚠️ May take 10-30 minutes and require 5+ GB space
+echo.
+set /p install_advanced="هل تريد تثبيت المكتبات المتقدمة؟ (y/n): "
+if /i "%install_advanced%"=="y" (
     echo.
-    echo ⚠️ [تحذير] بعض المكتبات الإضافية فشلت
-    echo ⚠️ [WARNING] Some additional libraries failed
+    echo ⏳ جاري التثبيت... قد يأخذ وقتاً طويلاً
+    echo ⏳ Installing... this may take a long time
     echo.
-    echo ✅ المكتبات الأساسية مثبتة - يمكنك المتابعة
-    echo ✅ Core libraries installed - you can continue
+    pip install -r requirements.txt
+    if %errorlevel% neq 0 (
+        echo.
+        echo ⚠️ [تحذير] بعض المكتبات المتقدمة فشلت
+        echo ⚠️ [WARNING] Some advanced libraries failed
+        echo.
+        echo ✅ لكن المكتبات الأساسية مثبتة - يمكنك المتابعة
+        echo ✅ But core libraries are installed - you can continue
+        echo.
+    )
+) else (
+    echo.
+    echo ⏩ تم تخطي المكتبات المتقدمة
+    echo ⏩ Skipped advanced libraries
+    echo.
+    echo يمكنك تثبيتها لاحقاً بتشغيل:
+    echo You can install them later by running:
+    echo pip install -r requirements.txt
     echo.
 )
 echo.

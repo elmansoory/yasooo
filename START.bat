@@ -31,10 +31,13 @@ if %errorlevel% neq 0 (
     echo [تحذير] المكتبات غير مثبتة
     echo [WARNING] Libraries not installed
     echo.
-    echo جاري تثبيت المكتبات المطلوبة...
-    echo Installing required libraries...
+    echo جاري تثبيت المكتبات الأساسية...
+    echo Installing basic libraries...
     echo.
-    pip install -r requirements.txt
+    echo ملاحظة: هذا سيثبت المكتبات الأساسية فقط
+    echo Note: This will install only basic libraries
+    echo.
+    pip install -r requirements-minimal.txt
     if %errorlevel% neq 0 (
         echo.
         echo [خطأ] فشل تثبيت المكتبات
@@ -44,22 +47,36 @@ if %errorlevel% neq 0 (
     )
 )
 
-REM التحقق من تثبيت openpyxl (ضرورية لقراءة Excel)
+REM التحقق من المكتبات الأساسية
 python -c "import openpyxl" >nul 2>&1
 if %errorlevel% neq 0 (
     echo [تحذير] openpyxl غير مثبتة
     echo [WARNING] openpyxl not installed
     echo.
-    echo جاري تثبيت openpyxl...
-    echo Installing openpyxl...
-    pip install openpyxl
+    echo جاري تثبيت المكتبات الأساسية...
+    echo Installing basic libraries...
+    pip install -r requirements-minimal.txt
     if %errorlevel% neq 0 (
         echo.
-        echo [خطأ] فشل تثبيت openpyxl
-        echo [ERROR] Failed to install openpyxl
+        echo [خطأ] فشل تثبيت المكتبات
+        echo [ERROR] Failed to install libraries
+        pause
+        exit /b 1
+    )
+)
+
+python -c "import plotly" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [تحذير] plotly غير مثبتة
+    echo [WARNING] plotly not installed
+    echo.
+    echo جاري تثبيت المكتبات الأساسية...
+    echo Installing basic libraries...
+    pip install -r requirements-minimal.txt
+    if %errorlevel% neq 0 (
         echo.
-        echo يرجى تشغيل: pip install openpyxl
-        echo Please run: pip install openpyxl
+        echo [خطأ] فشل تثبيت المكتبات
+        echo [ERROR] Failed to install libraries
         pause
         exit /b 1
     )

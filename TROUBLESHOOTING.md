@@ -220,7 +220,51 @@ python -m streamlit run app.py
 ```cmd
 START.bat
 ```
-الملف المحدّث يستخدم `python -m streamlit` بدلاً من `streamlit` مباشرة
+الملف المحدّث يستخدم `python -m streamlit` ويثبت المكتبات تلقائياً
+
+---
+
+### ❌ خطأ: `ModuleNotFoundError: No module named 'plotly'`
+
+**الرسالة الكاملة**:
+```
+ModuleNotFoundError: No module named 'plotly'
+File "app.py", line 8, in <module>
+    import plotly.graph_objects as go
+```
+
+**السبب**: مكتبة plotly غير مثبتة (ضرورية للرسوم البيانية التفاعلية)
+
+**الحل السريع** (تثبيت المكتبات الأساسية فقط):
+```cmd
+pip install -r requirements-minimal.txt
+```
+
+**الحل المباشر** (تثبيت plotly فقط):
+```cmd
+pip install plotly
+```
+
+**الحل الشامل** (تثبيت كل شيء):
+```cmd
+pip install -r requirements.txt
+```
+⚠️ تحذير: قد يأخذ 10-30 دقيقة ويحتاج 5+ GB
+
+**أو استخدم START.bat**:
+```cmd
+START.bat
+```
+سيتحقق تلقائياً ويثبت المكتبات الناقصة!
+
+**ملاحظة**:
+- `requirements-minimal.txt` يحتوي المكتبات الأساسية فقط (سريع، ~100 MB)
+- `requirements.txt` يحتوي كل شيء بما فيها TensorFlow و PyTorch (بطيء، ~5 GB)
+
+**للتشغيل السريع استخدم دائماً**:
+```cmd
+pip install -r requirements-minimal.txt
+```
 
 ---
 
@@ -425,8 +469,9 @@ streamlit run app.py
 
 | الخطأ | السبب | الحل السريع |
 |-------|-------|-------------|
-| `streamlit not recognized` | Streamlit غير مثبت أو PATH | `pip install streamlit` أو `python -m streamlit run app.py` |
-| `openpyxl not found` | مكتبة غير مثبتة | `pip install openpyxl` |
+| `streamlit not recognized` | Streamlit غير مثبت أو PATH | `pip install -r requirements-minimal.txt` |
+| `No module named 'plotly'` | plotly غير مثبتة | `pip install -r requirements-minimal.txt` |
+| `openpyxl not found` | openpyxl غير مثبتة | `pip install openpyxl` |
 | `Python not recognized` | PATH غير مضبوط | أعد تثبيت Python |
 | `0 members` | لم يتم استيراد البيانات | `python import_all_data.py` |
 | `Port in use` | المنفذ محجوز | `python -m streamlit run app.py --server.port 8502` |
