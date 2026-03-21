@@ -196,6 +196,34 @@ python import_all_data.py
 
 ## 🔴 مشاكل التشغيل
 
+### ❌ خطأ: `'streamlit' is not recognized`
+
+**الرسالة الكاملة**:
+```
+'streamlit' is not recognized as an internal or external command,
+operable program or batch file.
+```
+
+**السبب**: Streamlit غير مثبت أو غير موجود في PATH
+
+**الحل 1** (تثبيت streamlit):
+```cmd
+pip install streamlit
+```
+
+**الحل 2** (استخدام python -m):
+```cmd
+python -m streamlit run app.py
+```
+
+**الحل 3** (الأفضل - استخدام START.bat المحدّث):
+```cmd
+START.bat
+```
+الملف المحدّث يستخدم `python -m streamlit` بدلاً من `streamlit` مباشرة
+
+---
+
 ### ❌ خطأ: `Address already in use`
 
 **السبب**: المنفذ 8501 قيد الاستخدام
@@ -397,10 +425,11 @@ streamlit run app.py
 
 | الخطأ | السبب | الحل السريع |
 |-------|-------|-------------|
+| `streamlit not recognized` | Streamlit غير مثبت أو PATH | `pip install streamlit` أو `python -m streamlit run app.py` |
 | `openpyxl not found` | مكتبة غير مثبتة | `pip install openpyxl` |
 | `Python not recognized` | PATH غير مضبوط | أعد تثبيت Python |
 | `0 members` | لم يتم استيراد البيانات | `python import_all_data.py` |
-| `Port in use` | المنفذ محجوز | `streamlit run app.py --server.port 8502` |
+| `Port in use` | المنفذ محجوز | `python -m streamlit run app.py --server.port 8502` |
 | `Database locked` | ملف مفتوح | أغلق جميع البرامج وأعد المحاولة |
 
 ---

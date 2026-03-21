@@ -145,7 +145,7 @@ echo    1. Double-click START.bat
 echo.
 echo    أو شغّل في Command Prompt:
 echo    Or run in Command Prompt:
-echo    streamlit run app.py
+echo    python -m streamlit run app.py
 echo.
 echo ================================================================
 echo.
