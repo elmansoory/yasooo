@@ -11,9 +11,21 @@ import os
 # Add src to path
 sys.path.append(os.path.dirname(__file__))
 
-# Import all components
-from src.pages.advanced_dashboard import show_advanced_dashboard
-from src.pages.referee_testing_interface import show_referee_testing_interface
+# Try to import professional components
+PROFESSIONAL_FEATURES_AVAILABLE = True
+MISSING_DEPENDENCIES = []
+
+try:
+    from src.pages.advanced_dashboard import show_advanced_dashboard
+except ImportError as e:
+    PROFESSIONAL_FEATURES_AVAILABLE = False
+    MISSING_DEPENDENCIES.append(f"Advanced Dashboard: {str(e)}")
+
+try:
+    from src.pages.referee_testing_interface import show_referee_testing_interface
+except ImportError as e:
+    PROFESSIONAL_FEATURES_AVAILABLE = False
+    MISSING_DEPENDENCIES.append(f"Referee Testing Interface: {str(e)}")
 
 
 # Page config
@@ -280,6 +292,60 @@ for spin in spins:
         """)
 
 
+def show_missing_dependencies_error(feature_name: str):
+    """Show error when dependencies are missing"""
+    st.title(f"⚠️ {feature_name} - Missing Dependencies")
+
+    st.error("""
+    ### ❌ Some required dependencies are not installed
+
+    This feature requires MediaPipe and other advanced dependencies.
+    """)
+
+    st.markdown("---")
+
+    st.subheader("🔧 Quick Fix:")
+
+    st.code("""
+# Option 1: Install MediaPipe (recommended version)
+pip install mediapipe==0.10.9
+
+# Option 2: Install all professional dependencies
+pip install -r requirements.txt
+
+# Option 3: Reinstall MediaPipe if already installed
+pip uninstall mediapipe
+pip install mediapipe==0.10.9
+    """, language="bash")
+
+    st.markdown("---")
+
+    st.info("""
+    ### 💡 Alternative: Use Basic App
+
+    If you don't need professional pose detection features, you can use the basic app instead:
+
+    ```bash
+    python -m streamlit run app.py
+    ```
+
+    The basic app includes:
+    - ✅ Member management
+    - ✅ Attendance tracking
+    - ✅ Payment management
+    - ✅ Basic analytics
+    - ✅ Dashboard and reports
+    """)
+
+    st.markdown("---")
+
+    if MISSING_DEPENDENCIES:
+        with st.expander("🔍 Technical Details"):
+            st.markdown("**Missing Dependencies:**")
+            for dep in MISSING_DEPENDENCIES:
+                st.code(dep)
+
+
 def main():
     """الوظيفة الرئيسية"""
 
@@ -339,10 +405,16 @@ def main():
         show_homepage()
 
     elif page == "🏅 Referee Testing Interface":
-        show_referee_testing_interface()
+        if not PROFESSIONAL_FEATURES_AVAILABLE:
+            show_missing_dependencies_error("Referee Testing Interface")
+        else:
+            show_referee_testing_interface()
 
     elif page == "📊 Advanced Analytics (AI)":
-        show_advanced_dashboard()
+        if not PROFESSIONAL_FEATURES_AVAILABLE:
+            show_missing_dependencies_error("Advanced Analytics")
+        else:
+            show_advanced_dashboard()
 
     else:  # Documentation
         show_documentation()

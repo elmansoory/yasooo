@@ -4,11 +4,18 @@ Advanced Pose Detection using MediaPipe
 """
 import cv2
 import numpy as np
-import mediapipe as mp
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
 import json
+
+# Try to import MediaPipe, handle gracefully if not available
+try:
+    import mediapipe as mp
+    MEDIAPIPE_AVAILABLE = True
+except ImportError:
+    MEDIAPIPE_AVAILABLE = False
+    print("⚠️ MediaPipe not available. Install with: pip install mediapipe==0.10.9")
 
 
 @dataclass
@@ -113,6 +120,13 @@ class AdvancedPoseDetector:
             enable_segmentation: enable person segmentation
             smooth_landmarks: enable landmark smoothing
         """
+        if not MEDIAPIPE_AVAILABLE:
+            raise ImportError(
+                "MediaPipe is not installed. Please install it with:\n"
+                "  pip install mediapipe==0.10.9\n"
+                "Or use the basic app.py instead of professional_app.py"
+            )
+
         self.mp_pose = mp.solutions.pose
         self.mp_drawing = mp.solutions.drawing_utils
         self.mp_drawing_styles = mp.solutions.drawing_styles
