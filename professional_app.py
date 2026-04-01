@@ -27,6 +27,12 @@ except ImportError as e:
     PROFESSIONAL_FEATURES_AVAILABLE = False
     MISSING_DEPENDENCIES.append(f"Referee Testing Interface: {str(e)}")
 
+try:
+    from src.pages.video_download_page import show_video_download_page
+except ImportError as e:
+    # Video downloader is optional, doesn't require MediaPipe
+    show_video_download_page = None
+
 
 # Page config
 st.set_page_config(
@@ -364,6 +370,7 @@ def main():
             "اختر الصفحة",
             [
                 "🏠 Home",
+                "🎬 Video Downloader",
                 "🏅 Referee Testing Interface",
                 "📊 Advanced Analytics (AI)",
                 "📚 Documentation"
@@ -403,6 +410,12 @@ def main():
     # Main content
     if page == "🏠 Home":
         show_homepage()
+
+    elif page == "🎬 Video Downloader":
+        if show_video_download_page:
+            show_video_download_page()
+        else:
+            st.error("❌ Video Downloader not available. Check installation.")
 
     elif page == "🏅 Referee Testing Interface":
         if not PROFESSIONAL_FEATURES_AVAILABLE:

@@ -35,6 +35,7 @@ altair>=5.1.0
 ffmpeg-python>=0.2.0
 moviepy>=1.0.3
 imageio>=2.31.0
+yt-dlp>=2024.3.10  # Video downloader for 1000+ websites
 
 # Utilities
 tqdm>=4.66.0
