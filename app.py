@@ -124,7 +124,7 @@ def show_homepage():
             )
             fig.update_traces(line_color='#1f77b4', line_width=3)
             fig.update_layout(hovermode='x unified')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("لا توجد بيانات حضور")
 
@@ -144,7 +144,7 @@ def show_homepage():
                     hole=0.4
                 )
                 fig.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
             else:
                 st.info("لا توجد بيانات مستويات")
         else:
@@ -170,7 +170,7 @@ def show_homepage():
         display_df.columns = ['الاسم', 'عدد الحضور']
         display_df.index = range(1, len(display_df) + 1)
 
-        st.dataframe(display_df, use_container_width=True)
+        st.dataframe(display_df, width='stretch')
 
         # رسم بياني
         fig = px.bar(
@@ -183,7 +183,7 @@ def show_homepage():
             color_continuous_scale='blues'
         )
         fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
         st.info("لا توجد بيانات حضور")
 
@@ -254,14 +254,14 @@ def show_members_page():
                 color='count',
                 color_continuous_scale='teal'
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
             # سجل الحضور الكامل
             st.subheader("📜 سجل الحضور الكامل")
             attendance_display = attendance[['date', 'session_type', 'coach']].copy()
             attendance_display.columns = ['التاريخ', 'نوع الحصة', 'المدرب']
             attendance_display = attendance_display.sort_values('التاريخ', ascending=False)
-            st.dataframe(attendance_display, use_container_width=True)
+            st.dataframe(attendance_display, width='stretch')
 
 # صفحة التقارير
 def show_reports_page():
@@ -294,7 +294,7 @@ def show_reports_page():
                     title='الحضور الشهري',
                     labels={'month': 'الشهر', 'count': 'عدد الحضور'}
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
 
             with col2:
                 # الحضور حسب المدرب
@@ -308,7 +308,7 @@ def show_reports_page():
                             names=coach_stats.index,
                             title='توزيع الحضور حسب المدرب'
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
 
     with tab2:
         st.subheader("تقرير المدفوعات")
@@ -338,7 +338,7 @@ def show_reports_page():
                             title='الإيرادات حسب المستوى',
                             labels={'x': 'المستوى', 'y': 'المبلغ'}
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
 
     with tab3:
         st.subheader("تقرير الأعضاء")

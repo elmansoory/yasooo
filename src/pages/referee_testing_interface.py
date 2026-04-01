@@ -299,7 +299,7 @@ def display_analysis_results(results: dict):
                 })
 
             df_jumps = pd.DataFrame(jumps_data)
-            st.dataframe(df_jumps, use_container_width=True)
+            st.dataframe(df_jumps, width='stretch')
 
             # Detailed view
             st.markdown("---")
@@ -431,7 +431,7 @@ def show_results_review_mode():
                     })
 
                 df_elements = pd.DataFrame(elements_data)
-                st.dataframe(df_elements, use_container_width=True)
+                st.dataframe(df_elements, width='stretch')
 
 
 def show_manual_annotation_mode():

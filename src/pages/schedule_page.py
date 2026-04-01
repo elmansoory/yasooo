@@ -198,7 +198,7 @@ def show_add_session(db_manager):
             col1, col2, col3 = st.columns([1, 2, 1])
 
             with col2:
-                if st.button("💾 إضافة الحصة", use_container_width=True, type="primary"):
+                if st.button("💾 إضافة الحصة", width='stretch', type="primary"):
                     try:
                         # التحقق من الأوقات
                         if start_time >= end_time:

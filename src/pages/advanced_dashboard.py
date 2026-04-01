@@ -179,7 +179,7 @@ def show_overview_dashboard(
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     with col2:
         st.subheader("🎯 مستويات المشاركة")
@@ -203,7 +203,7 @@ def show_overview_dashboard(
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     st.markdown("---")
 
@@ -225,7 +225,7 @@ def show_overview_dashboard(
         })
 
     df_leaderboard = pd.DataFrame(leaderboard_data)
-    st.dataframe(df_leaderboard, use_container_width=True, hide_index=True)
+    st.dataframe(df_leaderboard, width='stretch', hide_index=True)
 
     st.markdown("---")
 
@@ -249,7 +249,7 @@ def show_overview_dashboard(
                 })
 
             df_risk = pd.DataFrame(risk_data)
-            st.dataframe(df_risk, use_container_width=True, hide_index=True)
+            st.dataframe(df_risk, width='stretch', hide_index=True)
         else:
             st.success("✅ لا يوجد لاعبون في خطر حالياً")
 
@@ -270,7 +270,7 @@ def show_overview_dashboard(
                 })
 
             df_improve = pd.DataFrame(improve_data)
-            st.dataframe(df_improve, use_container_width=True, hide_index=True)
+            st.dataframe(df_improve, width='stretch', hide_index=True)
         else:
             st.info("لا توجد بيانات كافية لتحديد التحسن")
 
@@ -419,7 +419,7 @@ def show_player_overview(
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     with col2:
         st.subheader("🎯 بطاقة الأداء")
@@ -451,7 +451,7 @@ def show_player_overview(
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     # Insights
     st.markdown("---")
@@ -506,7 +506,7 @@ def show_deep_analysis(
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
         st.info("لا توجد بيانات حضور")
 
@@ -586,7 +586,7 @@ def show_deep_analysis(
             height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
         st.info("لا توجد بيانات كافية للتنبؤ")
 
@@ -681,7 +681,7 @@ def show_ai_recommendations(
         })
 
     df_milestones = pd.DataFrame(milestones_data)
-    st.dataframe(df_milestones, use_container_width=True, hide_index=True)
+    st.dataframe(df_milestones, width='stretch', hide_index=True)
 
 
 def load_dashboard_data() -> Dict:

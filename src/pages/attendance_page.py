@@ -110,7 +110,7 @@ def show_attendance_recording(db_manager):
             col1, col2, col3 = st.columns([1, 2, 1])
 
             with col2:
-                if st.button("💾 حفظ الحضور", use_container_width=True, type="primary"):
+                if st.button("💾 حفظ الحضور", width='stretch', type="primary"):
                     try:
                         saved_count = 0
                         updated_count = 0
@@ -185,7 +185,7 @@ def show_attendance_reports(db_manager):
     with col2:
         end_date = st.date_input("إلى تاريخ", value=default_end)
 
-    if st.button("🔍 عرض التقرير", use_container_width=True):
+    if st.button("🔍 عرض التقرير", width='stretch'):
         try:
             with db_manager.get_session() as session:
                 # جلب بيانات الحضور
@@ -233,7 +233,7 @@ def show_attendance_reports(db_manager):
                 st.markdown("---")
 
                 # عرض الجدول
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width='stretch', hide_index=True)
 
                 # أزرار التصدير
                 col_export1, col_export2 = st.columns(2)

@@ -148,7 +148,7 @@ def show_new_payment(db_manager):
             col1, col2, col3 = st.columns([1, 2, 1])
 
             with col2:
-                if st.button("💾 حفظ الدفعة", use_container_width=True, type="primary"):
+                if st.button("💾 حفظ الدفعة", width='stretch', type="primary"):
                     if amount <= 0:
                         st.error("❌ المبلغ يجب أن يكون أكبر من صفر")
                         return
@@ -200,7 +200,7 @@ def show_payment_history(db_manager):
             ["الكل", "مكتملة", "معلقة", "مرتجعة"]
         )
 
-    if st.button("🔍 عرض السجلات", use_container_width=True):
+    if st.button("🔍 عرض السجلات", width='stretch'):
         try:
             with db_manager.get_session() as session:
                 # بناء الاستعلام
@@ -255,7 +255,7 @@ def show_payment_history(db_manager):
                 st.markdown("---")
 
                 # عرض الجدول
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width='stretch', hide_index=True)
 
                 # أزرار التصدير
                 col_export1, col_export2 = st.columns(2)

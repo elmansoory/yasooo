@@ -173,7 +173,7 @@ def show_member_profile_page(db_manager):
                     })
 
                 df = pd.DataFrame(data)
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width='stretch', hide_index=True)
             else:
                 st.info("لا توجد سجلات حضور للشهر الماضي")
 
@@ -199,7 +199,7 @@ def show_member_profile_page(db_manager):
                     })
 
                 df_payments = pd.DataFrame(data)
-                st.dataframe(df_payments, use_container_width=True, hide_index=True)
+                st.dataframe(df_payments, width='stretch', hide_index=True)
 
                 st.info(f"💰 إجمالي المدفوعات: **{total_payments:,.2f} EGP**")
             else:
@@ -242,7 +242,7 @@ def show_member_profile_page(db_manager):
             col_export1, col_export2 = st.columns(2)
 
             with col_export1:
-                if st.button("📥 تحميل تقرير شامل (TXT)", use_container_width=True):
+                if st.button("📥 تحميل تقرير شامل (TXT)", width='stretch'):
                     report = generate_member_report(
                         member, total_attendance, total_absent,
                         attendance_rate, total_payments, total_analyses,
@@ -257,7 +257,7 @@ def show_member_profile_page(db_manager):
                     )
 
             with col_export2:
-                if st.button("📊 تحميل بيانات Excel", use_container_width=True):
+                if st.button("📊 تحميل بيانات Excel", width='stretch'):
                     st.info("🚧 قيد التطوير...")
 
     except Exception as e:
