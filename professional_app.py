@@ -33,6 +33,12 @@ except ImportError as e:
     # Video downloader is optional, doesn't require MediaPipe
     show_video_download_page = None
 
+try:
+    from src.pages.annotation_page import show_annotation_page
+except ImportError as e:
+    # Annotation page is optional
+    show_annotation_page = None
+
 
 # Page config
 st.set_page_config(
@@ -371,6 +377,7 @@ def main():
             [
                 "🏠 Home",
                 "🎬 Video Downloader",
+                "🏷️ Video Annotation",
                 "🏅 Referee Testing Interface",
                 "📊 Advanced Analytics (AI)",
                 "📚 Documentation"
@@ -416,6 +423,12 @@ def main():
             show_video_download_page()
         else:
             st.error("❌ Video Downloader not available. Check installation.")
+
+    elif page == "🏷️ Video Annotation":
+        if show_annotation_page:
+            show_annotation_page()
+        else:
+            st.error("❌ Video Annotation not available. Check installation.")
 
     elif page == "🏅 Referee Testing Interface":
         if not PROFESSIONAL_FEATURES_AVAILABLE:
