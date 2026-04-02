@@ -39,6 +39,12 @@ except ImportError as e:
     # Annotation page is optional
     show_annotation_page = None
 
+try:
+    from src.pages.music_editor_page import show_music_editor_page
+except ImportError as e:
+    # Music editor is optional
+    show_music_editor_page = None
+
 
 # Page config
 st.set_page_config(
@@ -151,7 +157,7 @@ def show_homepage():
     st.markdown("---")
 
     # Features overview
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         st.markdown("""
@@ -188,6 +194,19 @@ def show_homepage():
                 <li>Custom training</li>
                 <li>85-95% accuracy</li>
                 <li>Continuous learning</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown("""
+        <div class="feature-card">
+            <h3 style="color: #667eea;">🎵 Music Editor</h3>
+            <ul style="text-align: left;">
+                <li>Merge multiple songs</li>
+                <li>Cut & fade effects</li>
+                <li>ISU time limits</li>
+                <li>Beat detection</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -378,6 +397,7 @@ def main():
                 "🏠 Home",
                 "🎬 Video Downloader",
                 "🏷️ Video Annotation",
+                "🎵 Music Editor & Merger",
                 "🏅 Referee Testing Interface",
                 "📊 Advanced Analytics (AI)",
                 "📚 Documentation"
@@ -429,6 +449,12 @@ def main():
             show_annotation_page()
         else:
             st.error("❌ Video Annotation not available. Check installation.")
+
+    elif page == "🎵 Music Editor & Merger":
+        if show_music_editor_page:
+            show_music_editor_page()
+        else:
+            st.error("❌ Music Editor not available. Check installation.")
 
     elif page == "🏅 Referee Testing Interface":
         if not PROFESSIONAL_FEATURES_AVAILABLE:
