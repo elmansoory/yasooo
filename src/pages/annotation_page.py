@@ -92,7 +92,7 @@ def show_annotation_page():
         scan_dir = st.text_input(
             "📁 Scan Directory",
             value=str(Path.home() / 'Videos'),
-            help="Directory to scan for videos"
+            help=f"Enter a valid directory path. Current system: {os.name}. Example: {Path.home() / 'Videos'}"
         )
 
         col1, col2 = st.columns(2)
@@ -102,12 +102,35 @@ def show_annotation_page():
             max_depth = st.number_input("Max Depth", 1, 10, 3)
 
         if st.button("🔍 Scan Now", type="primary", use_container_width=True):
-            with st.spinner("Scanning..."):
-                scanner.scanned_videos = []  # Clear previous
-                scanner.scan_directory(scan_dir, recursive=recursive, max_depth=max_depth)
-                st.session_state.current_video_idx = 0
-                st.success(f"✅ Found {len(scanner.scanned_videos)} videos")
-                st.rerun()
+            # Validate directory exists
+            scan_path = Path(scan_dir)
+            if not scan_path.exists():
+                st.error(f"""
+                ❌ **Directory not found:**
+
+                `{scan_dir}`
+
+                **Possible issues:**
+                - The path doesn't exist on this system
+                - This looks like a Windows path (e.g., `C:\\`, `D:\\`) but you're on Linux/Mac
+                - You don't have permission to access this directory
+
+                **Suggested paths:**
+                - Your Videos folder: `{Path.home() / 'Videos'}`
+                - Your home folder: `{Path.home()}`
+                - Downloads: `{Path.home() / 'Downloads'}`
+                - Current directory: `{Path.cwd()}`
+                """)
+            else:
+                with st.spinner("Scanning..."):
+                    scanner.scanned_videos = []  # Clear previous
+                    scanner.scan_directory(scan_dir, recursive=recursive, max_depth=max_depth)
+                    st.session_state.current_video_idx = 0
+                    if len(scanner.scanned_videos) > 0:
+                        st.success(f"✅ Found {len(scanner.scanned_videos)} videos")
+                    else:
+                        st.warning(f"⚠️ No videos found in {scan_dir}")
+                    st.rerun()
 
         st.markdown("---")
 

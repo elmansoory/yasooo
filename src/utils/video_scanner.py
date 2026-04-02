@@ -74,6 +74,7 @@ class VideoScanner:
 
         self.scanned_videos: List[VideoFile] = []
         self.scan_log = []
+        self.last_error = None  # Store last error for UI display
 
     def scan_directory(
         self,
@@ -102,8 +103,13 @@ class VideoScanner:
 
         directory = Path(directory)
         if not directory.exists():
-            print(f"❌ Directory not found: {directory}")
+            error_msg = f"Directory not found: {directory}"
+            print(f"❌ {error_msg}")
+            self.last_error = error_msg
             return []
+
+        # Clear last error on successful scan start
+        self.last_error = None
 
         print(f"🔍 Scanning: {directory}")
         found_videos = []
