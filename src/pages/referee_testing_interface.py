@@ -13,10 +13,44 @@ import os
 # Add src to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from src.core.advanced_pose_detector import AdvancedPoseDetector
-from src.analysis.jump_detector import JumpDetector
-from src.utils.dataset_manager import DatasetManager, ElementAnnotation
-from src.models.element_classifier_trainer import ElementClassifierTrainer
+# Check for required dependencies
+DEPENDENCIES_OK = True
+MISSING_DEPS = []
+
+try:
+    import mediapipe as mp
+except ImportError:
+    DEPENDENCIES_OK = False
+    MISSING_DEPS.append("mediapipe>=0.10.8")
+
+try:
+    import tensorflow as tf
+except ImportError:
+    DEPENDENCIES_OK = False
+    MISSING_DEPS.append("tensorflow>=2.14.0")
+
+try:
+    import torch
+except ImportError:
+    DEPENDENCIES_OK = False
+    MISSING_DEPS.append("torch>=2.1.0")
+
+# Try importing advanced modules
+AdvancedPoseDetector = None
+JumpDetector = None
+DatasetManager = None
+ElementAnnotation = None
+ElementClassifierTrainer = None
+
+if DEPENDENCIES_OK:
+    try:
+        from src.core.advanced_pose_detector import AdvancedPoseDetector
+        from src.analysis.jump_detector import JumpDetector
+        from src.utils.dataset_manager import DatasetManager, ElementAnnotation
+        from src.models.element_classifier_trainer import ElementClassifierTrainer
+    except ImportError as e:
+        DEPENDENCIES_OK = False
+        MISSING_DEPS.append(f"Module import error: {str(e)}")
 
 
 def show_referee_testing_interface():
@@ -25,6 +59,43 @@ def show_referee_testing_interface():
     """
     st.title("🏅 واجهة اختبار الحكام والمدربين")
     st.markdown("### اختبر دقة النظام الآلي مقارنة بتقييمك البشري")
+
+    # Check dependencies
+    if not DEPENDENCIES_OK:
+        st.error("⚠️ بعض المكتبات المطلوبة غير مثبتة")
+        st.warning("This feature requires MediaPipe and other advanced dependencies.")
+
+        st.markdown("---")
+        st.subheader("📦 المكتبات المفقودة:")
+
+        for dep in MISSING_DEPS:
+            st.code(dep)
+
+        st.markdown("---")
+        st.subheader("🔧 طريقة التثبيت:")
+
+        install_cmd = "pip install " + " ".join([d.split(">=")[0] if ">=" in d else d for d in MISSING_DEPS if not d.startswith("Module")])
+
+        st.code(install_cmd, language="bash")
+
+        st.info("""
+        **خطوات التثبيت:**
+
+        1. افتح Terminal أو Command Prompt
+        2. انسخ والصق الأمر أعلاه
+        3. اضغط Enter وانتظر التثبيت
+        4. أعد تشغيل التطبيق
+
+        **أو يمكنك تثبيت جميع المكتبات المطلوبة:**
+        ```bash
+        pip install -r requirements.txt
+        ```
+        """)
+
+        st.markdown("---")
+        st.info("💡 بعد تثبيت المكتبات، أعد تحميل الصفحة.")
+
+        return
 
     st.markdown("---")
 
