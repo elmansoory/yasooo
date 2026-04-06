@@ -1,5 +1,15 @@
 # 🚀 دليل التشغيل السريع - Quick Start Guide
 
+## 🏆 **جديد! التطبيق النهائي الشامل - Ultimate App**
+
+تم إنشاء **التطبيق النهائي الشامل** (`ultimate_app.py`) الذي يحتوي على:
+- ✅ **جميع الميزات** في مكان واحد
+- 🤖 **زر تدريب النموذج بارز** ⭐
+- ✅ واجهة سهلة وواضحة
+- ✅ يعمل مع أو بدون مكتبات الذكاء الاصطناعي
+
+---
+
 ## 📋 المتطلبات - Requirements
 
 - Python 3.10 أو أحدث
@@ -9,23 +19,35 @@
 
 ## ⚡ التشغيل السريع - Quick Start
 
+### 🌟 الطريقة الموصى بها (التطبيق النهائي الشامل):
+
+```bash
+python -m streamlit run ultimate_app.py
+```
+
 ### 🐧 Linux / Mac
 
 ```bash
-# الطريقة 1: استخدام السكريبت
+# الطريقة 1: التطبيق النهائي الشامل (الأفضل)
+python -m streamlit run ultimate_app.py
+
+# الطريقة 2: استخدام السكريبت
 ./run.sh
 
-# الطريقة 2: تشغيل مباشر
+# الطريقة 3: التطبيق الأساسي
 streamlit run app.py
 ```
 
 ### 🪟 Windows
 
 ```cmd
-# الطريقة 1: نقرتين على الملف
+# الطريقة 1: التطبيق النهائي الشامل (الأفضل)
+python -m streamlit run ultimate_app.py
+
+# الطريقة 2: نقرتين على الملف
 run.bat
 
-# الطريقة 2: من Command Prompt
+# الطريقة 3: من Command Prompt
 streamlit run app.py
 ```
 
@@ -37,6 +59,19 @@ streamlit run app.py
 2. ✅ تثبيت المتطلبات (إذا لم تكن مثبتة)
 3. ✅ إنشاء قاعدة البيانات (إذا لم تكن موجودة)
 4. 🚀 تشغيل التطبيق على http://localhost:8501
+
+---
+
+## 📱 التطبيقات المتوفرة
+
+| التطبيق | الوصف | الأمر |
+|---------|-------|-------|
+| **ultimate_app.py** ⭐ | **التطبيق النهائي الشامل (الموصى به)** - كل الميزات + 🤖 تدريب النموذج | `python -m streamlit run ultimate_app.py` |
+| modern_app.py | الواجهة الحديثة المحسّنة (3x أسرع) | `python -m streamlit run modern_app.py` |
+| professional_app.py | النسخة الاحترافية | `python -m streamlit run professional_app.py` |
+| optimized_app.py | النسخة المحسنة | `python -m streamlit run optimized_app.py` |
+| advanced_app.py | الميزات المتقدمة | `python -m streamlit run advanced_app.py` |
+| app.py | التطبيق الأساسي | `python -m streamlit run app.py` |
 
 ---
 
@@ -54,6 +89,13 @@ streamlit run app.py
 - 🧍 كشف الوضعيات باستخدام MediaPipe
 - 🎯 تحليل الحركات والقفزات
 - 📊 حساب الدرجات حسب معايير ISU
+
+### 🤖 تدريب نموذج الذكاء الاصطناعي ⭐ (جديد!)
+- 🎥 **تحليل فيديو جديد** - تحليل فيديوهات بالذكاء الاصطناعي
+- 📝 **تعليق يدوي للبيانات** - إضافة بيانات تدريبية
+- 🎓 **تدريب النموذج** - تدريب النموذج على البيانات
+- 📊 **تقييم الأداء** - مراجعة دقة النموذج
+- 💡 للوصول: اختر "🤖 تدريب النموذج ⭐" من القائمة الجانبية
 
 ### 📖 معايير ISU
 - 🦘 24 قفزة بجميع المستويات
@@ -84,11 +126,28 @@ streamlit run app.py
 
 ## 🛠️ استكشاف الأخطاء
 
+### المشكلة: `streamlit: command not found`
+**الحل:**
+```bash
+python -m streamlit run ultimate_app.py
+```
+
 ### المشكلة: `ModuleNotFoundError`
 **الحل:**
 ```bash
 pip install -r requirements.txt
 ```
+
+### المشكلة: مكتبات الذكاء الاصطناعي غير متوفرة
+**الحل:** (لتفعيل ميزة تدريب النموذج)
+```bash
+pip install mediapipe tensorflow torch
+```
+أو:
+```bash
+pip install -r requirements.txt
+```
+ثم أعد تشغيل التطبيق
 
 ### المشكلة: قاعدة البيانات فارغة
 **الحل:**
