@@ -1,4 +1,7 @@
-"""
+print("🔄 جاري دمج professional_app.py مع ultimate_app.py...")
+print("=" * 60)
+
+merged_code = '''"""
 🏆 النسخة النهائية المدمجة - Ultimate Professional Skating Analysis
 دمج كامل بين ultimate_app.py و professional_app.py
 
@@ -424,3 +427,31 @@ def show_settings():
 
 if __name__ == "__main__":
     main()
+'''
+
+# Write the merged app
+with open('ultimate_app.py', 'w', encoding='utf-8') as f:
+    f.write(merged_code)
+
+print("\n✅ تم الدمج بنجاح!")
+print("=" * 60)
+print("\n📊 الإحصائيات:")
+print(f"   • حجم الملف: {len(merged_code):,} حرف")
+print(f"   • عدد الأسطر: {merged_code.count(chr(10)):,}")
+print("\n🎯 الميزات المدمجة:")
+print("   ✅ جميع ميزات ultimate_app.py")
+print("   ✅ واجهة الحكام من professional_app.py")
+print("   ✅ محرك التحليل المتقدم")
+print("   ✅ تحليل الفيديو الاحترافي")
+print("\n📁 الصفحات المتاحة:")
+print("   1. 🏠 الصفحة الرئيسية")
+print("   2. 👥 إدارة الأعضاء")
+print("   3. 📊 تحليل الحضور")
+print("   4. 🤖 تدريب النموذج ⭐")
+print("   5. 🏅 واجهة الحكام (Referee)")
+print("   6. 🎥 تحليل فيديو احترافي")
+print("   7. 📈 الإحصائيات")
+print("   8. ⚙️ الإعدادات")
+print("\n🚀 للتشغيل:")
+print("   python -m streamlit run ultimate_app.py")
+print("=" * 60)
