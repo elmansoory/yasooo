@@ -65,11 +65,13 @@ except ImportError:
     ML_MISSING_DEPS.append("opencv-python")
 
 # Try importing advanced analyzer
+ANALYZER_ERROR = None
 try:
     from src.ai.advanced_analyzer import AdvancedSkatingAnalyzer
     ANALYZER_AVAILABLE = True
-except ImportError:
+except Exception as e:
     ANALYZER_AVAILABLE = False
+    ANALYZER_ERROR = str(e)
 
 # Page config
 st.set_page_config(
@@ -236,7 +238,29 @@ def show_home():
         active = len(memberships[memberships['status']=='نشط']) if 'status' in memberships.columns else 0
         st.metric("💳 نشط", active)
     with col4:
-        st.metric("🤖 AI", "✅" if ML_AVAILABLE else "⚠️")
+        ai_status = "✅" if ML_AVAILABLE else "⚠️"
+        st.metric("🤖 AI", ai_status)
+
+    st.markdown("---")
+
+    # AI Status Details
+    with st.expander("🔍 حالة مكتبات الذكاء الاصطناعي"):
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            status = "✅" if MEDIAPIPE_AVAILABLE else "❌"
+            st.metric("MediaPipe", MP_VER if MEDIAPIPE_AVAILABLE else "غير مثبت", delta=status)
+        with c2:
+            status = "✅" if TENSORFLOW_AVAILABLE else "❌"
+            st.metric("TensorFlow", TF_VER if TENSORFLOW_AVAILABLE else "غير مثبت", delta=status)
+        with c3:
+            status = "✅" if TORCH_AVAILABLE else "❌"
+            st.metric("PyTorch", PT_VER if TORCH_AVAILABLE else "غير مثبت", delta=status)
+        with c4:
+            status = "✅" if ANALYZER_AVAILABLE else "❌"
+            st.metric("محرك التحليل", "متاح" if ANALYZER_AVAILABLE else "غير متاح", delta=status)
+
+        if ANALYZER_ERROR:
+            st.error(f"⚠️ خطأ في تحميل محرك التحليل: {ANALYZER_ERROR}")
 
     st.markdown("---")
 
@@ -384,7 +408,16 @@ def show_professional_video_analysis():
 
     if not ANALYZER_AVAILABLE:
         st.warning("⚠️ محرك التحليل المتقدم غير متاح")
-        st.info("استخدم واجهة 'تدريب النموذج' أو 'واجهة الحكام' للتحليل الأساسي")
+        if ANALYZER_ERROR:
+            with st.expander("🔍 تفاصيل الخطأ"):
+                st.code(ANALYZER_ERROR)
+
+        if MEDIAPIPE_AVAILABLE:
+            st.success("✅ يمكنك استخدام التحليل الأساسي باستخدام MediaPipe!")
+            st.info("انتقل إلى صفحة '🤖 تدريب النموذج' أو '🏅 واجهة الحكام' للتحليل الأساسي")
+        else:
+            st.error("❌ MediaPipe غير مثبت")
+            st.code("pip install mediapipe opencv-python numpy")
         return
 
     st.success("✅ محرك التحليل الاحترافي متاح!")
