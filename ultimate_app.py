@@ -31,47 +31,83 @@ try:
     import mediapipe as mp
     MEDIAPIPE_AVAILABLE = True
     MP_VER = mp.__version__
-except ImportError:
+    print(f"✅ MediaPipe {MP_VER} loaded successfully")
+except ImportError as e:
     ML_AVAILABLE = False
     MEDIAPIPE_AVAILABLE = False
     ML_MISSING_DEPS.append("mediapipe")
     MP_VER = "Not installed"
+    print(f"❌ MediaPipe import failed: {e}")
+except Exception as e:
+    ML_AVAILABLE = False
+    MEDIAPIPE_AVAILABLE = False
+    ML_MISSING_DEPS.append("mediapipe")
+    MP_VER = f"Error: {str(e)}"
+    print(f"❌ MediaPipe error: {e}")
 
 try:
     import tensorflow as tf
     TENSORFLOW_AVAILABLE = True
     TF_VER = tf.__version__
-except ImportError:
+    print(f"✅ TensorFlow {TF_VER} loaded successfully")
+except ImportError as e:
     ML_AVAILABLE = False
     TENSORFLOW_AVAILABLE = False
     ML_MISSING_DEPS.append("tensorflow")
     TF_VER = "Not installed"
+    print(f"❌ TensorFlow import failed: {e}")
+except Exception as e:
+    ML_AVAILABLE = False
+    TENSORFLOW_AVAILABLE = False
+    ML_MISSING_DEPS.append("tensorflow")
+    TF_VER = f"Error: {str(e)}"
+    print(f"❌ TensorFlow error: {e}")
 
 try:
     import torch
     TORCH_AVAILABLE = True
     PT_VER = torch.__version__
-except ImportError:
+    print(f"✅ PyTorch {PT_VER} loaded successfully")
+except ImportError as e:
     ML_AVAILABLE = False
     TORCH_AVAILABLE = False
     ML_MISSING_DEPS.append("torch")
     PT_VER = "Not installed"
+    print(f"❌ PyTorch import failed: {e}")
+except Exception as e:
+    ML_AVAILABLE = False
+    TORCH_AVAILABLE = False
+    ML_MISSING_DEPS.append("torch")
+    PT_VER = f"Error: {str(e)}"
+    print(f"❌ PyTorch error: {e}")
 
 try:
     import cv2
     CV2_AVAILABLE = True
-except ImportError:
+    print(f"✅ OpenCV {cv2.__version__} loaded successfully")
+except ImportError as e:
     CV2_AVAILABLE = False
     ML_MISSING_DEPS.append("opencv-python")
+    print(f"❌ OpenCV import failed: {e}")
+except Exception as e:
+    CV2_AVAILABLE = False
+    ML_MISSING_DEPS.append("opencv-python")
+    print(f"❌ OpenCV error: {e}")
+
+print(f"\n📊 ML Status: ML_AVAILABLE={ML_AVAILABLE}, Missing: {ML_MISSING_DEPS}\n")
 
 # Try importing advanced analyzer
 ANALYZER_ERROR = None
 try:
     from src.ai.advanced_analyzer import AdvancedSkatingAnalyzer
     ANALYZER_AVAILABLE = True
+    print("✅ AdvancedSkatingAnalyzer loaded successfully")
 except Exception as e:
     ANALYZER_AVAILABLE = False
     ANALYZER_ERROR = str(e)
+    print(f"❌ AdvancedSkatingAnalyzer import failed: {e}")
+
+print(f"🤖 Analyzer Status: ANALYZER_AVAILABLE={ANALYZER_AVAILABLE}\n")
 
 # Page config
 st.set_page_config(
@@ -300,13 +336,24 @@ def show_members():
     members = load_table('members')
 
     if len(members) > 0:
-        members['age'] = members['birth_date'].apply(calc_age)
-        st.dataframe(members[['name','age','gender','phone','skill_level']], use_container_width=True, height=400)
+        # Add age column if birth_date exists
+        if 'birth_date' in members.columns:
+            members['age'] = members['birth_date'].apply(calc_age)
+
+        # Show only columns that exist
+        display_cols = ['name']
+        if 'age' in members.columns: display_cols.append('age')
+        if 'gender' in members.columns: display_cols.append('gender')
+        if 'phone' in members.columns: display_cols.append('phone')
+        if 'skill_level' in members.columns: display_cols.append('skill_level')
+
+        st.dataframe(members[display_cols], use_container_width=True, height=400)
 
         col1, col2, col3 = st.columns(3)
         with col1: st.metric("إجمالي", len(members))
-        with col2: st.metric("ذكور", len(members[members['gender']=='ذكر']))
-        with col3: st.metric("إناث", len(members[members['gender']=='أنثى']))
+        if 'gender' in members.columns:
+            with col2: st.metric("ذكور", len(members[members['gender']=='ذكر']))
+            with col3: st.metric("إناث", len(members[members['gender']=='أنثى']))
     else:
         st.info("لا يوجد أعضاء")
 
