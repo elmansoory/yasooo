@@ -73,3 +73,13 @@ reportlab>=4.0.0
 openpyxl>=3.1.0
 xlsxwriter>=3.1.0
 fpdf2>=2.7.0
+numpy
+openpyxl
+pandas
+plotly
+python-dotenv
+pyyaml
+requests
+sqlalchemy
+streamlit
+xlsxwriter
