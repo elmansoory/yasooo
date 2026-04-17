@@ -20,6 +20,39 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 # ============================================================================
+# IMPORT PROFESSIONAL PAGES
+# ============================================================================
+
+PROFESSIONAL_VIDEO_AVAILABLE = False
+REFEREE_AVAILABLE = False
+MUSIC_EDITOR_AVAILABLE = False
+ADVANCED_DASHBOARD_AVAILABLE = False
+
+try:
+    from src.pages.professional_video_analysis import show_professional_video_analysis
+    PROFESSIONAL_VIDEO_AVAILABLE = True
+except Exception:
+    pass
+
+try:
+    from src.pages.referee_testing_interface import show_referee_testing_interface
+    REFEREE_AVAILABLE = True
+except Exception:
+    pass
+
+try:
+    from src.pages.music_editor_page import show_music_editor_page
+    MUSIC_EDITOR_AVAILABLE = True
+except Exception:
+    pass
+
+try:
+    from src.pages.advanced_dashboard import show_advanced_dashboard
+    ADVANCED_DASHBOARD_AVAILABLE = True
+except Exception:
+    pass
+
+# ============================================================================
 # LANGUAGE SYSTEM
 # ============================================================================
 
@@ -34,6 +67,8 @@ TRANSLATIONS = {
         'ml_training': '🤖 تدريب النموذج ⭐',
         'referee': '🏅 واجهة الحكام',
         'video_analysis': '🎥 تحليل الفيديو',
+        'music_editor': '🎵 محرر الموسيقى',
+        'advanced_analytics': '📊 التحليلات المتقدمة',
         'stats': '📈 الإحصائيات',
         'settings': '⚙️ الإعدادات',
         'language': '🌐 اللغة',
@@ -74,6 +109,8 @@ TRANSLATIONS = {
         'ml_training': '🤖 ML Training ⭐',
         'referee': '🏅 Referee Interface',
         'video_analysis': '🎥 Video Analysis',
+        'music_editor': '🎵 Music Editor',
+        'advanced_analytics': '📊 Advanced Analytics',
         'stats': '📈 Statistics',
         'settings': '⚙️ Settings',
         'language': '🌐 Language',
@@ -269,6 +306,8 @@ page = st.sidebar.radio("", [
     t('ml_training'),
     t('referee'),
     t('video_analysis'),
+    t('music_editor'),
+    t('advanced_analytics'),
     t('stats'),
     t('settings')
 ])
@@ -437,36 +476,44 @@ def show_attendance():
 # ============================================================================
 
 def show_ml_training():
-    st.header(t('ml_training'))
-
-    if not CORE_AI_AVAILABLE:
-        st.error(t('ai_not_available'))
-        st.code("pip install mediapipe opencv-python numpy")
-        return
-
-    st.success("✅ AI features available!")
-    st.info("Upload a video to analyze skating performance")
+    if PROFESSIONAL_VIDEO_AVAILABLE:
+        show_professional_video_analysis()
+    else:
+        st.header(t('ml_training'))
+        st.warning(t('ai_not_available'))
+        st.code("pip install mediapipe opencv-python numpy tensorflow torch")
 
 def show_referee():
-    st.header(t('referee'))
-
-    if not CORE_AI_AVAILABLE:
-        st.error(t('ai_not_available'))
-        st.code("pip install mediapipe opencv-python numpy")
-        return
-
-    st.success("✅ Referee interface ready!")
+    if REFEREE_AVAILABLE:
+        show_referee_testing_interface()
+    else:
+        st.header(t('referee'))
+        st.warning(t('ai_not_available'))
+        st.code("pip install mediapipe opencv-python numpy tensorflow torch")
 
 def show_video_analysis():
-    st.header(t('video_analysis'))
+    if PROFESSIONAL_VIDEO_AVAILABLE:
+        show_professional_video_analysis()
+    else:
+        st.header(t('video_analysis'))
+        st.warning(t('ai_not_available'))
+        st.code("pip install mediapipe opencv-python numpy")
 
-    if not ANALYZER_AVAILABLE:
-        st.warning("Advanced analyzer not available")
-        if CORE_AI_AVAILABLE:
-            st.info("Basic AI features are available in ML Training page")
-        return
+def show_music_editor():
+    if MUSIC_EDITOR_AVAILABLE:
+        show_music_editor_page()
+    else:
+        st.header(t('music_editor'))
+        st.warning("Music editor not available")
+        st.code("pip install pydub librosa soundfile")
 
-    st.success("✅ Professional analysis ready!")
+def show_advanced_analytics():
+    if ADVANCED_DASHBOARD_AVAILABLE:
+        show_advanced_dashboard()
+    else:
+        st.header(t('advanced_analytics'))
+        st.warning(t('ai_not_available'))
+        st.code("pip install scikit-learn numpy")
 
 def show_stats():
     st.header(t('stats'))
@@ -501,6 +548,10 @@ elif page == t('referee'):
     show_referee()
 elif page == t('video_analysis'):
     show_video_analysis()
+elif page == t('music_editor'):
+    show_music_editor()
+elif page == t('advanced_analytics'):
+    show_advanced_analytics()
 elif page == t('stats'):
     show_stats()
 else:
@@ -508,4 +559,4 @@ else:
 
 # Footer
 st.sidebar.markdown("---")
-st.sidebar.caption("v3.0 - Fixed & Stable")
+st.sidebar.caption("v4.0 - Professional Connected")
