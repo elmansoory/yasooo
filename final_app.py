@@ -439,13 +439,348 @@ def show_attendance():
 def show_ml_training():
     st.header(t('ml_training'))
 
-    if not CORE_AI_AVAILABLE:
-        st.error(t('ai_not_available'))
-        st.code("pip install mediapipe opencv-python numpy")
+    # ML libs check (separate from mediapipe)
+    try:
+        import numpy as np
+        import pandas as pd
+        from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+        from sklearn.svm import SVC
+        from sklearn.neural_network import MLPClassifier
+        from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.model_selection import train_test_split
+        import joblib
+        import json
+        ML_OK = True
+    except ImportError as e:
+        st.error(f"مكتبات ML غير مثبتة: {e}")
+        st.code("pip install scikit-learn numpy pandas joblib")
         return
 
-    st.success("✅ AI features available!")
-    st.info("Upload a video to analyze skating performance")
+    is_ar = st.session_state.language == 'ar'
+
+    # ── إعداد مجلد النماذج ──────────────────────────────────────────────
+    model_dir = Path("data/models/element_classifier")
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── Tabs ─────────────────────────────────────────────────────────────
+    tab_labels = (
+        ["📊 البيانات", "⚙️ التدريب", "📈 النتائج", "💾 النموذج"]
+        if is_ar else
+        ["📊 Dataset", "⚙️ Train", "📈 Results", "💾 Model"]
+    )
+    tab_data, tab_train, tab_results, tab_model = st.tabs(tab_labels)
+
+    # ════════════════════════════════════════════════════════════════════
+    # TAB 1: إدارة البيانات
+    # ════════════════════════════════════════════════════════════════════
+    with tab_data:
+        st.subheader("📊 بيانات التدريب" if is_ar else "📊 Training Dataset")
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            st.markdown(
+                "**هذا النموذج يتعلم التعرف على عناصر التزلج (قفزات، دورانات، خطوات)**"
+                if is_ar else
+                "**This model learns to recognize skating elements (jumps, spins, steps)**"
+            )
+
+            # زر توليد بيانات تجريبية
+            n_samples = st.slider(
+                "عدد عينات التدريب" if is_ar else "Number of training samples",
+                min_value=100, max_value=2000, value=500, step=100
+            )
+
+            if st.button("🎲 توليد بيانات تجريبية" if is_ar else "🎲 Generate Demo Data"):
+                with st.spinner("جاري التوليد..." if is_ar else "Generating..."):
+                    data = _generate_synthetic_data(np, pd, n_samples)
+                    st.session_state['training_df'] = data
+                    st.success(f"✅ تم توليد {len(data)} عينة" if is_ar else f"✅ Generated {len(data)} samples")
+
+        with col2:
+            if 'training_df' in st.session_state:
+                df = st.session_state['training_df']
+                st.metric("إجمالي العينات" if is_ar else "Total Samples", len(df))
+                counts = df['label'].value_counts()
+                for label, count in counts.items():
+                    st.write(f"• {label}: **{count}**")
+
+        if 'training_df' in st.session_state:
+            st.markdown("---")
+            st.subheader("معاينة البيانات" if is_ar else "Data Preview")
+            st.dataframe(st.session_state['training_df'].head(10), use_container_width=True)
+
+    # ════════════════════════════════════════════════════════════════════
+    # TAB 2: إعداد التدريب
+    # ════════════════════════════════════════════════════════════════════
+    with tab_train:
+        st.subheader("⚙️ إعداد وتشغيل التدريب" if is_ar else "⚙️ Configure & Run Training")
+
+        if 'training_df' not in st.session_state:
+            st.warning(
+                "⚠️ قم أولاً بتوليد البيانات من تبويب البيانات"
+                if is_ar else
+                "⚠️ Generate data first from the Dataset tab"
+            )
+        else:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                model_type = st.selectbox(
+                    "نوع النموذج" if is_ar else "Model Type",
+                    options=["random_forest", "gradient_boost", "svm", "neural_net"],
+                    format_func=lambda x: {
+                        "random_forest": "🌲 Random Forest",
+                        "gradient_boost": "🚀 Gradient Boosting",
+                        "svm": "📐 SVM",
+                        "neural_net": "🧠 Neural Network"
+                    }[x]
+                )
+                test_size = st.slider(
+                    "نسبة بيانات الاختبار" if is_ar else "Test Split",
+                    min_value=0.1, max_value=0.4, value=0.2, step=0.05
+                )
+
+            with col2:
+                if model_type in ("random_forest", "gradient_boost"):
+                    n_estimators = st.slider(
+                        "عدد الأشجار" if is_ar else "N Estimators",
+                        min_value=10, max_value=300, value=100, step=10
+                    )
+                    max_depth = st.selectbox(
+                        "أقصى عمق" if is_ar else "Max Depth",
+                        options=[None, 3, 5, 10, 15],
+                        format_func=lambda x: "بدون حد" if x is None else str(x)
+                    )
+                else:
+                    n_estimators = 100
+                    max_depth = None
+
+            if st.button("🚀 بدء التدريب" if is_ar else "🚀 Start Training", type="primary"):
+                with st.spinner("جاري التدريب..." if is_ar else "Training..."):
+                    results = _run_training(
+                        np, pd, StandardScaler, train_test_split,
+                        accuracy_score, classification_report, confusion_matrix,
+                        RandomForestClassifier, GradientBoostingClassifier, SVC, MLPClassifier,
+                        joblib, model_dir,
+                        st.session_state['training_df'],
+                        model_type, test_size, n_estimators, max_depth
+                    )
+                    st.session_state['training_results'] = results
+                    st.success("✅ اكتمل التدريب!" if is_ar else "✅ Training complete!")
+                    st.rerun()
+
+    # ════════════════════════════════════════════════════════════════════
+    # TAB 3: النتائج
+    # ════════════════════════════════════════════════════════════════════
+    with tab_results:
+        st.subheader("📈 نتائج التدريب" if is_ar else "📈 Training Results")
+
+        if 'training_results' not in st.session_state:
+            st.info("قم بتدريب النموذج أولاً" if is_ar else "Train the model first")
+        else:
+            r = st.session_state['training_results']
+
+            # مقاييس رئيسية
+            c1, c2, c3 = st.columns(3)
+            c1.metric("دقة التدريب" if is_ar else "Train Accuracy",
+                      f"{r['acc_train']:.1%}")
+            c2.metric("دقة الاختبار" if is_ar else "Test Accuracy",
+                      f"{r['acc_test']:.1%}")
+            c3.metric("النموذج" if is_ar else "Model", r['model_name'])
+
+            st.markdown("---")
+
+            # Feature Importance
+            if r.get('feature_importance'):
+                st.subheader("أهمية المتغيرات" if is_ar else "Feature Importance")
+                fi = r['feature_importance']
+                fi_df = pd.DataFrame(
+                    sorted(fi.items(), key=lambda x: x[1], reverse=True),
+                    columns=["Feature", "Importance"]
+                )
+                fig = px.bar(fi_df, x="Importance", y="Feature", orientation='h',
+                             color="Importance", color_continuous_scale="Viridis")
+                fig.update_layout(height=300, showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+
+            # Confusion Matrix
+            if r.get('confusion_matrix') is not None:
+                st.subheader("مصفوفة الخطأ" if is_ar else "Confusion Matrix")
+                cm = r['confusion_matrix']
+                labels = r['labels']
+                cm_df = pd.DataFrame(cm, index=labels, columns=labels)
+                fig2 = px.imshow(cm_df, text_auto=True, color_continuous_scale="Blues",
+                                 labels=dict(x="Predicted", y="Actual"))
+                fig2.update_layout(height=400)
+                st.plotly_chart(fig2, use_container_width=True)
+
+            # Classification report
+            with st.expander("تقرير التصنيف التفصيلي" if is_ar else "Detailed Classification Report"):
+                st.code(r['report'])
+
+    # ════════════════════════════════════════════════════════════════════
+    # TAB 4: إدارة النموذج
+    # ════════════════════════════════════════════════════════════════════
+    with tab_model:
+        st.subheader("💾 إدارة النموذج" if is_ar else "💾 Model Management")
+
+        model_file = model_dir / "model.pkl"
+        meta_file = model_dir / "metadata.json"
+
+        if model_file.exists() and meta_file.exists():
+            with open(meta_file) as f:
+                meta = json.load(f)
+            st.success("✅ يوجد نموذج محفوظ" if is_ar else "✅ Saved model found")
+            c1, c2 = st.columns(2)
+            c1.metric("نوع النموذج" if is_ar else "Model Type", meta.get('model_type', '-'))
+            c2.metric("تاريخ الحفظ" if is_ar else "Saved At",
+                      meta.get('saved_at', '-')[:10] if meta.get('saved_at') else '-')
+            st.write("**المتغيرات:**" if is_ar else "**Features:**",
+                     ", ".join(meta.get('feature_names', [])))
+            st.write("**الفئات:**" if is_ar else "**Classes:**",
+                     ", ".join(meta.get('classes', [])))
+
+            if st.button("🗑️ حذف النموذج" if is_ar else "🗑️ Delete Model"):
+                model_file.unlink()
+                meta_file.unlink()
+                (model_dir / "scaler.pkl").unlink(missing_ok=True)
+                st.rerun()
+        else:
+            st.info("لا يوجد نموذج محفوظ بعد" if is_ar else "No saved model yet")
+
+        if 'training_results' in st.session_state:
+            st.markdown("---")
+            r = st.session_state['training_results']
+            if st.button("💾 حفظ النموذج الحالي" if is_ar else "💾 Save Current Model"):
+                joblib.dump(r['model'], model_dir / "model.pkl")
+                joblib.dump(r['scaler'], model_dir / "scaler.pkl")
+                meta = {
+                    'model_type': r['model_name'],
+                    'feature_names': r['feature_names'],
+                    'classes': r['labels'],
+                    'label_encoder': r['label_encoder'],
+                    'saved_at': datetime.now().isoformat(),
+                    'acc_train': r['acc_train'],
+                    'acc_test': r['acc_test'],
+                }
+                with open(model_dir / "metadata.json", 'w') as f:
+                    json.dump(meta, f, indent=2, ensure_ascii=False)
+                st.success("✅ تم الحفظ" if is_ar else "✅ Saved")
+                st.rerun()
+
+
+def _generate_synthetic_data(np, pd, n_samples: int):
+    """توليد بيانات تدريب تجريبية لعناصر التزلج"""
+    rng = np.random.default_rng(42)
+    rows = []
+
+    element_profiles = {
+        '3A':    dict(rotations=3.0, is_jump=1, is_spin=0, is_step=0, base_value=8.0,  duration_mu=1.2, level=0),
+        '4T':    dict(rotations=4.0, is_jump=1, is_spin=0, is_step=0, base_value=9.5,  duration_mu=1.3, level=0),
+        '3Lz':   dict(rotations=3.0, is_jump=1, is_spin=0, is_step=0, base_value=5.9,  duration_mu=1.1, level=0),
+        '2A':    dict(rotations=2.5, is_jump=1, is_spin=0, is_step=0, base_value=3.3,  duration_mu=0.9, level=0),
+        'CCoSp4':dict(rotations=0,   is_jump=0, is_spin=1, is_step=0, base_value=3.5,  duration_mu=2.5, level=4),
+        'FCSp3': dict(rotations=0,   is_jump=0, is_spin=1, is_step=0, base_value=2.6,  duration_mu=2.2, level=3),
+        'StSq3': dict(rotations=0,   is_jump=0, is_spin=0, is_step=1, base_value=3.3,  duration_mu=3.5, level=3),
+        'ChSq1': dict(rotations=0,   is_jump=0, is_spin=0, is_step=1, base_value=3.0,  duration_mu=2.8, level=1),
+    }
+
+    per_class = n_samples // len(element_profiles)
+
+    for label, p in element_profiles.items():
+        for _ in range(per_class):
+            dur = max(0.3, rng.normal(p['duration_mu'], 0.2))
+            goe = int(rng.integers(-3, 4))
+            rows.append({
+                'label':       label,
+                'duration':    round(dur, 3),
+                'frame_count': int(dur * 30),
+                'is_jump':     p['is_jump'],
+                'is_spin':     p['is_spin'],
+                'is_step':     p['is_step'],
+                'rotations':   round(p['rotations'] + rng.normal(0, 0.1), 2),
+                'level':       p['level'],
+                'base_value':  round(p['base_value'] + rng.normal(0, 0.05), 2),
+                'goe':         goe,
+            })
+
+    df = pd.DataFrame(rows).sample(frac=1, random_state=42).reset_index(drop=True)
+    return df
+
+
+def _run_training(
+    np, pd, StandardScaler, train_test_split,
+    accuracy_score, classification_report, confusion_matrix,
+    RandomForestClassifier, GradientBoostingClassifier, SVC, MLPClassifier,
+    joblib, model_dir,
+    df, model_type, test_size, n_estimators, max_depth
+):
+    """تنفيذ دورة التدريب الكاملة وإرجاع النتائج"""
+    feature_cols = ['duration', 'frame_count', 'is_jump', 'is_spin',
+                    'is_step', 'rotations', 'level', 'base_value', 'goe']
+
+    X = df[feature_cols].values
+    y = df['label'].values
+
+    # ترميز التسميات
+    unique_labels = sorted(df['label'].unique())
+    label_encoder = {lbl: i for i, lbl in enumerate(unique_labels)}
+    inverse_enc   = {i: lbl for lbl, i in label_encoder.items()}
+    y_enc = np.array([label_encoder[lbl] for lbl in y])
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y_enc, test_size=test_size, random_state=42, stratify=y_enc
+    )
+
+    scaler = StandardScaler()
+    X_train_s = scaler.fit_transform(X_train)
+    X_test_s  = scaler.transform(X_test)
+
+    # بناء النموذج
+    models = {
+        "random_forest":  RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth,
+                                                  random_state=42, n_jobs=-1),
+        "gradient_boost": GradientBoostingClassifier(n_estimators=n_estimators,
+                                                      max_depth=max_depth or 3, random_state=42),
+        "svm":            SVC(kernel='rbf', probability=True, random_state=42),
+        "neural_net":     MLPClassifier(hidden_layer_sizes=(128, 64, 32),
+                                        max_iter=500, random_state=42),
+    }
+    model = models[model_type]
+    model.fit(X_train_s, y_train)
+
+    y_pred_train = model.predict(X_train_s)
+    y_pred_test  = model.predict(X_test_s)
+
+    acc_train = accuracy_score(y_train, y_pred_train)
+    acc_test  = accuracy_score(y_test, y_pred_test)
+
+    y_test_lbl  = [inverse_enc[i] for i in y_test]
+    y_pred_lbl  = [inverse_enc[i] for i in y_pred_test]
+
+    report = classification_report(y_test_lbl, y_pred_lbl)
+    cm     = confusion_matrix(y_test_lbl, y_pred_lbl, labels=unique_labels)
+
+    # Feature importance
+    feature_importance = None
+    if hasattr(model, 'feature_importances_'):
+        feature_importance = dict(zip(feature_cols, model.feature_importances_.tolist()))
+
+    return {
+        'model':             model,
+        'scaler':            scaler,
+        'model_name':        model_type,
+        'feature_names':     feature_cols,
+        'label_encoder':     label_encoder,
+        'labels':            unique_labels,
+        'acc_train':         acc_train,
+        'acc_test':          acc_test,
+        'report':            report,
+        'confusion_matrix':  cm,
+        'feature_importance':feature_importance,
+    }
 
 def show_referee():
     st.header(t('referee'))
