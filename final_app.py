@@ -568,13 +568,12 @@ def show_referee():
     st.success("✅ Referee interface ready!")
 
 def show_video_analysis():
-    st.header(t('video_analysis'))
-    if not ANALYZER_AVAILABLE:
-        st.warning("Advanced analyzer not available")
-        if CORE_AI_AVAILABLE:
-            st.info("Basic AI features are available in ML Training page")
-        return
-    st.success("✅ Professional analysis ready!")
+    try:
+        from src.pages.video_analysis_page import show_video_analysis_page
+        show_video_analysis_page(lang=st.session_state.language)
+    except ImportError as e:
+        st.error(f"تعذّر تحميل صفحة التحليل: {e}")
+        st.code("pip install mediapipe opencv-python numpy")
 
 # ============================================================================
 # STATS PAGE
