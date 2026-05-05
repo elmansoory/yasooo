@@ -90,6 +90,8 @@ TRANSLATIONS = {
         'today_attendance': 'حضور اليوم',
         'week_attendance': 'حضور الأسبوع',
         'no_attendance': 'لا توجد سجلات حضور',
+        'player_progress': '📈 تقدم اللاعبين',
+        'analysis_history': '🗂️ سجل التحليل',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -153,7 +155,9 @@ TRANSLATIONS = {
         'today_attendance': "Today's Attendance",
         'week_attendance': 'This Week',
         'no_attendance': 'No attendance records',
-    }
+        'player_progress': '📈 Player Progress',
+        'analysis_history': '🗂️ Analysis History',
+    },
 }
 
 if 'language' not in st.session_state:
@@ -326,11 +330,13 @@ page = st.sidebar.radio("", [
     t('home'),
     t('members'),
     t('attendance'),
+    t('video_analysis'),
+    t('player_progress'),
+    t('analysis_history'),
     t('ml_training'),
     t('referee'),
-    t('video_analysis'),
     t('stats'),
-    t('settings')
+    t('settings'),
 ])
 
 # ============================================================================
@@ -570,10 +576,43 @@ def show_referee():
 def show_video_analysis():
     try:
         from src.pages.video_analysis_page import show_video_analysis_page
+        from src.analysis.history_manager import save_analysis, invalidate_history_cache
+        from src.utils.report_builder import get_download_button_data
+
         show_video_analysis_page(lang=st.session_state.language)
+
+        # Save & Export buttons when results exist
+        results = st.session_state.get('analysis_results')
+        if results:
+            st.markdown('---')
+            col_save, col_export = st.columns(2)
+            with col_save:
+                if st.button('💾 ' + ('حفظ الجلسة في السجل' if st.session_state.language == 'ar' else 'Save Session to History'),
+                             use_container_width=True, type='primary'):
+                    sid = save_analysis(results)
+                    invalidate_history_cache()
+                    st.success('✅ ' + (f'تم الحفظ — جلسة #{sid}' if st.session_state.language == 'ar' else f'Saved — Session #{sid}'))
+            with col_export:
+                data, fname, mime = get_download_button_data(results, lang=st.session_state.language)
+                st.download_button(
+                    label='📄 ' + ('تصدير تقرير PDF' if st.session_state.language == 'ar' else 'Export PDF Report'),
+                    data=data,
+                    file_name=fname,
+                    mime=mime,
+                    use_container_width=True,
+                )
     except ImportError as e:
         st.error(f"تعذّر تحميل صفحة التحليل: {e}")
         st.code("pip install mediapipe opencv-python numpy")
+
+
+def show_player_progress():
+    try:
+        from src.pages.player_progress_page import show_player_progress_page
+        show_player_progress_page(lang=st.session_state.language)
+    except ImportError as e:
+        st.error(f"تعذّر تحميل صفحة التقدم: {e}")
+
 
 # ============================================================================
 # STATS PAGE
@@ -712,12 +751,16 @@ elif page == t('members'):
     show_members()
 elif page == t('attendance'):
     show_attendance()
+elif page == t('video_analysis'):
+    show_video_analysis()
+elif page == t('player_progress'):
+    show_player_progress()
+elif page == t('analysis_history'):
+    show_player_progress()   # same page, full history view
 elif page == t('ml_training'):
     show_ml_training()
 elif page == t('referee'):
     show_referee()
-elif page == t('video_analysis'):
-    show_video_analysis()
 elif page == t('stats'):
     show_stats()
 else:
@@ -725,4 +768,4 @@ else:
 
 # Footer
 st.sidebar.markdown("---")
-st.sidebar.caption("v4.0 - Enhanced UI & Performance")
+st.sidebar.caption("v5.0 - Progress Tracking & PDF Reports")
