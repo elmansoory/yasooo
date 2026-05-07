@@ -157,17 +157,249 @@ TRANSLATIONS = {
         'no_attendance': 'No attendance records',
         'player_progress': '📈 Player Progress',
         'analysis_history': '🗂️ Analysis History',
+        'realtime': '📷 Real-Time Analysis',
+        'club_mgmt': '🏢 Club Management',
+        'logout': 'Logout',
+        'login': 'Login',
+        'username': 'Username',
+        'password': 'Password',
+    },
+    'fr': {
+        'title': '⛸️ Système d\'Analyse de Patinage Artistique',
+        'subtitle': 'Système Complet Intégré',
+        'menu': '📋 Menu',
+        'home': '🏠 Accueil',
+        'members': '👥 Membres',
+        'attendance': '📊 Présence',
+        'ml_training': '🤖 Entraînement ML ⭐',
+        'referee': '🏅 Interface Arbitre',
+        'video_analysis': '🎥 Analyse Vidéo',
+        'stats': '📈 Statistiques',
+        'settings': '⚙️ Paramètres',
+        'language': '🌐 Langue',
+        'total_members': 'Total Membres',
+        'attendance_records': 'Présences',
+        'active_subscriptions': 'Abonnements Actifs',
+        'ai_status': 'État AI',
+        'members_management': 'Gestion des Membres',
+        'no_members': 'Aucun membre trouvé',
+        'add_member': '➕ Ajouter Membre',
+        'search_members': '🔍 Rechercher',
+        'filter_by_level': 'Filtrer par niveau',
+        'all_levels': 'Tous les niveaux',
+        'name': 'Nom', 'age': 'Âge', 'gender': 'Genre',
+        'phone': 'Téléphone', 'email': 'Email', 'skill_level': 'Niveau',
+        'notes': 'Notes', 'male': 'Homme', 'female': 'Femme',
+        'beginner': 'Débutant', 'intermediate': 'Intermédiaire',
+        'advanced': 'Avancé', 'professional': 'Professionnel',
+        'save': '💾 Enregistrer', 'success': 'Succès', 'error': 'Erreur',
+        'ai_not_available': 'Fonctions AI non disponibles',
+        'install_ai': 'Pour activer l\'AI, installez',
+        'core_features_work': 'Fonctions de base disponibles sans AI',
+        'record_attendance': '✅ Enregistrer Présence',
+        'select_member': 'Choisir Membre', 'attendance_date': 'Date',
+        'attendance_note': 'Note', 'recent_attendance': 'Présences Récentes',
+        'attendance_trend': 'Tendance (30 derniers jours)',
+        'members_by_gender': 'Membres par Genre',
+        'members_by_level': 'Membres par Niveau',
+        'attendance_by_member': 'Membres les plus présents',
+        'no_data': 'Aucune donnée', 'theme': 'Thème',
+        'dark_mode': 'Mode Sombre', 'light_mode': 'Mode Clair',
+        'db_path': 'Chemin Base de Données',
+        'clear_cache': '🗑️ Vider Cache', 'cache_cleared': 'Cache vidé',
+        'system_info': 'Infos Système',
+        'today_attendance': "Présence Aujourd'hui", 'week_attendance': 'Cette Semaine',
+        'no_attendance': 'Aucune présence enregistrée',
+        'player_progress': '📈 Progrès Joueurs',
+        'analysis_history': '🗂️ Historique Analyses',
+        'realtime': '📷 Analyse Temps Réel',
+        'club_mgmt': '🏢 Gestion Club',
+        'logout': 'Déconnexion', 'login': 'Connexion',
+        'username': "Nom d'utilisateur", 'password': 'Mot de passe',
+    },
+    'de': {
+        'title': '⛸️ Eiskunstlauf-Analysesystem',
+        'subtitle': 'Vollständiges integriertes System',
+        'menu': '📋 Menü',
+        'home': '🏠 Startseite',
+        'members': '👥 Mitglieder',
+        'attendance': '📊 Anwesenheit',
+        'ml_training': '🤖 ML-Training ⭐',
+        'referee': '🏅 Schiedsrichter',
+        'video_analysis': '🎥 Videoanalyse',
+        'stats': '📈 Statistiken',
+        'settings': '⚙️ Einstellungen',
+        'language': '🌐 Sprache',
+        'total_members': 'Gesamtmitglieder',
+        'attendance_records': 'Anwesenheiten',
+        'active_subscriptions': 'Aktive Mitgliedschaften',
+        'ai_status': 'KI-Status',
+        'members_management': 'Mitgliederverwaltung',
+        'no_members': 'Keine Mitglieder',
+        'add_member': '➕ Mitglied hinzufügen',
+        'search_members': '🔍 Suchen',
+        'filter_by_level': 'Nach Level filtern',
+        'all_levels': 'Alle Levels',
+        'name': 'Name', 'age': 'Alter', 'gender': 'Geschlecht',
+        'phone': 'Telefon', 'email': 'E-Mail', 'skill_level': 'Level',
+        'notes': 'Notizen', 'male': 'Männlich', 'female': 'Weiblich',
+        'beginner': 'Anfänger', 'intermediate': 'Mittel',
+        'advanced': 'Fortgeschritten', 'professional': 'Profi',
+        'save': '💾 Speichern', 'success': 'Erfolg', 'error': 'Fehler',
+        'ai_not_available': 'KI-Funktionen nicht verfügbar',
+        'install_ai': 'Zur KI-Aktivierung installieren',
+        'core_features_work': 'Grundfunktionen ohne KI verfügbar',
+        'record_attendance': '✅ Anwesenheit erfassen',
+        'select_member': 'Mitglied wählen', 'attendance_date': 'Datum',
+        'attendance_note': 'Notiz', 'recent_attendance': 'Letzte Anwesenheiten',
+        'attendance_trend': 'Trend (letzte 30 Tage)',
+        'members_by_gender': 'Mitglieder nach Geschlecht',
+        'members_by_level': 'Mitglieder nach Level',
+        'attendance_by_member': 'Top-Anwesende',
+        'no_data': 'Keine Daten', 'theme': 'Design',
+        'dark_mode': 'Dunkelmodus', 'light_mode': 'Hellmodus',
+        'db_path': 'Datenbankpfad',
+        'clear_cache': '🗑️ Cache leeren', 'cache_cleared': 'Cache geleert',
+        'system_info': 'Systeminfo',
+        'today_attendance': 'Heutige Anwesenheit', 'week_attendance': 'Diese Woche',
+        'no_attendance': 'Keine Anwesenheiten',
+        'player_progress': '📈 Spielerfortschritt',
+        'analysis_history': '🗂️ Analysehistorie',
+        'realtime': '📷 Echtzeit-Analyse',
+        'club_mgmt': '🏢 Club-Verwaltung',
+        'logout': 'Abmelden', 'login': 'Anmelden',
+        'username': 'Benutzername', 'password': 'Passwort',
+    },
+    'ru': {
+        'title': '⛸️ Система Анализа Фигурного Катания',
+        'subtitle': 'Комплексная интегрированная система',
+        'menu': '📋 Меню',
+        'home': '🏠 Главная',
+        'members': '👥 Участники',
+        'attendance': '📊 Посещаемость',
+        'ml_training': '🤖 Обучение ML ⭐',
+        'referee': '🏅 Интерфейс Судьи',
+        'video_analysis': '🎥 Анализ Видео',
+        'stats': '📈 Статистика',
+        'settings': '⚙️ Настройки',
+        'language': '🌐 Язык',
+        'total_members': 'Всего участников',
+        'attendance_records': 'Записи посещений',
+        'active_subscriptions': 'Активные подписки',
+        'ai_status': 'Статус ИИ',
+        'members_management': 'Управление участниками',
+        'no_members': 'Участники не найдены',
+        'add_member': '➕ Добавить участника',
+        'search_members': '🔍 Поиск',
+        'filter_by_level': 'Фильтр по уровню',
+        'all_levels': 'Все уровни',
+        'name': 'Имя', 'age': 'Возраст', 'gender': 'Пол',
+        'phone': 'Телефон', 'email': 'Email', 'skill_level': 'Уровень',
+        'notes': 'Заметки', 'male': 'Мужской', 'female': 'Женский',
+        'beginner': 'Начинающий', 'intermediate': 'Средний',
+        'advanced': 'Продвинутый', 'professional': 'Профессионал',
+        'save': '💾 Сохранить', 'success': 'Успешно', 'error': 'Ошибка',
+        'ai_not_available': 'Функции ИИ недоступны',
+        'install_ai': 'Для активации ИИ установите',
+        'core_features_work': 'Базовые функции работают без ИИ',
+        'record_attendance': '✅ Записать посещение',
+        'select_member': 'Выбрать участника', 'attendance_date': 'Дата',
+        'attendance_note': 'Заметка', 'recent_attendance': 'Последние посещения',
+        'attendance_trend': 'Тренд (последние 30 дней)',
+        'members_by_gender': 'Участники по полу',
+        'members_by_level': 'Участники по уровню',
+        'attendance_by_member': 'Топ посещений',
+        'no_data': 'Нет данных', 'theme': 'Тема',
+        'dark_mode': 'Тёмный режим', 'light_mode': 'Светлый режим',
+        'db_path': 'Путь к базе данных',
+        'clear_cache': '🗑️ Очистить кэш', 'cache_cleared': 'Кэш очищен',
+        'system_info': 'Информация о системе',
+        'today_attendance': 'Посещений сегодня', 'week_attendance': 'На этой неделе',
+        'no_attendance': 'Нет записей посещений',
+        'player_progress': '📈 Прогресс игроков',
+        'analysis_history': '🗂️ История анализов',
+        'realtime': '📷 Анализ в реальном времени',
+        'club_mgmt': '🏢 Управление клубом',
+        'logout': 'Выйти', 'login': 'Войти',
+        'username': 'Имя пользователя', 'password': 'Пароль',
+    },
+    'es': {
+        'title': '⛸️ Sistema de Análisis de Patinaje Artístico',
+        'subtitle': 'Sistema Completo Integrado',
+        'menu': '📋 Menú',
+        'home': '🏠 Inicio',
+        'members': '👥 Miembros',
+        'attendance': '📊 Asistencia',
+        'ml_training': '🤖 Entrenamiento ML ⭐',
+        'referee': '🏅 Interfaz Árbitro',
+        'video_analysis': '🎥 Análisis de Video',
+        'stats': '📈 Estadísticas',
+        'settings': '⚙️ Configuración',
+        'language': '🌐 Idioma',
+        'total_members': 'Total Miembros',
+        'attendance_records': 'Registros Asistencia',
+        'active_subscriptions': 'Suscripciones Activas',
+        'ai_status': 'Estado IA',
+        'members_management': 'Gestión de Miembros',
+        'no_members': 'No hay miembros',
+        'add_member': '➕ Agregar Miembro',
+        'search_members': '🔍 Buscar',
+        'filter_by_level': 'Filtrar por nivel',
+        'all_levels': 'Todos los niveles',
+        'name': 'Nombre', 'age': 'Edad', 'gender': 'Género',
+        'phone': 'Teléfono', 'email': 'Correo', 'skill_level': 'Nivel',
+        'notes': 'Notas', 'male': 'Masculino', 'female': 'Femenino',
+        'beginner': 'Principiante', 'intermediate': 'Intermedio',
+        'advanced': 'Avanzado', 'professional': 'Profesional',
+        'save': '💾 Guardar', 'success': 'Éxito', 'error': 'Error',
+        'ai_not_available': 'Funciones IA no disponibles',
+        'install_ai': 'Para activar IA, instale',
+        'core_features_work': 'Funciones básicas disponibles sin IA',
+        'record_attendance': '✅ Registrar Asistencia',
+        'select_member': 'Seleccionar Miembro', 'attendance_date': 'Fecha',
+        'attendance_note': 'Nota', 'recent_attendance': 'Asistencias Recientes',
+        'attendance_trend': 'Tendencia (últimos 30 días)',
+        'members_by_gender': 'Miembros por Género',
+        'members_by_level': 'Miembros por Nivel',
+        'attendance_by_member': 'Más Asistentes',
+        'no_data': 'Sin datos', 'theme': 'Tema',
+        'dark_mode': 'Modo Oscuro', 'light_mode': 'Modo Claro',
+        'db_path': 'Ruta Base de Datos',
+        'clear_cache': '🗑️ Limpiar Caché', 'cache_cleared': 'Caché limpiado',
+        'system_info': 'Info del Sistema',
+        'today_attendance': 'Asistencia Hoy', 'week_attendance': 'Esta Semana',
+        'no_attendance': 'Sin registros de asistencia',
+        'player_progress': '📈 Progreso Jugadores',
+        'analysis_history': '🗂️ Historial Análisis',
+        'realtime': '📷 Análisis Tiempo Real',
+        'club_mgmt': '🏢 Gestión Club',
+        'logout': 'Cerrar Sesión', 'login': 'Iniciar Sesión',
+        'username': 'Usuario', 'password': 'Contraseña',
     },
 }
+
 
 if 'language' not in st.session_state:
     st.session_state.language = 'ar'
 
+LANG_NAMES = {
+    'ar': '🇸🇦 العربية',
+    'en': '🇬🇧 English',
+    'fr': '🇫🇷 Français',
+    'de': '🇩🇪 Deutsch',
+    'ru': '🇷🇺 Русский',
+    'es': '🇪🇸 Español',
+}
+
 def t(key):
-    return TRANSLATIONS[st.session_state.language].get(key, key)
+    lang = st.session_state.get('language', 'ar')
+    return TRANSLATIONS.get(lang, TRANSLATIONS['ar']).get(key, TRANSLATIONS['en'].get(key, key))
 
 def switch_language():
-    st.session_state.language = 'en' if st.session_state.language == 'ar' else 'ar'
+    langs = list(LANG_NAMES.keys())
+    current = st.session_state.get('language', 'ar')
+    next_lang = langs[(langs.index(current) + 1) % len(langs)]
+    st.session_state.language = next_lang
     st.rerun()
 
 # ============================================================================
@@ -320,24 +552,54 @@ setup_db()
 
 st.sidebar.title(t('menu'))
 
-lang_button = "English" if st.session_state.language == 'ar' else "العربية"
-if st.sidebar.button(f"🌐 {lang_button}", use_container_width=True):
-    switch_language()
+# Language selector — 6 languages
+current_lang = st.session_state.get('language', 'ar')
+lang_choice = st.sidebar.selectbox(
+    '🌐', list(LANG_NAMES.keys()),
+    index=list(LANG_NAMES.keys()).index(current_lang),
+    format_func=lambda k: LANG_NAMES[k],
+    label_visibility='collapsed',
+)
+if lang_choice != current_lang:
+    st.session_state.language = lang_choice
+    st.rerun()
+
+# Auth status in sidebar
+try:
+    from src.auth.auth_manager import seed_demo_data
+    seed_demo_data()
+    user = st.session_state.get('user')
+    if user:
+        role_icon = {'admin': '👑', 'club_manager': '🏢', 'coach': '🎿', 'athlete': '⛸️'}.get(user.get('role', ''), '👤')
+        st.sidebar.markdown(f"""
+        <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 12px;margin:6px 0">
+            <div style="font-weight:700">{role_icon} {user.get('full_name', user.get('username',''))}</div>
+            <div style="font-size:.8em;opacity:.8">{user.get('club_name','')}</div>
+        </div>""", unsafe_allow_html=True)
+        if st.sidebar.button(t('logout'), use_container_width=True):
+            for k in ['user', 'authenticated', 'club_id']:
+                st.session_state.pop(k, None)
+            st.rerun()
+except Exception:
+    pass
 
 st.sidebar.markdown("---")
 
-page = st.sidebar.radio("", [
+_nav_pages = [
     t('home'),
     t('members'),
     t('attendance'),
     t('video_analysis'),
+    t('realtime'),
     t('player_progress'),
     t('analysis_history'),
     t('ml_training'),
     t('referee'),
     t('stats'),
+    t('club_mgmt'),
     t('settings'),
-])
+]
+page = st.sidebar.radio("", _nav_pages)
 
 # ============================================================================
 # HOME PAGE
@@ -614,6 +876,35 @@ def show_player_progress():
         st.error(f"تعذّر تحميل صفحة التقدم: {e}")
 
 
+def show_realtime():
+    try:
+        from src.pages.realtime_analysis_page import show_realtime_analysis_page
+        show_realtime_analysis_page(lang=st.session_state.language)
+    except ImportError as e:
+        st.error(f"تعذّر تحميل الكاميرا المباشرة: {e}")
+        st.code("pip install mediapipe opencv-python numpy")
+
+
+def show_club_management():
+    try:
+        from src.auth.auth_manager import seed_demo_data
+        seed_demo_data()
+        from src.pages.club_management_page import show_club_management_page
+        show_club_management_page(lang=st.session_state.language)
+    except ImportError as e:
+        st.error(f"تعذّر تحميل إدارة الأندية: {e}")
+
+
+def show_login():
+    try:
+        from src.auth.auth_manager import seed_demo_data
+        seed_demo_data()
+        from src.pages.login_page import show_login_page
+        show_login_page(lang=st.session_state.language)
+    except ImportError as e:
+        st.error(f"تعذّر تحميل صفحة الدخول: {e}")
+
+
 # ============================================================================
 # STATS PAGE
 # ============================================================================
@@ -745,27 +1036,21 @@ def show_settings():
 # MAIN ROUTER
 # ============================================================================
 
-if page == t('home'):
-    show_home()
-elif page == t('members'):
-    show_members()
-elif page == t('attendance'):
-    show_attendance()
-elif page == t('video_analysis'):
-    show_video_analysis()
-elif page == t('player_progress'):
-    show_player_progress()
-elif page == t('analysis_history'):
-    show_player_progress()   # same page, full history view
-elif page == t('ml_training'):
-    show_ml_training()
-elif page == t('referee'):
-    show_referee()
-elif page == t('stats'):
-    show_stats()
-else:
-    show_settings()
+_ROUTER = {
+    t('home'):            show_home,
+    t('members'):         show_members,
+    t('attendance'):      show_attendance,
+    t('video_analysis'):  show_video_analysis,
+    t('realtime'):        show_realtime,
+    t('player_progress'): show_player_progress,
+    t('analysis_history'):show_player_progress,
+    t('ml_training'):     show_ml_training,
+    t('referee'):         show_referee,
+    t('stats'):           show_stats,
+    t('club_mgmt'):       show_club_management,
+}
+_ROUTER.get(page, show_settings)()
 
 # Footer
 st.sidebar.markdown("---")
-st.sidebar.caption("v5.0 - Progress Tracking & PDF Reports")
+st.sidebar.caption("v6.0 - Global Edition | 6 Languages | Auth | Real-Time AI")
