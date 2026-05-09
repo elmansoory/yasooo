@@ -412,19 +412,29 @@ CV2_AVAILABLE = False
 ANALYZER_AVAILABLE = False
 
 try:
-    import mediapipe as mp
-    MEDIAPIPE_AVAILABLE = True
-    import cv2
-    CV2_AVAILABLE = True
     import numpy as np
     CORE_AI_AVAILABLE = True
+except ImportError:
+    pass
+
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    pass
+
+try:
+    import mediapipe as mp
+    MEDIAPIPE_AVAILABLE = True
+except ImportError:
+    pass
+
+if CORE_AI_AVAILABLE:
     try:
         from src.ai.advanced_analyzer import AdvancedSkatingAnalyzer
         ANALYZER_AVAILABLE = True
-    except:
+    except Exception:
         pass
-except:
-    pass
 
 # ============================================================================
 # DATABASE
@@ -661,10 +671,12 @@ def show_home():
         st.info(f"""
         {t('install_ai')}:
         ```
-        pip install mediapipe opencv-python numpy
+        pip install numpy opencv-python
         ```
         ✅ {t('core_features_work')}
         """)
+    elif not MEDIAPIPE_AVAILABLE:
+        st.info("ℹ️ MediaPipe غير متاح (لا يدعم Python 3.13 بعد). ميزات تحليل الحركة معطّلة، باقي الميزات تعمل.")
 
 # ============================================================================
 # MEMBERS PAGE
