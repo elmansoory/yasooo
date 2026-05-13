@@ -133,11 +133,13 @@ class AdvancedSkatingAnalyzer:
             poses = self._extract_poses(video_path)
             results['poses'] = poses
 
-            jumps = self._detect_jumps(poses)
-            results['jumps'] = jumps
-
+            # Detect spins FIRST, mark their frames, then exclude from jump detection.
+            # This prevents a sit-spin (crouched body) from being misread as airborne.
             spins = self._detect_spins(poses)
             results['spins'] = spins
+
+            jumps = self._detect_jumps(poses)
+            results['jumps'] = jumps
 
             results['total_score'] = (
                 sum(j.final_score for j in jumps) +
@@ -221,6 +223,12 @@ class AdvancedSkatingAnalyzer:
     # On ice, ankles are near the bottom of the image (high Y value in MediaPipe,
     # where Y=0 is top, Y=1 is bottom).
     # When airborne, ankles rise — gap between hip_y and ankle_y shrinks.
+    #
+    # IMPORTANT: a sit-spin also causes the body to crouch, which can look
+    # similar to being airborne. We guard against this by checking horizontal
+    # position stability: a jump involves forward/backward travel, but a spin
+    # stays in one spot. The `is_spinning` flag (set by _detect_spins before
+    # this is called in context) is used by _detect_jumps to skip spinning frames.
 
     def _is_airborne(self, kps: List[Dict]) -> bool:
         def get(name):
@@ -235,30 +243,23 @@ class AdvancedSkatingAnalyzer:
         if la is None and ra is None:
             return False
 
-        # Average visible ankle Y
         ankle_ys = [p['y'] for p in [la, ra] if p is not None]
-        ankle_y = np.mean(ankle_ys)
+        ankle_y = float(np.mean(ankle_ys))
 
-        # Average visible hip Y
         hip_ys = [p['y'] for p in [lh, rh] if p is not None]
         if not hip_ys:
             return False
-        hip_y = np.mean(hip_ys)
+        hip_y = float(np.mean(hip_ys))
 
-        # Ankle-to-hip vertical gap in normalised coords
-        # On ice: ankle_y >> hip_y  (ankles are much lower than hips)
-        # In air: ankle_y ≈ hip_y   (gap collapses)
-        gap = ankle_y - hip_y  # positive when ankles are below hips
+        # gap > 0  → ankles below hips (normal standing)
+        # gap ≈ 0  → ankles at hip level (airborne or deep crouch)
+        gap = ankle_y - hip_y
 
-        # Knee check — knees tuck up during jump
         knee_ys = [p['y'] for p in [lk, rk] if p is not None]
-        knee_above_hip = False
-        if knee_ys and hip_ys:
-            knee_y = np.mean(knee_ys)
-            knee_above_hip = knee_y < hip_y + 0.05  # knees near or above hips
+        knee_above_hip = bool(
+            knee_ys and float(np.mean(knee_ys)) < hip_y + 0.05
+        )
 
-        # Primary: gap < 0.20 means ankles are close to hip level → airborne
-        # Secondary: knee confirmation adds robustness
         return gap < 0.20 or (gap < 0.28 and knee_above_hip)
 
     # ── Jump detection ─────────────────────────────────────────────────────
@@ -267,9 +268,18 @@ class AdvancedSkatingAnalyzer:
         if not poses:
             return []
 
-        # Smooth the airborne signal over a small window to remove noise
-        airborne = np.array([1 if p['is_airborne'] else 0 for p in poses])
+        # Skip frames already identified as spinning — this is the key guard
+        # that prevents a sit-spin or camel-spin from being labelled a jump.
+        airborne = np.array([
+            1 if (p['is_airborne'] and not p.get('is_spinning', False)) else 0
+            for p in poses
+        ])
         smoothed = self._smooth(airborne, window=3)
+
+        # A jump must be short: 0.13 s – 1.0 s (4–30 frames at 30 fps).
+        # Anything longer is almost certainly a spin remnant.
+        MIN_JUMP_FRAMES = 4
+        MAX_JUMP_FRAMES = int(self.fps * 1.0)
 
         sequences: List[List[Dict]] = []
         in_seq = False
@@ -280,12 +290,12 @@ class AdvancedSkatingAnalyzer:
                 seq.append(p)
                 in_seq = True
             else:
-                if in_seq and len(seq) >= 4:   # ≥4 frames at 30fps ≈ 130ms min
+                if in_seq and MIN_JUMP_FRAMES <= len(seq) <= MAX_JUMP_FRAMES:
                     sequences.append(seq)
                 seq = []
                 in_seq = False
 
-        if in_seq and len(seq) >= 4:
+        if in_seq and MIN_JUMP_FRAMES <= len(seq) <= MAX_JUMP_FRAMES:
             sequences.append(seq)
 
         jumps = []
@@ -531,13 +541,16 @@ class AdvancedSkatingAnalyzer:
 
     def _detect_spins(self, poses: List[Dict]) -> List[SpinAnalysis]:
         """
-        Detect spinning segments: rapid continuous shoulder rotation
-        while NOT airborne (on ice).
+        Detect spinning segments: rapid continuous shoulder/hip rotation
+        while position stays roughly fixed (on ice, not in the air).
+
+        Runs BEFORE jump detection so spinning frames are marked and
+        excluded from the airborne/jump pipeline.
         """
         if len(poses) < 10:
             return []
 
-        # Compute shoulder-line angle per frame
+        # ── Angular velocity from shoulder line ────────────────────────────
         angles: List[Optional[float]] = []
         for p in poses:
             kps = p['keypoints']
@@ -548,7 +561,6 @@ class AdvancedSkatingAnalyzer:
             else:
                 angles.append(None)
 
-        # Compute angular velocity (degrees/frame), skip None
         ang_vel: List[float] = []
         for i in range(1, len(angles)):
             if angles[i] is None or angles[i - 1] is None:
@@ -559,29 +571,67 @@ class AdvancedSkatingAnalyzer:
             if d < -180: d += 360
             ang_vel.append(abs(d))
 
-        ang_vel = np.array(ang_vel)
+        ang_vel_arr = np.array(ang_vel)
 
-        # Threshold: spinning = > 8°/frame ≈ > 240°/s at 30fps
-        SPIN_THRESH = 8.0
-        MIN_SPIN_FRAMES = 15   # ≈ 0.5 s
+        # ── Position stability: hip X drift per frame ─────────────────────
+        # During a spin the skater stays in one spot.
+        # During a jump they travel. This is the key discriminator.
+        hip_xs: List[Optional[float]] = []
+        for p in poses:
+            kps = p['keypoints']
+            lh = kps[LM['left_hip']]; rh = kps[LM['right_hip']]
+            if lh['visibility'] >= MIN_VISIBILITY and rh['visibility'] >= MIN_VISIBILITY:
+                hip_xs.append((lh['x'] + rh['x']) / 2)
+            else:
+                hip_xs.append(None)
 
-        spinning = ang_vel > SPIN_THRESH
+        pos_drift: List[float] = []
+        for i in range(1, len(hip_xs)):
+            if hip_xs[i] is None or hip_xs[i - 1] is None:
+                pos_drift.append(999.0)
+                continue
+            pos_drift.append(abs(hip_xs[i] - hip_xs[i - 1]))
+        pos_drift_arr = np.array(pos_drift)
 
+        # Spinning frame: fast rotation AND position is stable (not travelling)
+        # 6°/frame ≈ 180°/s at 30 fps  (lower threshold than before to catch slow spins)
+        SPIN_THRESH    = 6.0
+        DRIFT_THRESH   = 0.015   # max 1.5% of frame width per frame when spinning
+        MIN_SPIN_FRAMES = 12     # ≈ 0.4 s at 30fps
+
+        is_spin_frame = (ang_vel_arr > SPIN_THRESH) & (pos_drift_arr < DRIFT_THRESH)
+
+        # Grow segments: allow up to 5-frame gaps inside a spin
         spins: List[SpinAnalysis] = []
         i = 0
-        while i < len(spinning):
-            if spinning[i] and not poses[i]['is_airborne']:
+        while i < len(is_spin_frame):
+            if is_spin_frame[i]:
                 j = i
-                while j < len(spinning) and (spinning[j] or (j - i < 5)):
+                gap = 0
+                while j < len(is_spin_frame):
+                    if is_spin_frame[j]:
+                        gap = 0
+                    else:
+                        gap += 1
+                        if gap > 5:
+                            break
                     j += 1
+
                 seg_len = j - i
                 if seg_len >= MIN_SPIN_FRAMES:
-                    seg_poses  = poses[i:j]
-                    seg_angles = ang_vel[i:j]
-                    sp = self._analyze_spin_sequence(seg_poses, seg_angles, poses)
+                    seg_poses = poses[i:j]
+
+                    # Mark every frame in this segment as spinning so that
+                    # _detect_jumps will skip them entirely.
+                    for p in seg_poses:
+                        p['is_spinning'] = True
+
+                    sp = self._analyze_spin_sequence(
+                        seg_poses, ang_vel_arr[i:j], poses
+                    )
                     if sp:
                         spins.append(sp)
-                i = j
+                i = j + 1
             else:
                 i += 1
 
