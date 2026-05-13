@@ -44,6 +44,41 @@ except ImportError:
     ANALYZER_AVAILABLE = False
 
 
+_MIN_VIS = 0.4
+
+
+def _is_airborne(kps: List[Dict]) -> bool:
+    """Unified airborne detection shared across all pages."""
+    def get(idx):
+        p = kps[idx] if idx < len(kps) else None
+        return p if p and p['visibility'] >= _MIN_VIS else None
+
+    la = get(27); ra = get(28)
+    lh = get(23); rh = get(24)
+    lk = get(25); rk = get(26)
+
+    if la is None and ra is None:
+        return False
+
+    ankle_ys = [p['y'] for p in [la, ra] if p]
+    ankle_y  = sum(ankle_ys) / len(ankle_ys)
+
+    hip_ys = [p['y'] for p in [lh, rh] if p]
+    if not hip_ys:
+        return False
+    hip_y = sum(hip_ys) / len(hip_ys)
+
+    gap = ankle_y - hip_y
+
+    knee_ys = [p['y'] for p in [lk, rk] if p]
+    knee_near_hip = (
+        bool(knee_ys) and
+        sum(knee_ys) / len(knee_ys) < hip_y + 0.05
+    )
+
+    return gap < 0.20 or (gap < 0.28 and knee_near_hip)
+
+
 # ============================================================================
 # DEMO DATA — يعمل بدون MediaPipe للعرض التجريبي
 # ============================================================================
@@ -302,14 +337,11 @@ def _extract_poses_mediapipe(video_path: str, fps: float) -> List[Dict]:
                         }
                         for i, lm in enumerate(res.pose_landmarks.landmark)
                     ]
-                    la = kp[27] if len(kp) > 27 else None
-                    ra = kp[28] if len(kp) > 28 else None
-                    is_air = (la and ra and (la['y'] + ra['y']) / 2 < 0.75)
                     poses.append({
                         'frame': frame_idx,
                         'timestamp': frame_idx / fps,
                         'keypoints': kp,
-                        'is_airborne': is_air,
+                        'is_airborne': _is_airborne(kp),
                     })
                 if total > 0:
                     progress.progress(

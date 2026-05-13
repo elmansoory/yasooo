@@ -330,29 +330,45 @@ class AdvancedPoseDetector:
         threshold: float = 0.15
     ) -> bool:
         """
-        Detect if person is airborne
+        Detect if skater is airborne.
 
-        Simple heuristic: if feet are above a certain threshold
+        Strategy: compare ankle height to hip height using relative gap.
+        On ice, ankles are well below hips (large gap).
+        In the air, ankles rise toward hip level (gap shrinks).
+        Also confirmed by knee position (knees tuck up during jump).
         """
-        if 'left_ankle' not in landmarks or 'right_ankle' not in landmarks:
+        MIN_VIS = 0.4
+
+        def visible(name):
+            lm = landmarks.get(name)
+            return lm if lm is not None and lm.visibility >= MIN_VIS else None
+
+        la = visible('left_ankle');  ra = visible('right_ankle')
+        lh = visible('left_hip');    rh = visible('right_hip')
+        lk = visible('left_knee');   rk = visible('right_knee')
+
+        if la is None and ra is None:
             return False
 
-        # Get ankle heights (lower y = higher in image)
-        left_ankle_y = landmarks['left_ankle'].y
-        right_ankle_y = landmarks['right_ankle'].y
+        ankle_ys = [p.y for p in [la, ra] if p is not None]
+        ankle_y = sum(ankle_ys) / len(ankle_ys)
 
-        # Get hip height as reference
-        if 'left_hip' in landmarks and 'right_hip' in landmarks:
-            avg_hip_y = (landmarks['left_hip'].y + landmarks['right_hip'].y) / 2
+        hip_ys = [p.y for p in [lh, rh] if p is not None]
+        if not hip_ys:
+            return False
+        hip_y = sum(hip_ys) / len(hip_ys)
 
-            # If ankles are much higher than expected (closer to hips)
-            ankle_hip_distance = avg_hip_y - min(left_ankle_y, right_ankle_y)
+        # gap > 0 means ankles are below hips (normal on ice)
+        gap = ankle_y - hip_y
 
-            # Normally ankles are ~0.4-0.5 below hips
-            # If distance is small, likely airborne
-            return ankle_hip_distance < 0.25
+        # Knee confirmation: knees rise toward hip level when airborne
+        knee_ys = [p.y for p in [lk, rk] if p is not None]
+        knee_near_hip = (
+            len(knee_ys) > 0 and
+            (sum(knee_ys) / len(knee_ys)) < hip_y + 0.05
+        )
 
-        return False
+        return gap < 0.20 or (gap < 0.28 and knee_near_hip)
 
     def draw_pose(
         self,
