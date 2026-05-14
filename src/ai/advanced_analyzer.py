@@ -121,6 +121,20 @@ class AdvancedSkatingAnalyzer:
         self.width: int = 1920
         self.height: int = 1080
 
+        # Load trained ML model if available — used in _classify_jump_type
+        # and _classify_spin_type to replace heuristic rules.
+        self._ml_model = None
+        _model_path = "data/models/lstm_model.pkl"
+        try:
+            from src.models.lstm_classifier import LSTMClassifier
+            if LSTMClassifier.is_trained(_model_path):
+                self._ml_model = LSTMClassifier.load(_model_path)
+                print(f"[AI] Loaded trained LSTM model from {_model_path}")
+            else:
+                print("[AI] No trained model found — using biomechanical rules.")
+        except Exception:
+            pass
+
     # ── Public API ──────────────────────────────────────────────────────────
 
     def analyze_video(self, video_path: str) -> Dict:
@@ -463,6 +477,29 @@ class AdvancedSkatingAnalyzer:
         """
         if not takeoff_poses:
             return JumpType.UNKNOWN, 0.0, 0.5
+
+        # ── ML model path (if trained model exists) ────────────────────────
+        if self._ml_model is not None:
+            try:
+                from src.models.lstm_classifier import poses_to_sequence, SEQUENCE_LEN
+                # Build sequence: takeoff context + airborne frames
+                combined = takeoff_poses + seq
+                ml_seq   = poses_to_sequence(combined)
+                top3 = self._ml_model.predict_top3(ml_seq)
+                label, conf = top3[0]
+
+                # Map label (e.g. "Axel_3") back to JumpType + rotations hint
+                base = label.split("_")[0] if "_" in label else label
+                type_map = {
+                    "Axel": JumpType.AXEL, "Lutz": JumpType.LUTZ,
+                    "Flip": JumpType.FLIP, "Loop": JumpType.LOOP,
+                    "Salchow": JumpType.SALCHOW, "ToeLoop": JumpType.TOE_LOOP,
+                }
+                jt = type_map.get(base, JumpType.UNKNOWN)
+                if jt != JumpType.UNKNOWN and conf > 0.4:
+                    return jt, 45.0, conf
+            except Exception:
+                pass   # fall through to biomechanical rules
 
         tp = takeoff_poses[-1]   # last grounded frame before jump
         kps = tp['keypoints']
