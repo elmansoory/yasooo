@@ -66,6 +66,16 @@ if not exist "%APP_DIR%skating_database.db" (
 echo [OK] Database ready.
 
 echo.
+echo [3b/5] Merging Excel data into database...
+cd /d "%APP_DIR%"
+%PYTHON% merge_all_data.py >> "%LOG%" 2>&1
+if %errorlevel% neq 0 (
+    echo WARNING: Data merge had issues. Check launch.log for details.
+) else (
+    echo [OK] All Excel data merged.
+)
+
+echo.
 echo [4/5] Scanning device for video files...
 cd /d "%APP_DIR%"
 %PYTHON% setup_auto.py --scan-videos >> "%LOG%" 2>&1

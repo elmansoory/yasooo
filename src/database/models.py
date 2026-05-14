@@ -296,3 +296,97 @@ class Schedule(Base):
 
     def __repr__(self):
         return f"<Schedule(id={self.id}, day={self.day_of_week}, time={self.start_time})>"
+
+
+class SkatingElement(Base):
+    """قاعدة بيانات عناصر التزلج (قفزات، دورانات، خطوات) مع روابط YouTube"""
+    __tablename__ = 'skating_elements'
+
+    id             = Column(Integer, primary_key=True)
+    name_ar        = Column(String(100))
+    name_en        = Column(String(100), nullable=False, index=True)
+    isu_code       = Column(String(20), unique=True)
+    element_type   = Column(String(50))   # jump, spin, step, spiral, turn
+    sub_type       = Column(String(50))   # edge_jump, toe_jump, upright, sit, camel …
+    level          = Column(String(50))   # Beginner, Intermediate, Advanced
+    base_value     = Column(Float)
+    difficulty     = Column(String(10))   # ★★★ style
+    description    = Column(Text)
+    youtube_url    = Column(String(500))
+    notes          = Column(Text)
+    created_at     = Column(DateTime, default=datetime.utcnow)
+
+    skill_records  = relationship('PlayerSkill', back_populates='element',
+                                  cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f"<SkatingElement(code='{self.isu_code}', name='{self.name_en}')>"
+
+
+class PlayerSkill(Base):
+    """مستوى إتقان كل لاعب لكل عنصر (من FSE skills.xlsx)"""
+    __tablename__ = 'player_skills'
+
+    id          = Column(Integer, primary_key=True)
+    skater_id   = Column(Integer, ForeignKey('skaters.id'), nullable=False, index=True)
+    element_id  = Column(Integer, ForeignKey('skating_elements.id'), nullable=False)
+    achieved    = Column(Boolean, default=False)
+    score       = Column(Float)           # 0-100 if graded
+    assessed_by = Column(String(100))
+    assessed_at = Column(DateTime)
+    notes       = Column(Text)
+    created_at  = Column(DateTime, default=datetime.utcnow)
+
+    skater  = relationship('Skater',  backref='skills')
+    element = relationship('SkatingElement', back_populates='skill_records')
+
+    __table_args__ = (
+        Index('idx_skater_element', 'skater_id', 'element_id', unique=True),
+    )
+
+
+class Bundle(Base):
+    """باقات الاشتراك والأسعار (من Data.xlsx)"""
+    __tablename__ = 'bundles'
+
+    id           = Column(Integer, primary_key=True)
+    name         = Column(String(100), nullable=False, unique=True)
+    bundle_type  = Column(String(50))    # On-Ice, Off-Ice, Combined
+    hours        = Column(Integer)
+    price        = Column(Float)
+    rink         = Column(String(100))
+    group_level  = Column(String(100))
+    coach        = Column(String(100))
+    is_active    = Column(Boolean, default=True)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Bundle(name='{self.name}', price={self.price})>"
+
+
+class TrainingVideo(Base):
+    """فيديوهات تدريبية محملة أو مصنفة لتدريب النموذج"""
+    __tablename__ = 'training_videos'
+
+    id           = Column(Integer, primary_key=True)
+    filepath     = Column(String(500), unique=True)
+    filename     = Column(String(255))
+    source       = Column(String(50))    # local, youtube, uploaded
+    youtube_url  = Column(String(500))
+    element_id   = Column(Integer, ForeignKey('skating_elements.id'))
+    label        = Column(String(100))   # Axel_3, Sit, etc.
+    rotations    = Column(Integer)
+    duration     = Column(Float)
+    width        = Column(Integer)
+    height       = Column(Integer)
+    fps          = Column(Float)
+    size_mb      = Column(Float)
+    used_in_training = Column(Boolean, default=False)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+
+    element = relationship('SkatingElement', backref='training_videos')
+
+    __table_args__ = (
+        Index('idx_tv_label', 'label'),
+        Index('idx_tv_source', 'source'),
+    )

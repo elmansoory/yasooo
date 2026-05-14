@@ -834,6 +834,12 @@ def show_attendance():
 # ============================================================================
 
 def show_ml_training():
+    try:
+        from src.pages.model_training_page import show_model_training_page
+        show_model_training_page(lang=st.session_state.language)
+        return
+    except Exception:
+        pass
     st.header(t('ml_training'))
     if not CORE_AI_AVAILABLE:
         st.error(t('ai_not_available'))
