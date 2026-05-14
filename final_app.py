@@ -445,31 +445,39 @@ if CORE_AI_AVAILABLE:
 def init_db():
     conn = sqlite3.connect('skating_database.db')
     c = conn.cursor()
-    c.execute("""CREATE TABLE IF NOT EXISTS members (
-        member_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        birth_date TEXT,
+    # skaters, attendance, payments are created by merge_all_data.py
+    # Only ensure legacy tables exist so old code paths don't crash
+    c.execute("""CREATE TABLE IF NOT EXISTS skaters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        coach_name TEXT,
+        level TEXT,
+        bundle TEXT,
+        membership_status TEXT DEFAULT 'active',
         gender TEXT,
-        phone TEXT,
-        email TEXT,
-        skill_level TEXT,
         notes TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS attendance (
-        attendance_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        member_id INTEGER,
-        attendance_date TEXT,
-        notes TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        skater_name TEXT,
+        skater_id INTEGER,
+        date TEXT,
+        session_type TEXT,
+        status TEXT,
+        coach TEXT
     )""")
-    c.execute("""CREATE TABLE IF NOT EXISTS memberships (
-        membership_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        member_id INTEGER,
-        status TEXT DEFAULT 'نشط',
-        start_date TEXT,
-        end_date TEXT,
+    c.execute("""CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        skater_id INTEGER,
+        skater_name TEXT,
         amount REAL,
+        payment_date TEXT,
+        payment_method TEXT,
+        bundle_type TEXT,
+        discount REAL DEFAULT 0,
+        received_by TEXT,
+        status TEXT DEFAULT 'completed',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
     conn.commit()
@@ -487,7 +495,11 @@ def get_conn():
 def load_members():
     try:
         conn = get_conn()
-        df = pd.read_sql_query("SELECT * FROM members", conn)
+        df = pd.read_sql_query(
+            "SELECT id AS member_id, name, gender, level AS skill_level, "
+            "bundle, membership_status, coach_name, notes, created_at FROM skaters",
+            conn
+        )
         conn.close()
         return df
     except:
@@ -497,7 +509,11 @@ def load_members():
 def load_attendance():
     try:
         conn = get_conn()
-        df = pd.read_sql_query("SELECT * FROM attendance ORDER BY attendance_date DESC", conn)
+        df = pd.read_sql_query(
+            "SELECT id, skater_name, skater_id, date AS attendance_date, "
+            "session_type, status, coach FROM attendance ORDER BY date DESC",
+            conn
+        )
         conn.close()
         return df
     except:
@@ -507,7 +523,11 @@ def load_attendance():
 def load_memberships():
     try:
         conn = get_conn()
-        df = pd.read_sql_query("SELECT * FROM memberships", conn)
+        df = pd.read_sql_query(
+            "SELECT id, skater_id, skater_name, amount, payment_date, "
+            "bundle_type, status FROM payments ORDER BY payment_date DESC",
+            conn
+        )
         conn.close()
         return df
     except:
@@ -643,8 +663,10 @@ def show_home():
     with col3:
         st.metric(t('week_attendance'), week_att)
     with col4:
-        ai_status = "✅ Active" if CORE_AI_AVAILABLE else "⚠️ Off"
-        st.metric(t('ai_status'), ai_status)
+        active_count = 0
+        if 'membership_status' in members.columns:
+            active_count = len(members[members['membership_status'] == 'active'])
+        st.metric(t('active_subscriptions'), active_count)
 
     st.markdown("---")
 
@@ -699,16 +721,18 @@ def show_members():
         with col_search:
             search = st.text_input(t('search_members'), placeholder=t('name'), label_visibility='collapsed')
         with col_filter:
-            levels = [t('all_levels')] + [t('beginner'), t('intermediate'), t('advanced'), t('professional')]
+            all_label = t('all_levels')
+            actual_levels = sorted(members['skill_level'].dropna().unique().tolist()) if 'skill_level' in members.columns else []
+            levels = [all_label] + actual_levels
             selected_level = st.selectbox(t('filter_by_level'), levels, label_visibility='collapsed')
 
         filtered = members.copy()
         if search:
             filtered = filtered[filtered['name'].str.contains(search, case=False, na=False)]
-        if selected_level != t('all_levels') and 'skill_level' in filtered.columns:
+        if selected_level != all_label and 'skill_level' in filtered.columns:
             filtered = filtered[filtered['skill_level'] == selected_level]
 
-        display_cols = [c for c in ['name', 'age', 'gender', 'phone', 'email', 'skill_level'] if c in filtered.columns]
+        display_cols = [c for c in ['name', 'gender', 'skill_level', 'bundle', 'membership_status', 'coach_name'] if c in filtered.columns]
         if display_cols:
             st.dataframe(filtered[display_cols], use_container_width=True, height=350)
 
@@ -716,38 +740,106 @@ def show_members():
         with col1:
             st.metric(t('total_members'), len(filtered))
         if 'gender' in members.columns:
+            male_vals = ['Male', 'ذكر', 'Männlich', 'Masculino', 'Мужской']
+            female_vals = ['Female', 'أنثى', 'Weiblich', 'Femenino', 'Женский']
             with col2:
-                st.metric(t('male'), len(members[members['gender'] == t('male')]))
+                st.metric(t('male'), len(members[members['gender'].isin(male_vals)]))
             with col3:
-                st.metric(t('female'), len(members[members['gender'] == t('female')]))
+                st.metric(t('female'), len(members[members['gender'].isin(female_vals)]))
     else:
         st.info(t('no_members'))
+
+    # ── Member profile detail ────────────────────────────────────────────────
+    if len(members) > 0 and 'name' in members.columns:
+        st.markdown("---")
+        st.subheader("👤 " + ("ملف اللاعب التفصيلي" if st.session_state.language == 'ar' else "Player Profile"))
+        selected_profile = st.selectbox(
+            "اختر لاعباً" if st.session_state.language == 'ar' else "Select player",
+            ["—"] + sorted(members['name'].tolist()),
+            key="profile_select"
+        )
+        if selected_profile != "—":
+            row = members[members['name'] == selected_profile].iloc[0]
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.metric("Level", row.get('skill_level') or '—')
+            with c2:
+                st.metric("Bundle", row.get('bundle') or '—')
+            with c3:
+                st.metric("Status", row.get('membership_status') or '—')
+            if row.get('coach_name'):
+                st.write(f"**Coach:** {row['coach_name']}")
+
+            # Attendance history for this player
+            try:
+                conn = get_conn()
+                att_df = pd.read_sql_query(
+                    "SELECT date AS attendance_date, session_type, status FROM attendance "
+                    "WHERE skater_name=? ORDER BY date DESC LIMIT 30",
+                    conn, params=(selected_profile,)
+                )
+                conn.close()
+                if len(att_df) > 0:
+                    total = len(att_df)
+                    present = len(att_df[att_df['status'] == 'present'])
+                    rate = round(present / total * 100) if total > 0 else 0
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Total Sessions", total)
+                    c2.metric("Present", present)
+                    c3.metric("Attendance Rate", f"{rate}%")
+                    st.dataframe(att_df, use_container_width=True, height=200)
+            except Exception:
+                pass
+
+            # Skills from player_skills
+            try:
+                conn = get_conn()
+                skills_df = pd.read_sql_query(
+                    "SELECT element_name, fse_level, achieved FROM player_skills "
+                    "WHERE skater_name=? ORDER BY fse_level, element_name",
+                    conn, params=(selected_profile,)
+                )
+                conn.close()
+                if len(skills_df) > 0:
+                    st.write(f"**Skills ({len(skills_df)} elements):**")
+                    achieved = skills_df[skills_df['achieved'] == 1]
+                    pending = skills_df[skills_df['achieved'] != 1]
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.success(f"✅ Achieved: {len(achieved)}")
+                        if len(achieved) > 0:
+                            st.dataframe(achieved[['element_name', 'fse_level']], use_container_width=True, height=180)
+                    with c2:
+                        st.warning(f"⏳ Pending: {len(pending)}")
+                        if len(pending) > 0:
+                            st.dataframe(pending[['element_name', 'fse_level']], use_container_width=True, height=180)
+            except Exception:
+                pass
 
     with st.expander(t('add_member')):
         with st.form("add_member"):
             name = st.text_input(t('name') + " *")
             col1, col2 = st.columns(2)
             with col1:
-                birth_date = st.date_input(t('age'))
-            with col2:
                 gender = st.selectbox(t('gender'), [t('male'), t('female')])
+            with col2:
+                level = st.selectbox(t('skill_level'),
+                                     ['Beta', 'Gamma', 'Delta', 'Pre-Freestyle', 'Freestyle'])
             col1, col2 = st.columns(2)
             with col1:
-                phone = st.text_input(t('phone'))
+                coach_name = st.text_input('Coach')
             with col2:
-                email = st.text_input(t('email'))
-            skill_level = st.selectbox(t('skill_level'),
-                                       [t('beginner'), t('intermediate'), t('advanced'), t('professional')])
+                bundle = st.text_input('Bundle')
             notes = st.text_area(t('notes'))
             submitted = st.form_submit_button(t('save'))
             if submitted and name:
                 try:
                     conn = get_conn()
                     c = conn.cursor()
-                    c.execute("""INSERT INTO members
-                               (name, birth_date, gender, phone, email, skill_level, notes)
-                               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                              (name, str(birth_date), gender, phone, email, skill_level, notes))
+                    c.execute("""INSERT OR IGNORE INTO skaters
+                               (name, gender, level, coach_name, bundle, notes)
+                               VALUES (?, ?, ?, ?, ?, ?)""",
+                              (name, gender, level, coach_name, bundle, notes))
                     conn.commit()
                     conn.close()
                     invalidate_cache()
@@ -792,18 +884,22 @@ def show_attendance():
             st.warning(t('no_members'))
         else:
             with st.form("record_attendance"):
-                member_options = {row['name']: row['member_id'] for _, row in members.iterrows()} if 'name' in members.columns and 'member_id' in members.columns else {}
-                selected_name = st.selectbox(t('select_member'), list(member_options.keys()))
+                skater_names = sorted(members['name'].tolist()) if 'name' in members.columns else []
+                selected_name = st.selectbox(t('select_member'), skater_names)
                 att_date = st.date_input(t('attendance_date'), value=date.today())
-                att_note = st.text_input(t('attendance_note'))
+                session_type = st.selectbox('Session', ['on-ice', 'off-ice', 'competition'])
+                att_status = st.selectbox('Status', ['present', 'absent', 'late', 'excused'])
                 submitted = st.form_submit_button(t('record_attendance'))
                 if submitted and selected_name:
                     try:
                         conn = get_conn()
                         c = conn.cursor()
-                        c.execute("""INSERT INTO attendance (member_id, attendance_date, notes)
-                                     VALUES (?, ?, ?)""",
-                                  (member_options[selected_name], str(att_date), att_note))
+                        # Get skater id if exists
+                        row = conn.execute("SELECT id FROM skaters WHERE name=?", (selected_name,)).fetchone()
+                        skater_id = row[0] if row else None
+                        c.execute("""INSERT INTO attendance (skater_name, skater_id, date, session_type, status)
+                                     VALUES (?, ?, ?, ?, ?)""",
+                                  (selected_name, skater_id, str(att_date), session_type, att_status))
                         conn.commit()
                         conn.close()
                         invalidate_cache()
@@ -816,14 +912,9 @@ def show_attendance():
     if len(attendance) > 0:
         st.subheader(t('recent_attendance'))
         try:
-            att_display = attendance.copy()
-            if len(members) > 0 and 'member_id' in att_display.columns and 'member_id' in members.columns:
-                att_display = att_display.merge(
-                    members[['member_id', 'name']], on='member_id', how='left'
-                )
-            cols_to_show = [c for c in ['name', 'attendance_date', 'notes'] if c in att_display.columns]
+            cols_to_show = [c for c in ['skater_name', 'attendance_date', 'session_type', 'status', 'coach'] if c in attendance.columns]
             if cols_to_show:
-                st.dataframe(att_display[cols_to_show].head(30), use_container_width=True)
+                st.dataframe(attendance[cols_to_show].head(50), use_container_width=True)
         except Exception as e:
             st.error(f"Display error: {e}")
     else:
@@ -849,12 +940,14 @@ def show_ml_training():
     st.info("Upload a video to analyze skating performance")
 
 def show_referee():
-    st.header(t('referee'))
-    if not CORE_AI_AVAILABLE:
-        st.error(t('ai_not_available'))
-        st.code("pip install mediapipe opencv-python numpy")
-        return
-    st.success("✅ Referee interface ready!")
+    try:
+        from src.pages.referee_testing_interface import show_referee_testing_interface
+        show_referee_testing_interface()
+    except Exception as e:
+        st.header(t('referee'))
+        st.error(f"تعذّر تحميل واجهة الحكام: {e}")
+        if not CORE_AI_AVAILABLE:
+            st.code("pip install mediapipe opencv-python numpy tensorflow")
 
 def show_my_videos():
     try:
@@ -1005,26 +1098,48 @@ def show_stats():
             st.plotly_chart(fig, use_container_width=True)
 
     # Top attending members
-    if len(attendance) > 0 and 'member_id' in attendance.columns and len(members) > 0:
+    if len(attendance) > 0 and 'skater_name' in attendance.columns:
         st.subheader(t('attendance_by_member'))
-        top = attendance.groupby('member_id').size().reset_index(name='sessions')
-        if 'member_id' in members.columns and 'name' in members.columns:
-            top = top.merge(members[['member_id', 'name']], on='member_id', how='left')
-            top = top.sort_values('sessions', ascending=False).head(10)
-            fig = px.bar(
-                top, x='name', y='sessions',
-                color='sessions',
-                color_continuous_scale=['#667eea', '#764ba2'],
-                labels={'name': '', 'sessions': ''},
-            )
-            fig.update_layout(
-                margin=dict(l=0, r=0, t=10, b=0),
-                height=300,
-                coloraxis_showscale=False,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-            )
-            st.plotly_chart(fig, use_container_width=True)
+        top = attendance.groupby('skater_name').size().reset_index(name='sessions')
+        top = top.sort_values('sessions', ascending=False).head(10)
+        fig = px.bar(
+            top, x='skater_name', y='sessions',
+            color='sessions',
+            color_continuous_scale=['#667eea', '#764ba2'],
+            labels={'skater_name': '', 'sessions': ''},
+        )
+        fig.update_layout(
+            margin=dict(l=0, r=0, t=10, b=0),
+            height=300,
+            coloraxis_showscale=False,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Payments overview
+    try:
+        conn = get_conn()
+        pay_df = pd.read_sql_query(
+            "SELECT bundle_type, SUM(amount) as total, COUNT(*) as count "
+            "FROM payments GROUP BY bundle_type ORDER BY total DESC",
+            conn
+        )
+        conn.close()
+        if len(pay_df) > 0:
+            st.subheader("💰 " + ("توزيع الباقات" if st.session_state.language == 'ar' else "Bundle Distribution"))
+            col1, col2 = st.columns(2)
+            with col1:
+                fig = px.pie(pay_df, values='count', names='bundle_type',
+                             color_discrete_sequence=px.colors.sequential.Purples_r)
+                fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), height=280)
+                st.plotly_chart(fig, use_container_width=True)
+            with col2:
+                total_rev = pay_df['total'].sum()
+                st.metric("Total Revenue", f"{total_rev:,.0f} EGP")
+                st.dataframe(pay_df, use_container_width=True)
+    except Exception:
+        pass
 
 # ============================================================================
 # SETTINGS PAGE
