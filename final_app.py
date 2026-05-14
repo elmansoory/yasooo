@@ -38,6 +38,7 @@ TRANSLATIONS = {
         'ml_training': '🤖 تدريب النموذج ⭐',
         'referee': '🏅 واجهة الحكام',
         'video_analysis': '🎥 تحليل الفيديو',
+        'my_videos': '🎬 فيديوهاتي',
         'stats': '📈 الإحصائيات',
         'settings': '⚙️ الإعدادات',
         'language': '🌐 اللغة',
@@ -103,6 +104,7 @@ TRANSLATIONS = {
         'ml_training': '🤖 ML Training ⭐',
         'referee': '🏅 Referee Interface',
         'video_analysis': '🎥 Video Analysis',
+        'my_videos': '🎬 My Videos',
         'stats': '📈 Statistics',
         'settings': '⚙️ Settings',
         'language': '🌐 Language',
@@ -600,6 +602,7 @@ _nav_pages = [
     t('members'),
     t('attendance'),
     t('video_analysis'),
+    t('my_videos'),
     t('realtime'),
     t('player_progress'),
     t('analysis_history'),
@@ -847,6 +850,14 @@ def show_referee():
         return
     st.success("✅ Referee interface ready!")
 
+def show_my_videos():
+    try:
+        from src.pages.my_videos_page import show_my_videos as _show
+        _show(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في تحميل الصفحة: {e}")
+
+
 def show_video_analysis():
     try:
         from src.pages.video_analysis_page import show_video_analysis_page
@@ -1053,6 +1064,7 @@ _ROUTER = {
     t('members'):         show_members,
     t('attendance'):      show_attendance,
     t('video_analysis'):  show_video_analysis,
+    t('my_videos'):       show_my_videos,
     t('realtime'):        show_realtime,
     t('player_progress'): show_player_progress,
     t('analysis_history'):show_player_progress,
