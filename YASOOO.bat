@@ -1,19 +1,14 @@
 @echo off
 chcp 65001 >nul 2>&1
-title ياسو - نظام تحليل التزلج
+title YASOOO - Figure Skating Analysis System
 color 0A
 cls
 
-:: ================================================================
-::   YASOOO — Figure Skating Analysis System
-::   تشغيل تلقائي كامل بدون أي تدخل
-:: ================================================================
-
 echo.
-echo  ╔══════════════════════════════════════════════════╗
-echo  ║         نظام تحليل التزلج الفني  YASOOO         ║
-echo  ║          Figure Skating Analysis System          ║
-echo  ╚══════════════════════════════════════════════════╝
+echo ================================================
+echo   YASOOO - Figure Skating Analysis System
+echo   نظام تحليل التزلج الفني
+echo ================================================
 echo.
 
 set "APP_DIR=%~dp0"
@@ -22,70 +17,67 @@ set "PIP=py -3.11 -m pip"
 set "STREAMLIT=py -3.11 -m streamlit"
 set "LOG=%APP_DIR%launch.log"
 
-:: ── تحقق من Python 3.11 ────────────────────────────────────────
-echo  [1/5] التحقق من Python 3.11...
+echo [1/5] Checking Python 3.11...
 %PYTHON% --version >nul 2>&1
 if %errorlevel% neq 0 (
     color 0C
     echo.
-    echo  ╔══════════════════════════════════════════════════╗
-    echo  ║  Python 3.11 غير مثبت — يرجى تثبيته أولاً       ║
-    echo  ║  https://www.python.org/downloads/release/python-3119/   ║
-    echo  ║  python-3.11.9-amd64.exe                        ║
-    echo  ╚══════════════════════════════════════════════════╝
+    echo ERROR: Python 3.11 is not installed.
+    echo.
+    echo Please download and install it from:
+    echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
+    echo.
+    echo Make sure to check "Add Python to PATH" during installation.
     echo.
     pause
     exit /b 1
 )
-echo  [✓] Python 3.11 جاهز
+echo [OK] Python 3.11 found.
 
-:: ── تثبيت المكتبات تلقائياً إذا ناقصة ────────────────────────
-echo  [2/5] التحقق من المكتبات...
+echo.
+echo [2/5] Checking required libraries...
 %PYTHON% -c "import streamlit, plotly, pandas, numpy, cv2" >nul 2>&1
 if %errorlevel% neq 0 (
-    echo  ... تثبيت المكتبات الأساسية تلقائياً
+    echo Installing missing libraries... (this may take a few minutes)
     %PIP% install --quiet --upgrade pip >> "%LOG%" 2>&1
     %PIP% install --quiet streamlit plotly pandas numpy opencv-python openpyxl sqlalchemy >> "%LOG%" 2>&1
     if %errorlevel% neq 0 (
-        echo  [!] بعض المكتبات فشلت — انظر launch.log للتفاصيل
+        echo WARNING: Some libraries failed. Check launch.log for details.
     )
 )
 
-:: تثبيت mediapipe اختياري (يفشل بصمت إذا غير متاح)
 %PYTHON% -c "import mediapipe" >nul 2>&1
 if %errorlevel% neq 0 (
-    echo  ... تثبيت mediapipe للتحليل المتقدم...
+    echo Installing mediapipe for AI analysis...
     %PIP% install --quiet "mediapipe==0.10.14" >> "%LOG%" 2>&1
 )
-echo  [✓] المكتبات جاهزة
+echo [OK] Libraries ready.
 
-:: ── إعداد قاعدة البيانات إذا غير موجودة ─────────────────────
-echo  [3/5] التحقق من قاعدة البيانات...
+echo.
+echo [3/5] Checking database...
 if not exist "%APP_DIR%skating_database.db" (
-    echo  ... إنشاء قاعدة البيانات وإستيراد البيانات...
+    echo Creating database...
     cd /d "%APP_DIR%"
     %PYTHON% import_all_data.py >> "%LOG%" 2>&1
     if %errorlevel% neq 0 (
-        echo  [!] استيراد البيانات فشل — سيتم إنشاء قاعدة بيانات فارغة
+        echo WARNING: Data import failed. Starting with empty database.
     )
 )
-echo  [✓] قاعدة البيانات جاهزة
+echo [OK] Database ready.
 
-:: ── مسح الفيديوهات تلقائياً ──────────────────────────────────
-echo  [4/5] مسح الفيديوهات على الجهاز...
+echo.
+echo [4/5] Scanning device for video files...
 cd /d "%APP_DIR%"
 %PYTHON% setup_auto.py --scan-videos >> "%LOG%" 2>&1
-echo  [✓] اكتمل مسح الفيديوهات — راجع التطبيق لعرض النتائج
+echo [OK] Video scan complete. Check the app to see results.
 
-:: ── تشغيل التطبيق ────────────────────────────────────────────
-echo  [5/5] تشغيل التطبيق...
 echo.
-echo  ╔══════════════════════════════════════════════════╗
-echo  ║  سيفتح المتصفح تلقائياً على:                    ║
-echo  ║  http://localhost:8501                           ║
-echo  ║                                                  ║
-echo  ║  للإيقاف: اضغط Ctrl+C في هذه النافذة           ║
-echo  ╚══════════════════════════════════════════════════╝
+echo [5/5] Launching application...
+echo.
+echo ================================================
+echo   Opening browser at: http://localhost:8501
+echo   Press Ctrl+C in this window to stop the app.
+echo ================================================
 echo.
 
 cd /d "%APP_DIR%"
