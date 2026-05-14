@@ -48,7 +48,7 @@ def create_tables(conn):
     conn.executescript("""
     CREATE TABLE IF NOT EXISTS skaters (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
+        name TEXT NOT NULL UNIQUE,
         coach_name TEXT,
         level TEXT,
         bundle TEXT,
@@ -66,7 +66,7 @@ def create_tables(conn):
         session_type TEXT DEFAULT 'on-ice',
         status TEXT DEFAULT 'present',
         coach TEXT,
-        recorded_by TEXT
+        UNIQUE(skater_name, date, session_type)
     );
 
     CREATE TABLE IF NOT EXISTS payments (
@@ -256,12 +256,27 @@ def import_memberships(conn, dry_run=False):
 
 
 # ── 2. Attendance files ────────────────────────────────────────────────────
+#
+# Actual format (verified by inspection):
+#   Row 0:  date1, None, None, date2, None, None, date3, ...   (every 3 cols)
+#   Row 1:  Off-ice, On-ice, Coach,  Off-ice, On-ice, Coach, ...
+#   Row 2+: for each date group (3 cols):
+#             col[i+0] = player nickname / None  (off-ice)
+#             col[i+1] = player full name / None (on-ice)
+#             col[i+2] = coach name / None
+#   Presence of a non-None name = player attended that session that day.
+
+COACH_NAMES = {
+    'ahmed saad','esraa nabil','clara amgad','hajar munir',
+    'eman moustafa','maryam mohamed','julia','coach','trainer',
+    'ahmed','esraa','clara','hajar','eman','maryam',
+}
+
+def _is_coach(name: str) -> bool:
+    return name.lower().strip() in COACH_NAMES or name.lower().startswith('coach')
+
 
 def import_attendance_wide(conn, path, dry_run=False):
-    """
-    Wide-format attendance: row 0 = dates, row 1 = Off-ice/On-ice/Coach headers,
-    row 2 = first coach row, row 3+ = skater names with Y/present values.
-    """
     wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
     ws = wb.worksheets[0]
     rows = list(ws.iter_rows(values_only=True))
@@ -270,44 +285,91 @@ def import_attendance_wide(conn, path, dry_run=False):
     if len(rows) < 3:
         return 0
 
-    # Row 0: dates in columns 1+
-    date_row   = rows[0]
-    # Row 1: Off-ice / On-ice / Coach repeating
-    type_row   = rows[1]
+    date_row = rows[0]   # dates at cols 0, 3, 6, ...
+    type_row = rows[1]   # Off-ice, On-ice, Coach repeating
 
-    # Build column map: col_idx → (date_str, session_type)
-    col_map = {}
+    # Build: col_idx → (date_str, 'on-ice'|'off-ice')
+    col_map: dict = {}
     current_date = None
     for ci, val in enumerate(date_row):
-        if ci == 0:
-            continue
         if val:
             current_date = to_date(val)
-        session_type = clean(type_row[ci]) if ci < len(type_row) else None
-        if session_type and session_type.lower() in ('on-ice', 'off-ice', 'off ice', 'on ice'):
-            st = 'on-ice' if 'on' in session_type.lower() else 'off-ice'
-            col_map[ci] = (current_date, st)
+        stype_raw = clean(type_row[ci]) if ci < len(type_row) else None
+        if not stype_raw or stype_raw.lower() == 'coach':
+            continue
+        if 'on' in stype_raw.lower():
+            col_map[ci] = (current_date, 'on-ice')
+        elif 'off' in stype_raw.lower():
+            col_map[ci] = (current_date, 'off-ice')
 
     added = 0
+    # Rows 2+ contain player names as VALUES in the session columns
     for row in rows[2:]:
-        name = normalize_name(row[0])
-        if not name or name.lower() in ('coach', 'trainer', ''):
-            continue
         for ci, (date_str, stype) in col_map.items():
-            if not date_str:
+            if not date_str or ci >= len(row):
                 continue
-            val = clean(row[ci]) if ci < len(row) else None
-            if val and val.lower() not in ('0', 'no', 'absent', '', 'none'):
-                if not dry_run:
-                    conn.execute("""
-                        INSERT OR IGNORE INTO attendance
-                          (skater_name, date, session_type, status)
-                        VALUES (?, ?, ?, 'present')
-                    """, (name, date_str, stype))
-                    conn.execute("""
-                        INSERT OR IGNORE INTO skaters (name) VALUES (?)
-                    """, (name,))
-                added += 1
+            val = clean(row[ci])
+            if not val:
+                continue
+            name = normalize_name(val)
+            if not name or _is_coach(name):
+                continue
+            coach_ci = ci + 1  # Coach is the next column after On-ice / Off-ice
+            coach = clean(row[coach_ci]) if coach_ci < len(row) else None
+            if coach and _is_coach(coach):
+                coach = normalize_name(coach)
+            else:
+                coach = None
+
+            if not dry_run:
+                conn.execute("INSERT OR IGNORE INTO skaters (name) VALUES (?)", (name,))
+                conn.execute("""
+                    INSERT OR IGNORE INTO attendance
+                      (skater_name, date, session_type, status, coach)
+                    VALUES (?, ?, ?, 'present', ?)
+                """, (name, date_str, stype, coach))
+            added += 1
+
+    if not dry_run:
+        conn.commit()
+    return added
+
+
+def import_office_attendance(conn, path, dry_run=False):
+    """
+    Off-Ice format: Row 0 = dates across all columns,
+    Rows 1+ = player names in each date column (non-None = attended).
+    """
+    wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
+    ws = wb.worksheets[0]
+    rows = list(ws.iter_rows(values_only=True))
+    wb.close()
+
+    if len(rows) < 2:
+        return 0
+
+    date_row = rows[0]
+    dates = [to_date(v) if v else None for v in date_row]
+
+    added = 0
+    for row in rows[1:]:
+        for ci, date_str in enumerate(dates):
+            if not date_str or ci >= len(row):
+                continue
+            val = clean(row[ci])
+            if not val:
+                continue
+            name = normalize_name(val)
+            if not name or _is_coach(name):
+                continue
+            if not dry_run:
+                conn.execute("INSERT OR IGNORE INTO skaters (name) VALUES (?)", (name,))
+                conn.execute("""
+                    INSERT OR IGNORE INTO attendance
+                      (skater_name, date, session_type, status)
+                    VALUES (?, ?, 'off-ice', 'present')
+                """, (name, date_str))
+            added += 1
 
     if not dry_run:
         conn.commit()
@@ -315,19 +377,23 @@ def import_attendance_wide(conn, path, dry_run=False):
 
 
 def import_all_attendance(conn, dry_run=False):
-    files = [
-        ROOT / "August 2025 Attendence.xlsx",
-        ROOT / "October 2025 Attendence.xlsx",
-        ROOT / "Off-Ice Attendence.xlsx",
-    ]
     total = 0
-    for f in files:
+    for f in [ROOT / "August 2025 Attendence.xlsx",
+              ROOT / "October 2025 Attendence.xlsx"]:
         if f.exists():
             n = import_attendance_wide(conn, f, dry_run)
             print(f"  Attendance {f.name}: {n} records")
             total += n
         else:
             print(f"  [skip] {f.name} not found")
+
+    off = ROOT / "Off-Ice Attendence.xlsx"
+    if off.exists():
+        n = import_office_attendance(conn, off, dry_run)
+        print(f"  Attendance Off-Ice: {n} records")
+        total += n
+    else:
+        print(f"  [skip] Off-Ice Attendence.xlsx not found")
     return total
 
 
@@ -415,8 +481,11 @@ def import_fse_skills(conn, dry_run=False):
     skills_added = 0
     for row in rows[2:]:
         name = normalize_name(row[0])
-        if not name:
+        if not name or name.lower() in ('skills', 'testing level'):
             continue
+        # Insert skater ONCE per player row — not inside the skill loop
+        if not dry_run:
+            conn.execute("INSERT OR IGNORE INTO skaters (name) VALUES (?)", (name,))
         for ci, (fse_level, skill_name) in col_map.items():
             val = clean(row[ci]) if ci < len(row) else None
             achieved = 1 if val and val.upper() in ('Y', 'YES', '1', 'TRUE', '✓') else 0
@@ -426,9 +495,6 @@ def import_fse_skills(conn, dry_run=False):
                       (skater_name, element_name, fse_level, achieved)
                     VALUES (?, ?, ?, ?)
                 """, (name, skill_name, fse_level, achieved))
-                conn.execute("""
-                    INSERT OR IGNORE INTO skaters (name) VALUES (?)
-                """, (name,))
             skills_added += 1
 
     if not dry_run:
