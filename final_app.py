@@ -677,22 +677,46 @@ def show_home():
 
     st.markdown("---")
 
+    col1, col2 = st.columns(2)
+
     # Attendance trend chart
-    if len(attendance) > 0 and 'attendance_date' in attendance.columns:
-        st.subheader(t('attendance_trend'))
-        cutoff = (date.today() - timedelta(days=30)).isoformat()
-        recent = attendance[attendance['attendance_date'] >= cutoff].copy()
-        if len(recent) > 0:
-            trend = recent.groupby('attendance_date').size().reset_index(name='count')
-            trend['attendance_date'] = pd.to_datetime(trend['attendance_date'])
+    with col1:
+        if len(attendance) > 0 and 'attendance_date' in attendance.columns:
+            st.subheader(t('attendance_trend'))
+            cutoff = (date.today() - timedelta(days=30)).isoformat()
+            recent = attendance[attendance['attendance_date'] >= cutoff].copy()
+            if len(recent) > 0:
+                trend = recent.groupby('attendance_date').size().reset_index(name='count')
+                trend['attendance_date'] = pd.to_datetime(trend['attendance_date'])
+                fig = px.bar(
+                    trend, x='attendance_date', y='count',
+                    color_discrete_sequence=['#667eea'],
+                    labels={'attendance_date': '', 'count': ''},
+                )
+                fig.update_layout(
+                    margin=dict(l=0, r=0, t=10, b=0),
+                    height=220,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+    # Level distribution
+    with col2:
+        if len(members) > 0 and 'skill_level' in members.columns and members['skill_level'].notna().any():
+            st.subheader(t('members_by_level'))
+            level_counts = members['skill_level'].value_counts().reset_index()
+            level_counts.columns = ['level', 'count']
             fig = px.bar(
-                trend, x='attendance_date', y='count',
-                color_discrete_sequence=['#667eea'],
-                labels={'attendance_date': '', 'count': ''},
+                level_counts, x='level', y='count',
+                color='count',
+                color_continuous_scale=['#667eea', '#764ba2'],
+                labels={'level': '', 'count': ''},
             )
             fig.update_layout(
                 margin=dict(l=0, r=0, t=10, b=0),
                 height=220,
+                coloraxis_showscale=False,
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
             )
@@ -915,13 +939,62 @@ def show_attendance():
                     except Exception as e:
                         st.error(f"{t('error')}: {str(e)}")
 
-    # Recent attendance table
+    # Attendance analytics
     if len(attendance) > 0:
+        st.markdown("---")
+
+        # Session type breakdown
+        if 'session_type' in attendance.columns and attendance['session_type'].notna().any():
+            col1, col2 = st.columns(2)
+            with col1:
+                type_counts = attendance['session_type'].value_counts().reset_index()
+                type_counts.columns = ['type', 'count']
+                fig = px.pie(type_counts, values='count', names='type',
+                             title="On-Ice vs Off-Ice",
+                             color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
+                fig.update_layout(height=260, margin=dict(l=0,r=0,t=40,b=0))
+                st.plotly_chart(fig, use_container_width=True)
+            with col2:
+                if 'attendance_date' in attendance.columns:
+                    cutoff = (date.today() - timedelta(days=60)).isoformat()
+                    trend = attendance[attendance['attendance_date'] >= cutoff].copy()
+                    if len(trend) > 0:
+                        t_grp = trend.groupby('attendance_date').size().reset_index(name='count')
+                        t_grp['attendance_date'] = pd.to_datetime(t_grp['attendance_date'])
+                        fig = px.bar(t_grp, x='attendance_date', y='count',
+                                     title="الحضور خلال 60 يوم",
+                                     color_discrete_sequence=['#667eea'],
+                                     labels={'attendance_date': '', 'count': ''})
+                        fig.update_layout(height=260, margin=dict(l=0,r=0,t=40,b=0),
+                                          plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig, use_container_width=True)
+
         st.subheader(t('recent_attendance'))
+
+        # Filters
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            search_att = st.text_input("🔍 " + t('search_members'), key="att_search")
+        with col_f2:
+            sess_types = ['All'] + sorted(attendance['session_type'].dropna().unique().tolist()) if 'session_type' in attendance.columns else ['All']
+            sel_type = st.selectbox("Session Type", sess_types, key="att_type")
+        with col_f3:
+            statuses = ['All'] + sorted(attendance['status'].dropna().unique().tolist()) if 'status' in attendance.columns else ['All']
+            sel_status = st.selectbox("Status", statuses, key="att_status")
+
+        display_att = attendance.copy()
+        if search_att:
+            display_att = display_att[display_att['skater_name'].str.contains(search_att, case=False, na=False)]
+        if sel_type != 'All' and 'session_type' in display_att.columns:
+            display_att = display_att[display_att['session_type'] == sel_type]
+        if sel_status != 'All' and 'status' in display_att.columns:
+            display_att = display_att[display_att['status'] == sel_status]
+
         try:
-            cols_to_show = [c for c in ['skater_name', 'attendance_date', 'session_type', 'status', 'coach'] if c in attendance.columns]
+            cols_to_show = [c for c in ['skater_name', 'attendance_date', 'session_type', 'status', 'coach'] if c in display_att.columns]
             if cols_to_show:
-                st.dataframe(attendance[cols_to_show].head(50), use_container_width=True)
+                st.dataframe(display_att[cols_to_show].head(100), use_container_width=True, height=350)
+            st.caption(f"Showing {min(100, len(display_att))} of {len(display_att)} records")
         except Exception as e:
             st.error(f"Display error: {e}")
     else:
