@@ -93,6 +93,7 @@ TRANSLATIONS = {
         'no_attendance': 'لا توجد سجلات حضور',
         'player_progress': '📈 تقدم اللاعبين',
         'analysis_history': '🗂️ سجل التحليل',
+        'payments': '💰 المدفوعات',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -161,6 +162,7 @@ TRANSLATIONS = {
         'analysis_history': '🗂️ Analysis History',
         'realtime': '📷 Real-Time Analysis',
         'club_mgmt': '🏢 Club Management',
+        'payments': '💰 Payments',
         'logout': 'Logout',
         'login': 'Login',
         'username': 'Username',
@@ -214,6 +216,7 @@ TRANSLATIONS = {
         'no_attendance': 'Aucune présence enregistrée',
         'player_progress': '📈 Progrès Joueurs',
         'analysis_history': '🗂️ Historique Analyses',
+        'payments': '💰 Paiements',
         'realtime': '📷 Analyse Temps Réel',
         'club_mgmt': '🏢 Gestion Club',
         'logout': 'Déconnexion', 'login': 'Connexion',
@@ -267,6 +270,7 @@ TRANSLATIONS = {
         'no_attendance': 'Keine Anwesenheiten',
         'player_progress': '📈 Spielerfortschritt',
         'analysis_history': '🗂️ Analysehistorie',
+        'payments': '💰 Zahlungen',
         'realtime': '📷 Echtzeit-Analyse',
         'club_mgmt': '🏢 Club-Verwaltung',
         'logout': 'Abmelden', 'login': 'Anmelden',
@@ -320,6 +324,7 @@ TRANSLATIONS = {
         'no_attendance': 'Нет записей посещений',
         'player_progress': '📈 Прогресс игроков',
         'analysis_history': '🗂️ История анализов',
+        'payments': '💰 Платежи',
         'realtime': '📷 Анализ в реальном времени',
         'club_mgmt': '🏢 Управление клубом',
         'logout': 'Выйти', 'login': 'Войти',
@@ -373,6 +378,7 @@ TRANSLATIONS = {
         'no_attendance': 'Sin registros de asistencia',
         'player_progress': '📈 Progreso Jugadores',
         'analysis_history': '🗂️ Historial Análisis',
+        'payments': '💰 Pagos',
         'realtime': '📷 Análisis Tiempo Real',
         'club_mgmt': '🏢 Gestión Club',
         'logout': 'Cerrar Sesión', 'login': 'Iniciar Sesión',
@@ -621,6 +627,7 @@ _nav_pages = [
     t('home'),
     t('members'),
     t('attendance'),
+    t('payments'),
     t('video_analysis'),
     t('my_videos'),
     t('realtime'),
@@ -1177,6 +1184,123 @@ def show_settings():
         st.code("pip install mediapipe opencv-python numpy")
 
 # ============================================================================
+# PAYMENTS PAGE
+# ============================================================================
+
+def show_payments():
+    is_ar = st.session_state.language == 'ar'
+    st.header(t('payments'))
+
+    try:
+        conn = get_conn()
+        pay_df = pd.read_sql_query(
+            "SELECT skater_name, amount, payment_date, payment_method, "
+            "bundle_type, discount, received_by, status FROM payments ORDER BY payment_date DESC",
+            conn
+        )
+        bundles_df = pd.read_sql_query(
+            "SELECT name, hours, price, rink, group_level, coach FROM bundles",
+            conn
+        )
+        conn.close()
+    except Exception as e:
+        st.error(f"DB error: {e}")
+        return
+
+    # Summary metrics
+    total_rev = pay_df['amount'].sum() if len(pay_df) > 0 else 0
+    avg_pay   = pay_df['amount'].mean() if len(pay_df) > 0 else 0
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("إجمالي المدفوعات" if is_ar else "Total Revenue",  f"{total_rev:,.0f} EGP")
+    c2.metric("عدد المدفوعات" if is_ar else "# Payments",         len(pay_df))
+    c3.metric("متوسط الدفعة" if is_ar else "Avg Payment",         f"{avg_pay:,.0f} EGP")
+    c4.metric("عدد الباقات" if is_ar else "# Bundles",            len(bundles_df))
+
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+
+    # Bundle chart
+    with col1:
+        if len(pay_df) > 0 and pay_df['bundle_type'].notna().any():
+            bc = pay_df['bundle_type'].value_counts().reset_index()
+            bc.columns = ['bundle', 'count']
+            fig = px.bar(bc, x='bundle', y='count',
+                         color='count', color_continuous_scale=['#667eea', '#764ba2'],
+                         title="توزيع الباقات" if is_ar else "Bundle Distribution",
+                         labels={'bundle': '', 'count': ''})
+            fig.update_layout(height=280, margin=dict(l=0,r=0,t=40,b=0),
+                               coloraxis_showscale=False,
+                               plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Payment method pie
+    with col2:
+        if len(pay_df) > 0 and pay_df['payment_method'].notna().any():
+            mc = pay_df['payment_method'].value_counts().reset_index()
+            mc.columns = ['method', 'count']
+            fig = px.pie(mc, values='count', names='method',
+                         title="طريقة الدفع" if is_ar else "Payment Method",
+                         color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
+            fig.update_layout(height=280, margin=dict(l=0,r=0,t=40,b=0))
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Bundles pricing table
+    st.subheader("📦 " + ("قائمة الأسعار" if is_ar else "Pricing List"))
+    bundles_display = bundles_df.copy()
+    bundles_display.columns = ['Bundle', 'Hours/Month', 'Price (EGP)', 'Rink', 'Level', 'Coach']
+    st.dataframe(bundles_display, use_container_width=True)
+
+    # Payments records
+    st.subheader("🧾 " + ("سجل المدفوعات" if is_ar else "Payment Records"))
+    # Search
+    search_pay = st.text_input("🔍 " + ("بحث باسم اللاعب" if is_ar else "Search by player"), key="pay_search")
+    filtered_pay = pay_df.copy()
+    if search_pay:
+        filtered_pay = filtered_pay[filtered_pay['skater_name'].str.contains(search_pay, case=False, na=False)]
+
+    st.dataframe(filtered_pay, use_container_width=True, height=400)
+
+    # Add payment form
+    st.markdown("---")
+    with st.expander("➕ " + ("تسجيل دفعة جديدة" if is_ar else "Record New Payment")):
+        members = load_members()
+        with st.form("new_payment"):
+            skater_names = sorted(members['name'].tolist()) if 'name' in members.columns else []
+            selected_payer = st.selectbox("اللاعب" if is_ar else "Player", skater_names)
+            c1, c2 = st.columns(2)
+            with c1:
+                bundle_choices = sorted(bundles_df['name'].tolist()) if len(bundles_df) > 0 else []
+                chosen_bundle = st.selectbox("الباقة" if is_ar else "Bundle", bundle_choices)
+            with c2:
+                pay_amount = st.number_input("المبلغ (EGP)" if is_ar else "Amount (EGP)", min_value=0.0, step=100.0)
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                pay_date = st.date_input("تاريخ الدفع" if is_ar else "Payment Date", value=date.today())
+            with c2:
+                pay_method = st.selectbox("طريقة الدفع" if is_ar else "Method", ['Cash', 'Instapay', 'Bank Transfer', 'Card'])
+            with c3:
+                received_by = st.text_input("استُلم بواسطة" if is_ar else "Received By")
+            discount = st.number_input("خصم (EGP)" if is_ar else "Discount (EGP)", min_value=0.0, step=50.0)
+            sub = st.form_submit_button("💾 " + ("حفظ" if is_ar else "Save"), type="primary")
+            if sub and selected_payer:
+                try:
+                    conn = get_conn()
+                    conn.execute(
+                        "INSERT INTO payments (skater_name, amount, payment_date, payment_method, "
+                        "bundle_type, discount, received_by, status) VALUES (?,?,?,?,?,?,?,'completed')",
+                        (selected_payer, pay_amount, str(pay_date), pay_method,
+                         chosen_bundle, discount, received_by)
+                    )
+                    conn.commit()
+                    conn.close()
+                    invalidate_cache()
+                    st.success(f"✅ تم تسجيل الدفعة: {selected_payer} — {pay_amount:,.0f} EGP")
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+
+
+# ============================================================================
 # MAIN ROUTER
 # ============================================================================
 
@@ -1184,6 +1308,7 @@ _ROUTER = {
     t('home'):            show_home,
     t('members'):         show_members,
     t('attendance'):      show_attendance,
+    t('payments'):        show_payments,
     t('video_analysis'):  show_video_analysis,
     t('my_videos'):       show_my_videos,
     t('realtime'):        show_realtime,
