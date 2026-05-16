@@ -15,6 +15,8 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import io
+import os
 from datetime import datetime, date, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
@@ -94,6 +96,14 @@ TRANSLATIONS = {
         'player_progress': '📈 تقدم اللاعبين',
         'analysis_history': '🗂️ سجل التحليل',
         'payments': '💰 المدفوعات',
+        'schedule': '📅 جدول التدريبات',
+        'bulk_attendance': '📋 تسجيل جماعي',
+        'unpaid': '⚠️ لم يدفع',
+        'export_excel': '📥 تصدير Excel',
+        'print_report': '🖨️ طباعة تقرير',
+        'photo_upload': '📷 رفع صورة',
+        'add_session': '➕ إضافة حصة',
+        'weekly_schedule': '📅 الجدول الأسبوعي',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -163,6 +173,14 @@ TRANSLATIONS = {
         'realtime': '📷 Real-Time Analysis',
         'club_mgmt': '🏢 Club Management',
         'payments': '💰 Payments',
+        'schedule': '📅 Schedule',
+        'bulk_attendance': '📋 Bulk Attendance',
+        'unpaid': '⚠️ Unpaid',
+        'export_excel': '📥 Export Excel',
+        'print_report': '🖨️ Print Report',
+        'photo_upload': '📷 Upload Photo',
+        'add_session': '➕ Add Session',
+        'weekly_schedule': '📅 Weekly Schedule',
         'logout': 'Logout',
         'login': 'Login',
         'username': 'Username',
@@ -217,6 +235,14 @@ TRANSLATIONS = {
         'player_progress': '📈 Progrès Joueurs',
         'analysis_history': '🗂️ Historique Analyses',
         'payments': '💰 Paiements',
+        'schedule': '📅 Planning',
+        'bulk_attendance': '📋 Présence Groupée',
+        'unpaid': '⚠️ Impayés',
+        'export_excel': '📥 Exporter Excel',
+        'print_report': '🖨️ Imprimer',
+        'photo_upload': '📷 Photo',
+        'add_session': '➕ Ajouter',
+        'weekly_schedule': '📅 Planning Semaine',
         'realtime': '📷 Analyse Temps Réel',
         'club_mgmt': '🏢 Gestion Club',
         'logout': 'Déconnexion', 'login': 'Connexion',
@@ -271,6 +297,14 @@ TRANSLATIONS = {
         'player_progress': '📈 Spielerfortschritt',
         'analysis_history': '🗂️ Analysehistorie',
         'payments': '💰 Zahlungen',
+        'schedule': '📅 Trainingsplan',
+        'bulk_attendance': '📋 Gruppenanwesenheit',
+        'unpaid': '⚠️ Unbezahlt',
+        'export_excel': '📥 Excel Export',
+        'print_report': '🖨️ Drucken',
+        'photo_upload': '📷 Foto',
+        'add_session': '➕ Session Hinzufügen',
+        'weekly_schedule': '📅 Wochenplan',
         'realtime': '📷 Echtzeit-Analyse',
         'club_mgmt': '🏢 Club-Verwaltung',
         'logout': 'Abmelden', 'login': 'Anmelden',
@@ -325,6 +359,14 @@ TRANSLATIONS = {
         'player_progress': '📈 Прогресс игроков',
         'analysis_history': '🗂️ История анализов',
         'payments': '💰 Платежи',
+        'schedule': '📅 Расписание',
+        'bulk_attendance': '📋 Групповая Посещаемость',
+        'unpaid': '⚠️ Неоплачено',
+        'export_excel': '📥 Экспорт Excel',
+        'print_report': '🖨️ Печать',
+        'photo_upload': '📷 Фото',
+        'add_session': '➕ Добавить',
+        'weekly_schedule': '📅 Расписание Недели',
         'realtime': '📷 Анализ в реальном времени',
         'club_mgmt': '🏢 Управление клубом',
         'logout': 'Выйти', 'login': 'Войти',
@@ -379,6 +421,14 @@ TRANSLATIONS = {
         'player_progress': '📈 Progreso Jugadores',
         'analysis_history': '🗂️ Historial Análisis',
         'payments': '💰 Pagos',
+        'schedule': '📅 Horario',
+        'bulk_attendance': '📋 Asistencia Grupal',
+        'unpaid': '⚠️ Sin Pagar',
+        'export_excel': '📥 Exportar Excel',
+        'print_report': '🖨️ Imprimir',
+        'photo_upload': '📷 Foto',
+        'add_session': '➕ Agregar',
+        'weekly_schedule': '📅 Horario Semanal',
         'realtime': '📷 Análisis Tiempo Real',
         'club_mgmt': '🏢 Gestión Club',
         'logout': 'Cerrar Sesión', 'login': 'Iniciar Sesión',
@@ -555,6 +605,68 @@ def calc_age(birth_date):
         return 0
 
 # ============================================================================
+# UTILITIES
+# ============================================================================
+
+def _df_to_excel(df: pd.DataFrame, sheet_name: str = 'Data') -> bytes:
+    """Convert DataFrame to Excel bytes (falls back to CSV-UTF8 if openpyxl missing)."""
+    buf = io.BytesIO()
+    try:
+        with pd.ExcelWriter(buf, engine='openpyxl') as w:
+            df.to_excel(w, index=False, sheet_name=sheet_name)
+        return buf.getvalue()
+    except Exception:
+        return df.to_csv(index=False).encode('utf-8-sig')
+
+def _excel_ext() -> str:
+    try:
+        import openpyxl
+        return '.xlsx'
+    except ImportError:
+        return '.csv'
+
+def _excel_mime() -> str:
+    try:
+        import openpyxl
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    except ImportError:
+        return 'text/csv'
+
+PHOTOS_DIR = Path('data/photos')
+
+def _save_photo(name: str, uploaded_file) -> str:
+    """Save uploaded photo and return path."""
+    PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+    safe = name.replace(' ', '_').replace('/', '_')
+    ext  = Path(uploaded_file.name).suffix or '.jpg'
+    dest = PHOTOS_DIR / f"{safe}{ext}"
+    dest.write_bytes(uploaded_file.read())
+    conn = get_conn()
+    conn.execute("UPDATE skaters SET notes=COALESCE(notes,'') WHERE name=?", (name,))
+    conn.commit()
+    conn.close()
+    return str(dest)
+
+def _init_schedule_table():
+    conn = get_conn()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS training_schedule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            day_of_week INTEGER NOT NULL,
+            start_time  TEXT NOT NULL,
+            end_time    TEXT NOT NULL,
+            level       TEXT,
+            coach       TEXT,
+            session_type TEXT DEFAULT 'on-ice',
+            max_capacity INTEGER DEFAULT 15,
+            notes       TEXT,
+            created_at  TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# ============================================================================
 # PAGE CONFIG
 # ============================================================================
 
@@ -628,6 +740,7 @@ _nav_pages = [
     t('members'),
     t('attendance'),
     t('payments'),
+    t('schedule'),
     t('video_analysis'),
     t('my_videos'),
     t('realtime'),
@@ -766,6 +879,39 @@ def show_members():
         display_cols = [c for c in ['name', 'gender', 'skill_level', 'bundle', 'membership_status', 'coach_name'] if c in filtered.columns]
         if display_cols:
             st.dataframe(filtered[display_cols], use_container_width=True, height=350)
+            # Export buttons
+            col_ex1, col_ex2 = st.columns(2)
+            with col_ex1:
+                st.download_button(
+                    t('export_excel'),
+                    data=_df_to_excel(filtered[display_cols], 'Members'),
+                    file_name=f"members{_excel_ext()}",
+                    mime=_excel_mime(),
+                    use_container_width=True,
+                )
+            with col_ex2:
+                # Printable HTML summary
+                html_rows = "".join(
+                    f"<tr><td>{r['name']}</td><td>{r.get('skill_level','')}</td>"
+                    f"<td>{r.get('bundle','')}</td><td>{r.get('coach_name','')}</td></tr>"
+                    for _, r in filtered[display_cols].iterrows()
+                )
+                html_report = f"""<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8">
+<style>body{{font-family:Arial;direction:rtl}} table{{border-collapse:collapse;width:100%}}
+td,th{{border:1px solid #ccc;padding:6px 10px;text-align:right}}
+th{{background:#667eea;color:white}} @media print{{button{{display:none}}}}</style></head>
+<body><h2>قائمة الأعضاء - {date.today()}</h2>
+<p>العدد: {len(filtered)}</p>
+<table><thead><tr><th>الاسم</th><th>المستوى</th><th>الباقة</th><th>المدرب</th></tr></thead>
+<tbody>{html_rows}</tbody></table>
+<br><button onclick="window.print()">🖨️ طباعة</button></body></html>"""
+                st.download_button(
+                    t('print_report'),
+                    data=html_report.encode('utf-8'),
+                    file_name="members_report.html",
+                    mime="text/html",
+                    use_container_width=True,
+                )
 
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -791,15 +937,44 @@ def show_members():
         )
         if selected_profile != "—":
             row = members[members['name'] == selected_profile].iloc[0]
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.metric("Level", row.get('skill_level') or '—')
-            with c2:
-                st.metric("Bundle", row.get('bundle') or '—')
-            with c3:
-                st.metric("Status", row.get('membership_status') or '—')
-            if row.get('coach_name'):
-                st.write(f"**Coach:** {row['coach_name']}")
+
+            # Photo + basic info
+            col_photo, col_info = st.columns([1, 3])
+            with col_photo:
+                safe_name = selected_profile.replace(' ', '_').replace('/', '_')
+                photo_found = False
+                for ext in ['.jpg','.jpeg','.png','.webp']:
+                    pp = PHOTOS_DIR / f"{safe_name}{ext}"
+                    if pp.exists():
+                        st.image(str(pp), width=140)
+                        photo_found = True
+                        break
+                if not photo_found:
+                    st.markdown(
+                        "<div style='width:120px;height:120px;background:#667eea;border-radius:50%;"
+                        "display:flex;align-items:center;justify-content:center;"
+                        "color:white;font-size:2.5em'>👤</div>",
+                        unsafe_allow_html=True
+                    )
+                uploaded_photo = st.file_uploader(
+                    t('photo_upload'), type=['jpg','jpeg','png','webp'],
+                    key=f"photo_{selected_profile}"
+                )
+                if uploaded_photo:
+                    _save_photo(selected_profile, uploaded_photo)
+                    st.success("✅ تم رفع الصورة")
+                    st.rerun()
+
+            with col_info:
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.metric("Level", row.get('skill_level') or '—')
+                with c2:
+                    st.metric("Bundle", row.get('bundle') or '—')
+                with c3:
+                    st.metric("Status", row.get('membership_status') or '—')
+                if row.get('coach_name'):
+                    st.write(f"**Coach:** {row['coach_name']}")
 
             # Attendance history for this player
             try:
@@ -909,8 +1084,13 @@ def show_attendance():
 
     st.markdown("---")
 
-    # Record attendance form
-    with st.expander(t('record_attendance'), expanded=True):
+    # Attendance recording tabs
+    tab_a1, tab_a2 = st.tabs([
+        "✅ " + ("تسجيل فردي" if st.session_state.language == 'ar' else "Single Record"),
+        "📋 " + t('bulk_attendance'),
+    ])
+
+    with tab_a1:
         if len(members) == 0:
             st.warning(t('no_members'))
         else:
@@ -925,11 +1105,9 @@ def show_attendance():
                     try:
                         conn = get_conn()
                         c = conn.cursor()
-                        # Get skater id if exists
                         row = conn.execute("SELECT id FROM skaters WHERE name=?", (selected_name,)).fetchone()
                         skater_id = row[0] if row else None
-                        c.execute("""INSERT INTO attendance (skater_name, skater_id, date, session_type, status)
-                                     VALUES (?, ?, ?, ?, ?)""",
+                        c.execute("INSERT INTO attendance (skater_name, skater_id, date, session_type, status) VALUES (?,?,?,?,?)",
                                   (selected_name, skater_id, str(att_date), session_type, att_status))
                         conn.commit()
                         conn.close()
@@ -938,6 +1116,61 @@ def show_attendance():
                         st.rerun()
                     except Exception as e:
                         st.error(f"{t('error')}: {str(e)}")
+
+    with tab_a2:
+        is_ar_att = st.session_state.language == 'ar'
+        if len(members) == 0:
+            st.warning(t('no_members'))
+        else:
+            with st.form("bulk_attendance"):
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    bulk_date = st.date_input("التاريخ" if is_ar_att else "Date", value=date.today())
+                with c2:
+                    bulk_session = st.selectbox("النوع" if is_ar_att else "Session Type", ['on-ice','off-ice','competition'])
+                with c3:
+                    bulk_coach = st.text_input("المدرب" if is_ar_att else "Coach")
+
+                # Filter by level for easier bulk selection
+                all_levels = ['All / الكل'] + sorted(members['skill_level'].dropna().unique().tolist()) if 'skill_level' in members.columns else ['All / الكل']
+                bulk_level_filter = st.selectbox("فلتر حسب المستوى" if is_ar_att else "Filter by Level", all_levels)
+
+                filtered_members_bulk = members.copy()
+                if bulk_level_filter != 'All / الكل' and 'skill_level' in filtered_members_bulk.columns:
+                    filtered_members_bulk = filtered_members_bulk[filtered_members_bulk['skill_level'] == bulk_level_filter]
+
+                all_names = sorted(filtered_members_bulk['name'].tolist()) if 'name' in filtered_members_bulk.columns else []
+                selected_bulk = st.multiselect(
+                    "✅ " + ("اختر الحاضرين" if is_ar_att else "Select Present Members"),
+                    all_names, default=all_names
+                )
+                absent_bulk = [n for n in all_names if n not in selected_bulk]
+
+                st.info(f"حاضر: {len(selected_bulk)} | غائب: {len(absent_bulk)}" if is_ar_att else
+                        f"Present: {len(selected_bulk)} | Absent: {len(absent_bulk)}")
+
+                bulk_sub = st.form_submit_button(
+                    f"💾 {'حفظ الجلسة' if is_ar_att else 'Save Session'} ({len(all_names)} {'لاعب' if is_ar_att else 'players'})",
+                    type="primary"
+                )
+                if bulk_sub and all_names:
+                    try:
+                        conn = get_conn()
+                        rows_to_insert = [(n, None, str(bulk_date), bulk_session, 'present', bulk_coach or None)
+                                          for n in selected_bulk]
+                        rows_to_insert += [(n, None, str(bulk_date), bulk_session, 'absent', bulk_coach or None)
+                                           for n in absent_bulk]
+                        conn.executemany(
+                            "INSERT INTO attendance (skater_name, skater_id, date, session_type, status, coach) VALUES (?,?,?,?,?,?)",
+                            rows_to_insert
+                        )
+                        conn.commit()
+                        conn.close()
+                        invalidate_cache()
+                        st.success(f"✅ {'تم تسجيل' if is_ar_att else 'Saved'} {len(rows_to_insert)} {'سجل' if is_ar_att else 'records'}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
 
     # Attendance analytics
     if len(attendance) > 0:
@@ -995,6 +1228,46 @@ def show_attendance():
             if cols_to_show:
                 st.dataframe(display_att[cols_to_show].head(100), use_container_width=True, height=350)
             st.caption(f"Showing {min(100, len(display_att))} of {len(display_att)} records")
+            # Export
+            col_xe1, col_xe2 = st.columns(2)
+            with col_xe1:
+                st.download_button(
+                    t('export_excel'),
+                    data=_df_to_excel(display_att[cols_to_show] if cols_to_show else display_att, 'Attendance'),
+                    file_name=f"attendance{_excel_ext()}",
+                    mime=_excel_mime(),
+                    use_container_width=True,
+                )
+            with col_xe2:
+                # Printable HTML attendance sheet
+                is_ar_pr = st.session_state.language == 'ar'
+                att_rows = "".join(
+                    f"<tr><td>{r.get('skater_name','')}</td><td>{r.get('attendance_date','')}</td>"
+                    f"<td>{r.get('session_type','')}</td><td>{r.get('status','')}</td>"
+                    f"<td>{r.get('coach','')}</td></tr>"
+                    for _, r in display_att[cols_to_show].head(200).iterrows()
+                )
+                html_att = f"""<!DOCTYPE html><html dir="{'rtl' if is_ar_pr else 'ltr'}">
+<head><meta charset="utf-8"><style>
+body{{font-family:Arial;direction:{'rtl' if is_ar_pr else 'ltr'}}}
+table{{border-collapse:collapse;width:100%}} td,th{{border:1px solid #ccc;padding:5px 8px}}
+th{{background:#667eea;color:white}} @media print{{button{{display:none}}}}</style></head>
+<body><h2>{'كشف الحضور' if is_ar_pr else 'Attendance Report'} — {date.today()}</h2>
+<p>{'العدد' if is_ar_pr else 'Count'}: {len(display_att)}</p>
+<table><thead><tr><th>{'الاسم' if is_ar_pr else 'Name'}</th>
+<th>{'التاريخ' if is_ar_pr else 'Date'}</th>
+<th>{'النوع' if is_ar_pr else 'Type'}</th>
+<th>{'الحالة' if is_ar_pr else 'Status'}</th>
+<th>{'المدرب' if is_ar_pr else 'Coach'}</th></tr></thead>
+<tbody>{att_rows}</tbody></table>
+<br><button onclick="window.print()">🖨️ {'طباعة' if is_ar_pr else 'Print'}</button></body></html>"""
+                st.download_button(
+                    t('print_report'),
+                    data=html_att.encode('utf-8'),
+                    file_name="attendance_report.html",
+                    mime="text/html",
+                    use_container_width=True,
+                )
         except Exception as e:
             st.error(f"Display error: {e}")
     else:
@@ -1257,6 +1530,125 @@ def show_settings():
         st.code("pip install mediapipe opencv-python numpy")
 
 # ============================================================================
+# SCHEDULE PAGE
+# ============================================================================
+
+_DAYS_AR = ['الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت','الأحد']
+_DAYS_EN = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+
+def show_schedule():
+    _init_schedule_table()
+    is_ar = st.session_state.language == 'ar'
+    DAYS  = _DAYS_AR if is_ar else _DAYS_EN
+    st.header(t('schedule'))
+
+    conn = get_conn()
+    sched_df = pd.read_sql_query(
+        "SELECT id, day_of_week, start_time, end_time, level, coach, "
+        "session_type, max_capacity, notes FROM training_schedule ORDER BY day_of_week, start_time",
+        conn
+    )
+    conn.close()
+
+    # Weekly grid view
+    st.subheader(t('weekly_schedule'))
+
+    if len(sched_df) == 0:
+        st.info("لا توجد حصص مجدولة بعد — أضف حصة أولاً" if is_ar else "No sessions scheduled yet — add one below")
+    else:
+        cols = st.columns(7)
+        for day_i, (col, day_name) in enumerate(zip(cols, DAYS)):
+            day_sessions = sched_df[sched_df['day_of_week'] == day_i]
+            with col:
+                st.markdown(f"**{day_name}**")
+                for _, row in day_sessions.iterrows():
+                    color = '#667eea' if row['session_type'] == 'on-ice' else '#764ba2'
+                    st.markdown(
+                        f"<div style='background:{color};color:white;border-radius:6px;"
+                        f"padding:6px 8px;margin-bottom:4px;font-size:0.8em'>"
+                        f"<b>{row['start_time']}–{row['end_time']}</b><br>"
+                        f"{row['level'] or ''} | {row['coach'] or ''}"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+
+    st.markdown("---")
+
+    # Table view with delete
+    if len(sched_df) > 0:
+        with st.expander("📋 " + ("عرض الجدول كاملاً" if is_ar else "View Full Table")):
+            disp = sched_df.copy()
+            disp['day_of_week'] = disp['day_of_week'].apply(lambda d: DAYS[d] if 0 <= d < 7 else d)
+            st.dataframe(disp.drop(columns=['id']), use_container_width=True)
+
+            # Export
+            ext = _excel_ext()
+            st.download_button(
+                t('export_excel'),
+                data=_df_to_excel(disp.drop(columns=['id']), 'Schedule'),
+                file_name=f"schedule{ext}",
+                mime=_excel_mime(),
+            )
+
+            # Delete session
+            del_id = st.selectbox(
+                "🗑️ " + ("حذف حصة" if is_ar else "Delete Session"),
+                ["—"] + [f"#{r['id']} {DAYS[r['day_of_week']]} {r['start_time']}" for _, r in sched_df.iterrows()],
+                key="del_sched"
+            )
+            if del_id != "—" and st.button("🗑️ " + ("تأكيد الحذف" if is_ar else "Confirm Delete"), type="secondary"):
+                sid = int(del_id.split('#')[1].split(' ')[0])
+                conn = get_conn()
+                conn.execute("DELETE FROM training_schedule WHERE id=?", (sid,))
+                conn.commit()
+                conn.close()
+                st.success("✅ " + ("تم الحذف" if is_ar else "Deleted"))
+                st.rerun()
+
+    # Add session form
+    with st.expander(t('add_session'), expanded=len(sched_df) == 0):
+        members = load_members()
+        coaches = sorted(members['coach_name'].dropna().unique().tolist()) if 'coach_name' in members.columns else []
+        levels_list = sorted(members['skill_level'].dropna().unique().tolist()) if 'skill_level' in members.columns else ['Beta','Gamma','Delta']
+
+        with st.form("add_session"):
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                day = st.selectbox("اليوم" if is_ar else "Day", list(enumerate(DAYS)), format_func=lambda x: x[1])
+            with c2:
+                start_t = st.time_input("بداية" if is_ar else "Start", value=datetime.strptime("09:00", "%H:%M").time())
+            with c3:
+                end_t = st.time_input("نهاية" if is_ar else "End", value=datetime.strptime("10:00", "%H:%M").time())
+
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                sess_level = st.selectbox("المستوى" if is_ar else "Level", levels_list)
+            with c2:
+                sess_coach = st.selectbox("المدرب" if is_ar else "Coach", [""] + coaches)
+            with c3:
+                sess_type = st.selectbox("النوع" if is_ar else "Type", ['on-ice','off-ice','competition'])
+            capacity = st.number_input("السعة القصوى" if is_ar else "Max Capacity", min_value=1, max_value=50, value=15)
+            notes_s = st.text_input("ملاحظات" if is_ar else "Notes")
+            sub_s = st.form_submit_button("💾 " + ("حفظ الحصة" if is_ar else "Save Session"), type="primary")
+            if sub_s:
+                try:
+                    conn = get_conn()
+                    conn.execute(
+                        "INSERT INTO training_schedule "
+                        "(day_of_week,start_time,end_time,level,coach,session_type,max_capacity,notes) "
+                        "VALUES (?,?,?,?,?,?,?,?)",
+                        (day[0], start_t.strftime("%H:%M"), end_t.strftime("%H:%M"),
+                         sess_level, sess_coach or None, sess_type, capacity, notes_s or None)
+                    )
+                    conn.commit()
+                    conn.close()
+                    st.success("✅ " + ("تمت إضافة الحصة" if is_ar else "Session added"))
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+
+
+# ============================================================================
 # PAYMENTS PAGE
 # ============================================================================
 
@@ -1323,15 +1715,70 @@ def show_payments():
     bundles_display.columns = ['Bundle', 'Hours/Month', 'Price (EGP)', 'Rink', 'Level', 'Coach']
     st.dataframe(bundles_display, use_container_width=True)
 
-    # Payments records
-    st.subheader("🧾 " + ("سجل المدفوعات" if is_ar else "Payment Records"))
-    # Search
-    search_pay = st.text_input("🔍 " + ("بحث باسم اللاعب" if is_ar else "Search by player"), key="pay_search")
-    filtered_pay = pay_df.copy()
-    if search_pay:
-        filtered_pay = filtered_pay[filtered_pay['skater_name'].str.contains(search_pay, case=False, na=False)]
+    # Tabs: Records | Unpaid | Export
+    tab_pay1, tab_pay2, tab_pay3 = st.tabs([
+        "🧾 " + ("السجلات" if is_ar else "Records"),
+        "⚠️ " + ("لم يدفع" if is_ar else "Unpaid"),
+        "📥 " + ("تصدير" if is_ar else "Export"),
+    ])
 
-    st.dataframe(filtered_pay, use_container_width=True, height=400)
+    with tab_pay1:
+        search_pay = st.text_input("🔍 " + ("بحث باسم اللاعب" if is_ar else "Search by player"), key="pay_search")
+        filtered_pay = pay_df.copy()
+        if search_pay:
+            filtered_pay = filtered_pay[filtered_pay['skater_name'].str.contains(search_pay, case=False, na=False)]
+        st.dataframe(filtered_pay, use_container_width=True, height=400)
+        st.caption(f"{len(filtered_pay)} " + ("سجل" if is_ar else "records"))
+
+    with tab_pay2:
+        st.subheader("⚠️ " + ("الأعضاء بدون دفع خلال 60 يوم" if is_ar else "Members with no payment in 60 days"))
+        try:
+            members_all = load_members()
+            cutoff_60 = (date.today() - timedelta(days=60)).isoformat()
+            paid_recently = set(
+                pay_df[pay_df['payment_date'] >= cutoff_60]['skater_name'].dropna().tolist()
+                if 'payment_date' in pay_df.columns and pay_df['payment_date'].notna().any() else []
+            )
+            any_paid = set(pay_df['skater_name'].dropna().tolist())
+            unpaid_df = members_all[
+                (~members_all['name'].isin(paid_recently)) &
+                (members_all['membership_status'] == 'active')
+            ][['name','skill_level','bundle','coach_name']].copy()
+            unpaid_df['has_any_payment'] = unpaid_df['name'].isin(any_paid).map(
+                {True: '✅ سابقاً', False: '❌ لا يوجد'} if is_ar else {True: '✅ Historic', False: '❌ Never'}
+            )
+            st.metric("عدد غير المدفوعين" if is_ar else "Unpaid Count", len(unpaid_df))
+            st.dataframe(unpaid_df, use_container_width=True, height=400)
+            if len(unpaid_df) > 0:
+                st.download_button(
+                    t('export_excel'),
+                    data=_df_to_excel(unpaid_df, 'Unpaid'),
+                    file_name=f"unpaid{_excel_ext()}",
+                    mime=_excel_mime(),
+                )
+        except Exception as e:
+            st.error(str(e))
+
+    with tab_pay3:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.download_button(
+                "📥 " + ("تصدير المدفوعات" if is_ar else "Export Payments"),
+                data=_df_to_excel(pay_df, 'Payments'),
+                file_name=f"payments{_excel_ext()}",
+                mime=_excel_mime(),
+                use_container_width=True,
+            )
+        with c2:
+            bd = bundles_df.copy()
+            bd.columns = ['Bundle','Hours','Price_EGP','Rink','Level','Coach']
+            st.download_button(
+                "📥 " + ("تصدير الباقات" if is_ar else "Export Bundles"),
+                data=_df_to_excel(bd, 'Bundles'),
+                file_name=f"bundles{_excel_ext()}",
+                mime=_excel_mime(),
+                use_container_width=True,
+            )
 
     # Add payment form
     st.markdown("---")
@@ -1382,6 +1829,7 @@ _ROUTER = {
     t('members'):         show_members,
     t('attendance'):      show_attendance,
     t('payments'):        show_payments,
+    t('schedule'):        show_schedule,
     t('video_analysis'):  show_video_analysis,
     t('my_videos'):       show_my_videos,
     t('realtime'):        show_realtime,
