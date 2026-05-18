@@ -1313,34 +1313,11 @@ def show_my_videos():
 def show_video_analysis():
     try:
         from src.pages.video_analysis_page import show_video_analysis_page
-        from src.analysis.history_manager import save_analysis, invalidate_history_cache
-        from src.utils.report_builder import get_download_button_data
-
         show_video_analysis_page(lang=st.session_state.language)
-
-        # Save & Export buttons when results exist
-        results = st.session_state.get('analysis_results')
-        if results:
-            st.markdown('---')
-            col_save, col_export = st.columns(2)
-            with col_save:
-                if st.button('💾 ' + ('حفظ الجلسة في السجل' if st.session_state.language == 'ar' else 'Save Session to History'),
-                             use_container_width=True, type='primary'):
-                    sid = save_analysis(results)
-                    invalidate_history_cache()
-                    st.success('✅ ' + (f'تم الحفظ — جلسة #{sid}' if st.session_state.language == 'ar' else f'Saved — Session #{sid}'))
-            with col_export:
-                data, fname, mime = get_download_button_data(results, lang=st.session_state.language)
-                st.download_button(
-                    label='📄 ' + ('تصدير تقرير PDF' if st.session_state.language == 'ar' else 'Export PDF Report'),
-                    data=data,
-                    file_name=fname,
-                    mime=mime,
-                    use_container_width=True,
-                )
-    except ImportError as e:
-        st.error(f"تعذّر تحميل صفحة التحليل: {e}")
-        st.code("pip install mediapipe opencv-python numpy")
+    except Exception as e:
+        st.error(f"خطأ في صفحة التحليل: {e}")
+        import traceback
+        st.code(traceback.format_exc())
 
 
 def show_player_progress():
