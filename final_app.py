@@ -1066,6 +1066,29 @@ th{{background:#667eea;color:white}} @media print{{button{{display:none}}}}</sty
             except Exception:
                 pass
 
+            # Payment history for this player
+            try:
+                conn = get_conn()
+                pay_hist = pd.read_sql_query(
+                    "SELECT payment_date, amount, bundle_type, payment_method, status "
+                    "FROM payments WHERE skater_name=? ORDER BY payment_date DESC LIMIT 10",
+                    conn, params=(selected_profile,)
+                )
+                conn.close()
+                if len(pay_hist) > 0:
+                    total_paid = pay_hist['amount'].sum()
+                    last_pay   = pay_hist['payment_date'].max()
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("💰 إجمالي المدفوع", f"{total_paid:,.0f} ج.م")
+                    c2.metric("📅 آخر دفعة", last_pay)
+                    c3.metric("# دفعات", len(pay_hist))
+                    with st.expander("سجل المدفوعات"):
+                        st.dataframe(pay_hist, use_container_width=True, hide_index=True)
+                else:
+                    st.warning("⚠️ لا توجد مدفوعات مسجلة لهذا اللاعب")
+            except Exception:
+                pass
+
             # Skills from player_skills
             try:
                 conn = get_conn()
@@ -1076,16 +1099,19 @@ th{{background:#667eea;color:white}} @media print{{button{{display:none}}}}</sty
                 )
                 conn.close()
                 if len(skills_df) > 0:
-                    st.write(f"**Skills ({len(skills_df)} elements):**")
+                    achieved_n = len(skills_df[skills_df['achieved'] == 1])
+                    pct = round(achieved_n / len(skills_df) * 100)
+                    st.write(f"**🏅 المهارات ({len(skills_df)} عنصر — {pct}% مكتمل)**")
+                    st.progress(pct / 100)
                     achieved = skills_df[skills_df['achieved'] == 1]
-                    pending = skills_df[skills_df['achieved'] != 1]
+                    pending  = skills_df[skills_df['achieved'] != 1]
                     c1, c2 = st.columns(2)
                     with c1:
-                        st.success(f"✅ Achieved: {len(achieved)}")
+                        st.success(f"✅ مُنجز: {len(achieved)}")
                         if len(achieved) > 0:
                             st.dataframe(achieved[['element_name', 'fse_level']], use_container_width=True, height=180)
                     with c2:
-                        st.warning(f"⏳ Pending: {len(pending)}")
+                        st.warning(f"⏳ قيد التعلم: {len(pending)}")
                         if len(pending) > 0:
                             st.dataframe(pending[['element_name', 'fse_level']], use_container_width=True, height=180)
             except Exception:

@@ -9,13 +9,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.auth.auth_manager import (
-    create_club,
-    create_user,
-    list_clubs,
-    list_users,
-    ROLES,
-)
+try:
+    from src.auth.auth_manager import (
+        create_club,
+        create_user,
+        list_clubs,
+        list_users,
+        ROLES,
+    )
+    AUTH_OK = True
+except Exception:
+    AUTH_OK = False
+    ROLES = ['admin', 'coach', 'athlete']
+    def create_club(*a, **k): return None
+    def create_user(*a, **k): return None
+    def list_clubs(): return []
+    def list_users(*a, **k): return []
 
 # ---------------------------------------------------------------------------
 # Translations

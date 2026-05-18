@@ -264,43 +264,82 @@ def _run_scan():
 
 def _analyze_video(filepath: str, ar: bool):
     try:
-        from src.ai.advanced_analyzer import AdvancedSkatingAnalyzer
+        from src.pages.video_analysis_page import SkatingVideoAnalyzer
         with st.spinner("جارٍ التحليل..." if ar else "Analyzing..."):
-            analyzer = AdvancedSkatingAnalyzer()
-            results  = analyzer.analyze_video(filepath)
+            analyzer = SkatingVideoAnalyzer()
+            results = analyzer.analyze(filepath)
+
+        if 'error' in results:
+            st.error(results['error'])
+            return
 
         jumps = results.get('jumps', [])
         spins = results.get('spins', [])
         score = results.get('total_score', 0)
+        tes   = results.get('tes', 0)
+        pcs   = results.get('pcs', 0)
 
-        st.success(
-            f"✅ اكتمل التحليل — النقاط: {score:.2f}"
-            if ar else
-            f"✅ Analysis complete — Score: {score:.2f}"
-        )
+        c1, c2, c3 = st.columns(3)
+        c1.metric("🏆 النقاط", f"{score:.2f}")
+        c2.metric("⚡ TES", f"{tes:.2f}")
+        c3.metric("🎭 PCS", f"{pcs:.2f}")
 
         if jumps:
-            st.markdown("**القفزات المكتشفة:**" if ar else "**Detected Jumps:**")
+            st.markdown("**🦘 القفزات المكتشفة:**" if ar else "**🦘 Detected Jumps:**")
             for j in jumps:
+                clean = "✅" if j.get('is_clean', True) else "⚠️"
                 st.write(
-                    f"• {j.jump_type.value} × {j.rotations:.0f}  "
-                    f"— {j.height_cm:.0f}cm  "
-                    f"— GOE: {j.goe:+d}  "
-                    f"— {j.final_score:.2f}pts"
+                    f"{clean} {j.get('type', '')} | "
+                    f"{j.get('rotations', 0):.1f} دوران | "
+                    f"{j.get('height_cm', 0)} cm | "
+                    f"GOE: {j.get('goe', 0):+d} | "
+                    f"{j.get('final_score', 0):.2f} pts"
                 )
 
         if spins:
-            st.markdown("**الدورانات المكتشفة:**" if ar else "**Detected Spins:**")
+            st.markdown("**🌀 الدورانات المكتشفة:**" if ar else "**🌀 Detected Spins:**")
             for s in spins:
                 st.write(
-                    f"• {s.spin_type.value}  "
-                    f"— {s.rotations} دوران  "
-                    f"— {s.rpm:.0f} RPM  "
-                    f"— {s.final_score:.2f}pts"
+                    f"• {s.get('type', '')} | "
+                    f"{s.get('rotations', 0):.1f} دوران | "
+                    f"{s.get('rpm', 0):.0f} RPM | "
+                    f"{s.get('final_score', 0):.2f} pts"
                 )
 
         if not jumps and not spins:
             st.info("لم يُكتشف أي عنصر" if ar else "No elements detected")
+
+        # Save to DB
+        try:
+            import json, sqlite3
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS analysis_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    player_name TEXT, session_note TEXT, analyzed_at TEXT,
+                    duration REAL, total_score REAL, tes REAL, pcs REAL,
+                    jumps_count INTEGER, spins_count INTEGER, errors_count INTEGER,
+                    jump_details TEXT, spin_details TEXT
+                )
+            """)
+            from datetime import datetime
+            conn.execute(
+                "INSERT INTO analysis_results (player_name,session_note,analyzed_at,"
+                "duration,total_score,tes,pcs,jumps_count,spins_count,errors_count,"
+                "jump_details,spin_details) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (Path(filepath).stem, filepath,
+                 datetime.now().strftime('%Y-%m-%d %H:%M'),
+                 results.get('video_info', {}).get('duration', 0),
+                 score, tes, pcs, len(jumps), len(spins),
+                 len(results.get('errors', [])),
+                 json.dumps(jumps, ensure_ascii=False),
+                 json.dumps(spins, ensure_ascii=False))
+            )
+            conn.commit()
+            conn.close()
+            st.caption("✅ " + ("تم الحفظ في السجل" if ar else "Saved to history"))
+        except Exception:
+            pass
 
     except Exception as e:
         st.error(f"خطأ في التحليل: {e}" if ar else f"Analysis error: {e}")
