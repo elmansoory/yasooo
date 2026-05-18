@@ -24,8 +24,8 @@ except ImportError:
 try:
     import mediapipe as mp
     MEDIAPIPE_AVAILABLE = True
-    _mp_pose = mp.solutions.pose
-    _mp_drawing = mp.solutions.drawing_utils
+    _mp_pose = getattr(mp.solutions, "pose", None)
+    _mp_drawing = getattr(mp.solutions, "drawing_utils", None)
 except ImportError:
     MEDIAPIPE_AVAILABLE = False
     _mp_pose = None
@@ -333,8 +333,8 @@ def show_realtime_analysis_page(lang: str = "ar") -> None:
     st.title(_t("title", lang))
     st.caption(_t("subtitle", lang))
 
-    # Dependency check
-    if not CV2_AVAILABLE or not MEDIAPIPE_AVAILABLE:
+    # Dependency check – cv2 is always required
+    if not CV2_AVAILABLE:
         _show_install_instructions(lang)
         st.stop()
         return
@@ -397,16 +397,31 @@ def show_realtime_analysis_page(lang: str = "ar") -> None:
     frame_rgb = np.array(pil_image)
     frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
-    # Run MediaPipe Pose
-    with _mp_pose.Pose(
-        static_image_mode=True,
-        model_complexity=1,
-        enable_segmentation=False,
-        min_detection_confidence=0.5,
-    ) as pose:
-        results = pose.process(frame_rgb)
+    # Run MediaPipe Pose (only when mp.solutions.pose is available)
+    landmarks = None
+    if _mp_pose is None:
+        # MediaPipe is installed but mp.solutions.pose was removed in this version.
+        display_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        st.subheader(_t("skeleton_overlay", lang))
+        st.image(display_rgb, use_container_width=True)
+        st.warning(
+            "⚠️ تحليل الوضعية الكامل يتطلب MediaPipe مع دعم mp.solutions.pose. "
+            "يرجى تثبيت إصدار متوافق (مثال: pip install mediapipe==0.10.14)."
+            if lang == "ar" else
+            "⚠️ Full pose analysis requires MediaPipe with mp.solutions.pose support. "
+            "Please install a compatible version (e.g. pip install mediapipe==0.10.14)."
+        )
+        return
+    else:
+        with _mp_pose.Pose(
+            static_image_mode=True,
+            model_complexity=1,
+            enable_segmentation=False,
+            min_detection_confidence=0.5,
+        ) as pose:
+            results = pose.process(frame_rgb)
 
-    landmarks = results.pose_landmarks if results else None
+        landmarks = results.pose_landmarks if results else None
 
     # Draw skeleton overlay
     display_frame = frame_bgr.copy()

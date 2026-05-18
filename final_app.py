@@ -759,93 +759,162 @@ page = st.sidebar.radio("", _nav_pages)
 # ============================================================================
 
 def show_home():
-    st.markdown(f'<h1>{t("title")}</h1>', unsafe_allow_html=True)
-    st.markdown(f'<p style="text-align:center;font-size:1.3em;color:#64748b;">{t("subtitle")}</p>', unsafe_allow_html=True)
+    ar = st.session_state.language == 'ar'
 
-    members = load_members()
+    # ── Hero header ──────────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="text-align:center;padding:20px 0 8px">
+      <h1 style="font-size:2.4em;background:linear-gradient(135deg,#1e3a5f,#667eea,#764ba2);
+                 -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        ⛸️ نظام YASOOO لتحليل التزلج الفني
+      </h1>
+      <p style="color:#64748b;font-size:1.1em;margin-top:6px">
+        النظام الشامل المتكامل · 347 لاعب · 6 لغات
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    members    = load_members()
     attendance = load_attendance()
-    memberships = load_memberships()
 
-    today_str = date.today().isoformat()
+    today_str    = date.today().isoformat()
     week_ago_str = (date.today() - timedelta(days=7)).isoformat()
+    month_ago    = (date.today() - timedelta(days=30)).isoformat()
 
-    today_att = 0
-    week_att = 0
+    today_att = week_att = 0
     if len(attendance) > 0 and 'attendance_date' in attendance.columns:
         today_att = len(attendance[attendance['attendance_date'] == today_str])
-        week_att = len(attendance[attendance['attendance_date'] >= week_ago_str])
+        week_att  = len(attendance[attendance['attendance_date'] >= week_ago_str])
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric(t('total_members'), len(members))
-    with col2:
-        st.metric(t('today_attendance'), today_att)
-    with col3:
-        st.metric(t('week_attendance'), week_att)
-    with col4:
-        active_count = 0
-        if 'membership_status' in members.columns:
-            active_count = len(members[members['membership_status'] == 'active'])
-        st.metric(t('active_subscriptions'), active_count)
+    active_count = 0
+    if 'membership_status' in members.columns:
+        active_count = len(members[members['membership_status'] == 'active'])
+
+    # ── KPI row ──────────────────────────────────────────────────────────────
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("👥 إجمالي الأعضاء",  len(members))
+    k2.metric("✅ نشطون",            active_count)
+    k3.metric("📅 حضور اليوم",       today_att)
+    k4.metric("📊 حضور الأسبوع",     week_att)
+
+    # Revenue this month
+    try:
+        conn = get_conn()
+        rev = conn.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_date >= ?", (month_ago,)
+        ).fetchone()[0]
+        conn.close()
+        k5.metric("💰 إيرادات الشهر", f"{rev:,.0f} ج.م")
+    except Exception:
+        k5.metric("💰 إيرادات الشهر", "—")
 
     st.markdown("---")
 
-    col1, col2 = st.columns(2)
+    # ── Charts row ───────────────────────────────────────────────────────────
+    col_chart1, col_chart2 = st.columns(2)
 
-    # Attendance trend chart
-    with col1:
+    with col_chart1:
         if len(attendance) > 0 and 'attendance_date' in attendance.columns:
-            st.subheader(t('attendance_trend'))
-            cutoff = (date.today() - timedelta(days=30)).isoformat()
+            st.subheader("📈 حضور 30 يوم")
+            cutoff = month_ago
             recent = attendance[attendance['attendance_date'] >= cutoff].copy()
             if len(recent) > 0:
                 trend = recent.groupby('attendance_date').size().reset_index(name='count')
                 trend['attendance_date'] = pd.to_datetime(trend['attendance_date'])
-                fig = px.bar(
-                    trend, x='attendance_date', y='count',
-                    color_discrete_sequence=['#667eea'],
-                    labels={'attendance_date': '', 'count': ''},
-                )
-                fig.update_layout(
-                    margin=dict(l=0, r=0, t=10, b=0),
-                    height=220,
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                )
+                fig = px.area(trend, x='attendance_date', y='count',
+                              color_discrete_sequence=['#667eea'],
+                              labels={'attendance_date': '', 'count': ''})
+                fig.update_layout(margin=dict(l=0,r=0,t=10,b=0), height=230,
+                                  plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig, use_container_width=True)
 
-    # Level distribution
-    with col2:
+    with col_chart2:
         if len(members) > 0 and 'skill_level' in members.columns and members['skill_level'].notna().any():
-            st.subheader(t('members_by_level'))
-            level_counts = members['skill_level'].value_counts().reset_index()
-            level_counts.columns = ['level', 'count']
-            fig = px.bar(
-                level_counts, x='level', y='count',
-                color='count',
-                color_continuous_scale=['#667eea', '#764ba2'],
-                labels={'level': '', 'count': ''},
-            )
-            fig.update_layout(
-                margin=dict(l=0, r=0, t=10, b=0),
-                height=220,
-                coloraxis_showscale=False,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-            )
+            st.subheader("🏅 توزيع المستويات")
+            lc = members['skill_level'].value_counts().reset_index()
+            lc.columns = ['level', 'count']
+            fig = px.bar(lc, x='level', y='count', color='count',
+                         color_continuous_scale=['#667eea', '#764ba2'],
+                         labels={'level': '', 'count': ''})
+            fig.update_layout(margin=dict(l=0,r=0,t=10,b=0), height=230,
+                              coloraxis_showscale=False,
+                              plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig, use_container_width=True)
+
+    # ── Alerts row ───────────────────────────────────────────────────────────
+    st.markdown("---")
+    col_a1, col_a2 = st.columns(2)
+
+    with col_a1:
+        st.subheader("⚠️ تنبيهات الدفع")
+        try:
+            conn = get_conn()
+            cutoff_60 = (date.today() - timedelta(days=60)).isoformat()
+            paid_60 = set(r[0] for r in conn.execute(
+                "SELECT DISTINCT skater_name FROM payments WHERE payment_date >= ?", (cutoff_60,)
+            ).fetchall())
+            conn.close()
+            unpaid_members = members[
+                (~members['name'].isin(paid_60)) &
+                (members['membership_status'] == 'active')
+            ] if 'name' in members.columns else pd.DataFrame()
+
+            if len(unpaid_members) > 0:
+                st.error(f"🔴 {len(unpaid_members)} عضو نشط لم يدفع منذ 60 يوم")
+                st.dataframe(
+                    unpaid_members[['name','skill_level','coach_name']].head(8),
+                    use_container_width=True, hide_index=True
+                )
+            else:
+                st.success("✅ جميع الأعضاء النشطين دفعوا خلال 60 يوم")
+        except Exception:
+            st.info("لا توجد بيانات دفع")
+
+    with col_a2:
+        st.subheader("📅 الجلسات اليوم")
+        try:
+            conn = get_conn()
+            today_weekday = date.today().weekday()  # 0=Mon
+            schedule_df = pd.read_sql_query(
+                "SELECT start_time, end_time, level, coach, session_type, max_capacity "
+                "FROM training_schedule WHERE day_of_week=? ORDER BY start_time",
+                conn, params=(today_weekday,)
+            )
+            conn.close()
+            if len(schedule_df) > 0:
+                for _, row in schedule_df.iterrows():
+                    color = '#1e3a5f' if row['session_type'] == 'on-ice' else '#764ba2'
+                    st.markdown(
+                        f"<div style='background:{color};color:white;border-radius:8px;"
+                        f"padding:10px 14px;margin-bottom:8px'>"
+                        f"<b>{row['start_time']} – {row['end_time']}</b> | "
+                        f"{row['level']} | {row['coach'] or '—'} | "
+                        f"طاقة: {row['max_capacity']}</div>",
+                        unsafe_allow_html=True
+                    )
+            else:
+                st.info("لا جلسات مجدولة اليوم")
+        except Exception:
+            st.info("لا توجد جدول تدريب")
+
+    # ── Recent analyses ──────────────────────────────────────────────────────
+    try:
+        conn = get_conn()
+        hist = pd.read_sql_query(
+            "SELECT player_name, analyzed_at, duration, total_score, jumps_count, spins_count "
+            "FROM analysis_results ORDER BY id DESC LIMIT 5",
+            conn
+        )
+        conn.close()
+        if len(hist) > 0:
+            st.markdown("---")
+            st.subheader("🎥 آخر تحليلات الفيديو")
+            st.dataframe(hist, use_container_width=True, hide_index=True)
+    except Exception:
+        pass
 
     if not CORE_AI_AVAILABLE:
         st.warning(f"⚠️ {t('ai_not_available')}")
-        st.info(f"""
-        {t('install_ai')}:
-        ```
-        pip install numpy opencv-python
-        ```
-        ✅ {t('core_features_work')}
-        """)
-    elif not MEDIAPIPE_AVAILABLE:
-        st.info("ℹ️ MediaPipe غير متاح (لا يدعم Python 3.13 بعد). ميزات تحليل الحركة معطّلة، باقي الميزات تعمل.")
 
 # ============================================================================
 # MEMBERS PAGE
@@ -1320,12 +1389,234 @@ def show_video_analysis():
         st.code(traceback.format_exc())
 
 
-def show_player_progress():
+def show_analysis_history():
+    """سجل كامل لجميع تحليلات الفيديو المحفوظة"""
+    ar = st.session_state.language == 'ar'
+    st.header("📚 " + ("سجل التحليلات" if ar else "Analysis History"))
+
     try:
-        from src.pages.player_progress_page import show_player_progress_page
-        show_player_progress_page(lang=st.session_state.language)
-    except ImportError as e:
-        st.error(f"تعذّر تحميل صفحة التقدم: {e}")
+        conn = get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS analysis_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_name TEXT, session_note TEXT, analyzed_at TEXT,
+                duration REAL, total_score REAL, tes REAL, pcs REAL,
+                jumps_count INTEGER, spins_count INTEGER, errors_count INTEGER,
+                jump_details TEXT, spin_details TEXT
+            )
+        """)
+        hist = pd.read_sql_query(
+            "SELECT * FROM analysis_results ORDER BY id DESC",
+            conn
+        )
+        conn.close()
+    except Exception as e:
+        st.error(f"DB error: {e}")
+        return
+
+    if len(hist) == 0:
+        st.info("لا توجد تحليلات محفوظة بعد — ارفع فيديو من صفحة تحليل الفيديو" if ar
+                else "No saved analyses yet — upload a video from the Video Analysis page")
+        return
+
+    # ── Summary metrics ──────────────────────────────────────────────────────
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("📋 إجمالي التحليلات", len(hist))
+    c2.metric("🏆 أعلى نقاط", f"{hist['total_score'].max():.2f}" if 'total_score' in hist.columns else "—")
+    c3.metric("🦘 إجمالي قفزات", int(hist['jumps_count'].sum()) if 'jumps_count' in hist.columns else 0)
+    c4.metric("🌀 إجمالي دورانات", int(hist['spins_count'].sum()) if 'spins_count' in hist.columns else 0)
+
+    st.markdown("---")
+
+    # ── Filter by player ──────────────────────────────────────────────────────
+    players = ['الكل'] + sorted(hist['player_name'].dropna().unique().tolist())
+    chosen_player = st.selectbox("فلتر حسب اللاعب", players, label_visibility='collapsed')
+    if chosen_player != 'الكل':
+        hist = hist[hist['player_name'] == chosen_player]
+
+    # ── Score trend chart (if single player selected) ─────────────────────────
+    if chosen_player != 'الكل' and len(hist) > 1 and 'total_score' in hist.columns:
+        fig = px.line(
+            hist.sort_values('analyzed_at'),
+            x='analyzed_at', y='total_score',
+            markers=True,
+            title=f"📈 تطور نقاط {chosen_player}",
+            labels={'analyzed_at': 'التاريخ', 'total_score': 'النقاط'},
+            color_discrete_sequence=['#1e3a5f'],
+        )
+        fig.update_layout(height=280, margin=dict(l=0,r=0,t=50,b=0),
+                          plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ── Table ────────────────────────────────────────────────────────────────
+    display_cols = [c for c in
+        ['player_name','analyzed_at','duration','total_score','tes','pcs',
+         'jumps_count','spins_count','errors_count','session_note']
+        if c in hist.columns]
+    rename = {
+        'player_name': 'اللاعب', 'analyzed_at': 'التاريخ', 'duration': 'المدة(ث)',
+        'total_score': 'النقاط', 'tes': 'TES', 'pcs': 'PCS',
+        'jumps_count': 'قفزات', 'spins_count': 'دورانات',
+        'errors_count': 'أخطاء', 'session_note': 'ملاحظة',
+    }
+    st.dataframe(
+        hist[display_cols].rename(columns=rename),
+        use_container_width=True, hide_index=True
+    )
+
+    # ── Export ────────────────────────────────────────────────────────────────
+    col_x1, col_x2 = st.columns(2)
+    with col_x1:
+        st.download_button(
+            "📥 تصدير Excel",
+            data=_df_to_excel(hist[display_cols].rename(columns=rename), 'History'),
+            file_name=f"analysis_history_{date.today()}{_excel_ext()}",
+            mime=_excel_mime(), use_container_width=True,
+        )
+    with col_x2:
+        if st.button("🗑️ حذف السجل المختار", type="secondary", use_container_width=True,
+                     disabled=(chosen_player == 'الكل')):
+            try:
+                conn = get_conn()
+                if chosen_player != 'الكل':
+                    conn.execute("DELETE FROM analysis_results WHERE player_name=?", (chosen_player,))
+                    conn.commit()
+                conn.close()
+                st.success(f"✅ تم حذف سجلات {chosen_player}")
+                st.rerun()
+            except Exception as e:
+                st.error(str(e))
+
+
+def show_player_progress():
+    ar = st.session_state.language == 'ar'
+    st.header("📈 " + ("تقدم اللاعبين" if ar else "Player Progress"))
+
+    members = load_members()
+    if len(members) == 0:
+        st.info("لا يوجد أعضاء" if ar else "No members")
+        return
+
+    # ── Player selector ───────────────────────────────────────────────────────
+    player = st.selectbox(
+        "اختر لاعباً" if ar else "Select Player",
+        ["—"] + sorted(members['name'].tolist()),
+        key="progress_player"
+    )
+    if player == "—":
+        st.info("اختر لاعباً من القائمة")
+        return
+
+    st.markdown(f"### 👤 {player}")
+
+    col_m1, col_m2, col_m3 = st.columns(3)
+
+    # ── Attendance stats ──────────────────────────────────────────────────────
+    try:
+        conn = get_conn()
+        att_all = pd.read_sql_query(
+            "SELECT date, session_type, status FROM attendance WHERE skater_name=? ORDER BY date",
+            conn, params=(player,)
+        )
+        conn.close()
+
+        total_att = len(att_all)
+        present   = len(att_all[att_all['status'] == 'present']) if len(att_all) > 0 else 0
+        rate      = round(present / total_att * 100) if total_att > 0 else 0
+        col_m1.metric("📅 إجمالي الجلسات", total_att)
+        col_m2.metric("✅ حاضر", present)
+        col_m3.metric("📊 نسبة الحضور", f"{rate}%")
+
+        if len(att_all) > 0:
+            att_all['date'] = pd.to_datetime(att_all['date'])
+            att_all['month'] = att_all['date'].dt.to_period('M').astype(str)
+            monthly = att_all[att_all['status'] == 'present'].groupby('month').size().reset_index(name='sessions')
+            if len(monthly) > 1:
+                fig = px.bar(monthly, x='month', y='sessions',
+                             title="الحضور الشهري",
+                             color_discrete_sequence=['#667eea'],
+                             labels={'month': '', 'sessions': 'جلسات'})
+                fig.update_layout(height=250, margin=dict(l=0,r=0,t=50,b=0),
+                                  plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig, use_container_width=True)
+    except Exception:
+        pass
+
+    st.markdown("---")
+
+    # ── Skills progress ───────────────────────────────────────────────────────
+    try:
+        conn = get_conn()
+        skills = pd.read_sql_query(
+            "SELECT element_name, fse_level, achieved FROM player_skills WHERE skater_name=? ORDER BY fse_level, element_name",
+            conn, params=(player,)
+        )
+        conn.close()
+
+        if len(skills) > 0:
+            achieved_n = len(skills[skills['achieved'] == 1])
+            total_sk   = len(skills)
+            pct        = round(achieved_n / total_sk * 100) if total_sk > 0 else 0
+
+            st.subheader(f"🏅 تقدم المهارات ({pct}% مكتمل)")
+            st.progress(pct / 100)
+
+            c_ach, c_pend = st.columns(2)
+            with c_ach:
+                ach = skills[skills['achieved'] == 1][['element_name', 'fse_level']]
+                st.success(f"✅ مُنجز ({len(ach)})")
+                if len(ach) > 0:
+                    st.dataframe(ach, use_container_width=True, hide_index=True, height=200)
+            with c_pend:
+                pend = skills[skills['achieved'] != 1][['element_name', 'fse_level']]
+                st.warning(f"⏳ قيد التعلم ({len(pend)})")
+                if len(pend) > 0:
+                    st.dataframe(pend, use_container_width=True, hide_index=True, height=200)
+
+            # Skills by level bar
+            by_level = skills.groupby('fse_level').agg(
+                total=('achieved', 'count'),
+                achieved=('achieved', 'sum')
+            ).reset_index()
+            fig_sk = go.Figure()
+            fig_sk.add_trace(go.Bar(name='مُنجز', x=by_level['fse_level'], y=by_level['achieved'], marker_color='#22c55e'))
+            fig_sk.add_trace(go.Bar(name='إجمالي', x=by_level['fse_level'], y=by_level['total'], marker_color='#e2e8f0'))
+            fig_sk.update_layout(barmode='overlay', height=250, title="المهارات حسب المستوى",
+                                  margin=dict(l=0,r=0,t=50,b=0),
+                                  plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_sk, use_container_width=True)
+        else:
+            st.info("لا توجد بيانات مهارات لهذا اللاعب")
+    except Exception as e:
+        st.error(str(e))
+
+    st.markdown("---")
+
+    # ── Video analysis history for this player ────────────────────────────────
+    try:
+        conn = get_conn()
+        vid_hist = pd.read_sql_query(
+            "SELECT analyzed_at, duration, total_score, tes, pcs, jumps_count, spins_count "
+            "FROM analysis_results WHERE player_name=? ORDER BY id DESC",
+            conn, params=(player,)
+        )
+        conn.close()
+        if len(vid_hist) > 0:
+            st.subheader(f"🎥 تحليلات الفيديو ({len(vid_hist)} جلسة)")
+            if len(vid_hist) > 1:
+                fig_v = px.line(vid_hist.sort_values('analyzed_at'),
+                                x='analyzed_at', y='total_score',
+                                markers=True, title="تطور النقاط عبر الجلسات",
+                                color_discrete_sequence=['#1e3a5f'],
+                                labels={'analyzed_at': '', 'total_score': 'النقاط'})
+                fig_v.update_layout(height=250, margin=dict(l=0,r=0,t=50,b=0),
+                                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_v, use_container_width=True)
+            st.dataframe(vid_hist, use_container_width=True, hide_index=True)
+        else:
+            st.info("لا توجد تحليلات فيديو محفوظة لهذا اللاعب")
+    except Exception:
+        st.info("لا توجد تحليلات فيديو محفوظة لهذا اللاعب")
 
 
 def show_realtime():
@@ -1362,14 +1653,26 @@ def show_login():
 # ============================================================================
 
 def show_stats():
+    ar = st.session_state.language == 'ar'
     st.header(t('stats'))
 
-    members = load_members()
+    members    = load_members()
     attendance = load_attendance()
 
     if len(members) == 0:
         st.info(t('no_data'))
         return
+
+    # ── Top KPIs ──────────────────────────────────────────────────────────────
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("👥 إجمالي الأعضاء", len(members))
+    k2.metric("✅ نشطون",
+              len(members[members['membership_status'] == 'active']) if 'membership_status' in members.columns else '—')
+    k3.metric("📅 سجلات حضور", len(attendance))
+    avg_att = round(len(attendance) / max(len(members), 1), 1)
+    k4.metric("📊 متوسط/عضو", avg_att)
+
+    st.markdown("---")
 
     col1, col2 = st.columns(2)
 
@@ -1378,12 +1681,10 @@ def show_stats():
         if 'gender' in members.columns and members['gender'].notna().any():
             gender_counts = members['gender'].value_counts().reset_index()
             gender_counts.columns = ['gender', 'count']
-            fig = px.pie(
-                gender_counts, values='count', names='gender',
-                title=t('members_by_gender'),
-                color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'],
-            )
-            fig.update_layout(margin=dict(l=0, r=0, t=40, b=0), height=300)
+            fig = px.pie(gender_counts, values='count', names='gender',
+                         title=t('members_by_gender'),
+                         color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
+            fig.update_layout(margin=dict(l=0,r=0,t=40,b=0), height=300)
             st.plotly_chart(fig, use_container_width=True)
 
     # Skill level bar
@@ -1391,19 +1692,13 @@ def show_stats():
         if 'skill_level' in members.columns and members['skill_level'].notna().any():
             level_counts = members['skill_level'].value_counts().reset_index()
             level_counts.columns = ['level', 'count']
-            fig = px.bar(
-                level_counts, x='level', y='count',
-                title=t('members_by_level'),
-                color='count',
-                color_continuous_scale=['#667eea', '#764ba2'],
-            )
-            fig.update_layout(
-                margin=dict(l=0, r=0, t=40, b=0),
-                height=300,
-                coloraxis_showscale=False,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-            )
+            fig = px.bar(level_counts, x='level', y='count', color='count',
+                         color_continuous_scale=['#667eea', '#764ba2'],
+                         title=t('members_by_level'),
+                         labels={'level': '', 'count': ''})
+            fig.update_layout(margin=dict(l=0,r=0,t=40,b=0), height=300,
+                              coloraxis_showscale=False,
+                              plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig, use_container_width=True)
 
     # Attendance trend (last 30 days)
@@ -1447,7 +1742,46 @@ def show_stats():
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    # Payments overview
+    # ── Coach load ───────────────────────────────────────────────────────────
+    if 'coach_name' in members.columns and members['coach_name'].notna().any():
+        st.markdown("---")
+        st.subheader("👨‍🏫 عبء المدربين")
+        coach_load = members.groupby('coach_name').size().reset_index(name='students')
+        coach_load = coach_load.sort_values('students', ascending=False)
+        fig_c = px.bar(coach_load, x='coach_name', y='students',
+                       color='students', color_continuous_scale=['#4a9fd4','#1e3a5f'],
+                       labels={'coach_name': '', 'students': 'عدد اللاعبين'})
+        fig_c.update_layout(height=260, margin=dict(l=0,r=0,t=20,b=0),
+                            coloraxis_showscale=False,
+                            plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_c, use_container_width=True)
+
+    # ── Skills completion rate per level ─────────────────────────────────────
+    try:
+        conn = get_conn()
+        skills_agg = pd.read_sql_query(
+            "SELECT fse_level, COUNT(*) as total, SUM(achieved) as done "
+            "FROM player_skills GROUP BY fse_level ORDER BY fse_level",
+            conn
+        )
+        conn.close()
+        if len(skills_agg) > 0:
+            st.markdown("---")
+            st.subheader("🏅 نسبة إنجاز المهارات حسب المستوى")
+            skills_agg['pct'] = (skills_agg['done'] / skills_agg['total'] * 100).round(1)
+            fig_s = px.bar(skills_agg, x='fse_level', y='pct',
+                           color='pct', color_continuous_scale=['#ef4444','#f59e0b','#22c55e'],
+                           labels={'fse_level': 'المستوى', 'pct': 'نسبة الإنجاز %'},
+                           text=skills_agg['pct'].apply(lambda x: f"{x:.0f}%"))
+            fig_s.update_layout(height=260, margin=dict(l=0,r=0,t=20,b=0),
+                                coloraxis_showscale=False,
+                                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            fig_s.update_traces(textposition='outside')
+            st.plotly_chart(fig_s, use_container_width=True)
+    except Exception:
+        pass
+
+    # ── Payments overview ────────────────────────────────────────────────────
     try:
         conn = get_conn()
         pay_df = pd.read_sql_query(
@@ -1455,56 +1789,149 @@ def show_stats():
             "FROM payments GROUP BY bundle_type ORDER BY total DESC",
             conn
         )
+        monthly_rev = pd.read_sql_query(
+            "SELECT strftime('%Y-%m', payment_date) as month, SUM(amount) as revenue "
+            "FROM payments GROUP BY month ORDER BY month",
+            conn
+        )
         conn.close()
         if len(pay_df) > 0:
-            st.subheader("💰 " + ("توزيع الباقات" if st.session_state.language == 'ar' else "Bundle Distribution"))
+            st.markdown("---")
+            st.subheader("💰 الإيرادات والباقات")
             col1, col2 = st.columns(2)
             with col1:
                 fig = px.pie(pay_df, values='count', names='bundle_type',
+                             title="توزيع الباقات",
                              color_discrete_sequence=px.colors.sequential.Purples_r)
-                fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), height=280)
+                fig.update_layout(margin=dict(l=0,r=0,t=40,b=0), height=280)
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
                 total_rev = pay_df['total'].sum()
-                st.metric("Total Revenue", f"{total_rev:,.0f} EGP")
-                st.dataframe(pay_df, use_container_width=True)
+                st.metric("إجمالي الإيرادات", f"{total_rev:,.0f} ج.م")
+                st.dataframe(pay_df.rename(columns={'bundle_type':'الباقة','total':'الإجمالي','count':'العدد'}),
+                             use_container_width=True, hide_index=True)
+            if len(monthly_rev) > 1:
+                fig_r = px.bar(monthly_rev, x='month', y='revenue',
+                               color='revenue', color_continuous_scale=['#667eea','#1e3a5f'],
+                               title="الإيرادات الشهرية",
+                               labels={'month': '', 'revenue': 'ج.م'})
+                fig_r.update_layout(height=260, margin=dict(l=0,r=0,t=50,b=0),
+                                    coloraxis_showscale=False,
+                                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_r, use_container_width=True)
     except Exception:
         pass
+
+    # ── Export full stats ─────────────────────────────────────────────────────
+    st.markdown("---")
+    col_e1, col_e2 = st.columns(2)
+    with col_e1:
+        st.download_button(
+            "📥 تصدير بيانات الأعضاء",
+            data=_df_to_excel(members, 'Members'),
+            file_name=f"members_stats_{date.today()}{_excel_ext()}",
+            mime=_excel_mime(), use_container_width=True,
+        )
+    with col_e2:
+        if len(attendance) > 0:
+            st.download_button(
+                "📥 تصدير سجل الحضور",
+                data=_df_to_excel(attendance, 'Attendance'),
+                file_name=f"attendance_{date.today()}{_excel_ext()}",
+                mime=_excel_mime(), use_container_width=True,
+            )
 
 # ============================================================================
 # SETTINGS PAGE
 # ============================================================================
 
 def show_settings():
+    ar = st.session_state.language == 'ar'
     st.header(t('settings'))
 
-    st.subheader(t('system_info'))
-    col1, col2 = st.columns(2)
+    # ── System status ────────────────────────────────────────────────────────
+    st.subheader("🖥️ " + ("حالة النظام" if ar else "System Status"))
+    col1, col2, col3 = st.columns(3)
+
+    def _status(ok, label):
+        return f"{'✅' if ok else '❌'} {label}"
+
+    try:
+        import cv2 as _cv2; cv_ver = _cv2.__version__
+        cv_ok = True
+    except Exception:
+        cv_ver = "—"; cv_ok = False
+
+    try:
+        import mediapipe as _mp; mp_ver = _mp.__version__
+        mp_ok = True
+    except Exception:
+        mp_ver = "—"; mp_ok = False
+
+    mp_model_ok = Path('data/models/pose_landmarker_lite.task').exists()
+
     with col1:
         st.info(f"**Python:** {sys.version.split()[0]}")
-        st.info(f"**Database:** skating_database.db")
-        st.info(f"**MediaPipe:** {'✅' if MEDIAPIPE_AVAILABLE else '❌'}")
+        st.info(_status(cv_ok, f"OpenCV {cv_ver}"))
+        st.info(_status(mp_ok, f"MediaPipe {mp_ver}"))
+
     with col2:
-        st.info(f"**OpenCV:** {'✅' if CV2_AVAILABLE else '❌'}")
-        st.info(f"**Advanced Analyzer:** {'✅' if ANALYZER_AVAILABLE else '❌'}")
+        st.info(_status(mp_model_ok, "Pose Model (.task)"))
+        st.info(_status(ANALYZER_AVAILABLE, "Advanced Analyzer"))
         members = load_members()
-        st.info(f"**{t('total_members')}:** {len(members)}")
+        st.info(f"👥 {len(members)} {('عضو في قاعدة البيانات' if ar else 'members in DB')}")
+
+    with col3:
+        try:
+            conn = get_conn()
+            att_count = conn.execute("SELECT COUNT(*) FROM attendance").fetchone()[0]
+            pay_count = conn.execute("SELECT COUNT(*) FROM payments").fetchone()[0]
+            ski_count = conn.execute("SELECT COUNT(*) FROM player_skills").fetchone()[0]
+            ana_count = conn.execute("SELECT COUNT(*) FROM analysis_results").fetchone()[0] if True else 0
+            conn.close()
+            st.info(f"📅 {att_count} سجل حضور")
+            st.info(f"💰 {pay_count} دفعة")
+            st.info(f"🏅 {ski_count} مهارة مسجلة")
+            st.info(f"🎥 {ana_count} تحليل فيديو")
+        except Exception:
+            pass
 
     st.markdown("---")
 
-    st.subheader("🗄️ " + t('db_path'))
+    # ── Database info ─────────────────────────────────────────────────────────
+    st.subheader("🗄️ " + ("قاعدة البيانات" if ar else "Database"))
     st.code(str(Path('skating_database.db').resolve()))
 
+    try:
+        conn = get_conn()
+        tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        conn.close()
+        tbl_data = []
+        conn2 = get_conn()
+        for (tname,) in tables:
+            cnt = conn2.execute(f"SELECT COUNT(*) FROM {tname}").fetchone()[0]
+            tbl_data.append({'الجدول': tname, 'السجلات': cnt})
+        conn2.close()
+        st.dataframe(pd.DataFrame(tbl_data), use_container_width=True, hide_index=True)
+    except Exception:
+        pass
+
     st.markdown("---")
 
-    if st.button(t('clear_cache'), use_container_width=False):
-        invalidate_cache()
-        st.success(f"✅ {t('cache_cleared')}")
+    # ── Cache & maintenance ───────────────────────────────────────────────────
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        if st.button("🔄 " + ("مسح الكاش" if ar else "Clear Cache"), use_container_width=True):
+            invalidate_cache()
+            st.success(f"✅ {t('cache_cleared')}")
+    with col_c2:
+        photos_dir = Path('data/photos')
+        photo_count = len(list(photos_dir.glob('*'))) if photos_dir.exists() else 0
+        st.info(f"📷 {photo_count} {'صورة لاعب محفوظة' if ar else 'player photos saved'}")
 
-    if not CORE_AI_AVAILABLE:
-        st.markdown("---")
-        st.subheader("📦 " + t('install_ai'))
-        st.code("pip install mediapipe opencv-python numpy")
+    st.markdown("---")
+    st.caption(f"YASOOO v7.0 | Python {sys.version.split()[0]} | "
+               f"6 Languages | OpenCV {cv_ver} | Build {date.today()}")
 
 # ============================================================================
 # SCHEDULE PAGE
@@ -1811,7 +2238,7 @@ _ROUTER = {
     t('my_videos'):       show_my_videos,
     t('realtime'):        show_realtime,
     t('player_progress'): show_player_progress,
-    t('analysis_history'):show_player_progress,
+    t('analysis_history'):show_analysis_history,
     t('ml_training'):     show_ml_training,
     t('referee'):         show_referee,
     t('stats'):           show_stats,
