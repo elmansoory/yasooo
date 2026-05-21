@@ -1145,9 +1145,70 @@ th{{background:#667eea;color:white}} @media print{{button{{display:none}}}}</sty
                     conn.close()
                     invalidate_cache()
                     st.success(f"✅ {t('success')}: {name}")
-                    st.rerun()
                 except Exception as e:
                     st.error(f"{t('error')}: {str(e)}")
+
+    # ── Bulk import from Excel/CSV ────────────────────────────────────────────
+    ar_imp = st.session_state.language == 'ar'
+    with st.expander("📥 " + ("استيراد أعضاء من Excel/CSV" if ar_imp else "Bulk Import from Excel/CSV")):
+        st.markdown("""
+        **الأعمدة المطلوبة:** `name` · `gender` · `level` · `coach_name` · `bundle`
+
+        **مثال:**
+        ```
+        name,gender,level,coach_name,bundle
+        أحمد محمد,ذكر,Beta,أحمد سعد,Basic
+        سارة علي,أنثى,Gamma,سارة محمد,Standard
+        ```
+        """ if ar_imp else """
+        **Required columns:** `name` · `gender` · `level` · `coach_name` · `bundle`
+        """)
+        uploaded_file = st.file_uploader(
+            "اختر ملف Excel أو CSV" if ar_imp else "Choose Excel or CSV file",
+            type=['xlsx', 'xls', 'csv'],
+            key='bulk_import'
+        )
+        if uploaded_file:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    df_imp = pd.read_csv(uploaded_file)
+                else:
+                    df_imp = pd.read_excel(uploaded_file)
+
+                st.write(f"{'معاينة' if ar_imp else 'Preview'}: {len(df_imp)} {'سجل' if ar_imp else 'records'}")
+                st.dataframe(df_imp.head(5), use_container_width=True, hide_index=True)
+
+                if st.button("💾 " + ("استيراد الكل" if ar_imp else "Import All"), type="primary"):
+                    conn = get_conn()
+                    added = 0
+                    skipped = 0
+                    for _, row in df_imp.iterrows():
+                        n = str(row.get('name', '')).strip()
+                        if not n:
+                            continue
+                        try:
+                            conn.execute(
+                                "INSERT OR IGNORE INTO skaters (name,gender,level,coach_name,bundle,notes) VALUES (?,?,?,?,?,?)",
+                                (n,
+                                 str(row.get('gender', '')),
+                                 str(row.get('level', 'Beta')),
+                                 str(row.get('coach_name', '')),
+                                 str(row.get('bundle', '')),
+                                 str(row.get('notes', '')))
+                            )
+                            if conn.execute("SELECT changes()").fetchone()[0] > 0:
+                                added += 1
+                            else:
+                                skipped += 1
+                        except Exception:
+                            skipped += 1
+                    conn.commit()
+                    conn.close()
+                    invalidate_cache()
+                    st.success(f"✅ {'تم إضافة' if ar_imp else 'Added'} {added} | {'تجاهل' if ar_imp else 'Skipped'} {skipped}")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"خطأ في قراءة الملف: {e}")
 
 # ============================================================================
 # ATTENDANCE PAGE
@@ -1365,6 +1426,67 @@ th{{background:#667eea;color:white}} @media print{{button{{display:none}}}}</sty
                 )
         except Exception as e:
             st.error(f"Display error: {e}")
+
+        # ── Coach report ───────────────────────────────────────────────────
+        st.markdown("---")
+        is_ar_cr = st.session_state.language == 'ar'
+        st.subheader("👨‍🏫 " + ("تقرير حضور بالمدرب" if is_ar_cr else "Attendance by Coach"))
+        try:
+            if 'coach' in attendance.columns and attendance['coach'].notna().any():
+                coaches_list = ['الكل' if is_ar_cr else 'All'] + sorted(attendance['coach'].dropna().unique().tolist())
+                sel_coach = st.selectbox("المدرب" if is_ar_cr else "Coach", coaches_list, key="coach_filter")
+
+                coach_att = attendance.copy()
+                if sel_coach not in ('الكل', 'All'):
+                    coach_att = coach_att[coach_att['coach'] == sel_coach]
+
+                if len(coach_att) > 0 and 'attendance_date' in coach_att.columns:
+                    # Monthly summary
+                    coach_att['month'] = pd.to_datetime(coach_att['attendance_date'], errors='coerce').dt.to_period('M').astype(str)
+                    monthly_summary = coach_att[coach_att['status'] == 'present'].groupby('month').size().reset_index(name='حاضرون')
+                    if len(monthly_summary) > 0:
+                        fig_cr = px.bar(monthly_summary, x='month', y='حاضرون',
+                                        color_discrete_sequence=['#1e3a5f'],
+                                        labels={'month': ''})
+                        fig_cr.update_layout(height=220, margin=dict(l=0,r=0,t=20,b=0),
+                                             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig_cr, use_container_width=True)
+
+                    # Top attending members for this coach
+                    top_members = coach_att[coach_att['status'] == 'present'].groupby('skater_name').size().reset_index(name='جلسات')
+                    top_members = top_members.sort_values('جلسات', ascending=False).head(10)
+                    st.dataframe(top_members, use_container_width=True, hide_index=True)
+
+                    # Printable class sheet
+                    today_members = coach_att[coach_att['attendance_date'] == date.today().isoformat()]['skater_name'].tolist()
+                    all_coach_members = sorted(coach_att['skater_name'].dropna().unique().tolist())
+                    sheet_rows = "".join(
+                        f"<tr><td>{i+1}</td><td>{name}</td>"
+                        f"<td style='color:{'green' if name in today_members else 'red'}'>"
+                        f"{'✓ حاضر' if name in today_members else '✗ غائب'}</td>"
+                        f"<td></td></tr>"
+                        for i, name in enumerate(all_coach_members)
+                    )
+                    html_sheet = f"""<!DOCTYPE html><html dir="rtl">
+<head><meta charset="utf-8"><style>
+body{{font-family:Arial;direction:rtl}} table{{width:100%;border-collapse:collapse}}
+td,th{{border:1px solid #ccc;padding:6px 10px}} th{{background:#1e3a5f;color:white}}
+@media print{{button{{display:none}}}}</style></head>
+<body>
+<h2>كشف الحضور — {sel_coach} — {date.today()}</h2>
+<p>إجمالي اللاعبين: {len(all_coach_members)} | حاضر اليوم: {len(today_members)}</p>
+<table><thead><tr><th>#</th><th>الاسم</th><th>الحضور</th><th>توقيع</th></tr></thead>
+<tbody>{sheet_rows}</tbody></table>
+<br><button onclick="window.print()">🖨️ طباعة</button></body></html>"""
+                    st.download_button(
+                        "🖨️ " + ("كشف حضور اليوم للمدرب" if is_ar_cr else "Today's Class Sheet"),
+                        data=html_sheet.encode('utf-8'),
+                        file_name=f"class_sheet_{sel_coach}_{date.today()}.html",
+                        mime="text/html",
+                        use_container_width=True,
+                    )
+        except Exception:
+            st.info("لا توجد بيانات حضور بالمدرب" if is_ar_cr else "No coach attendance data")
     else:
         st.info(t('no_attendance'))
 
