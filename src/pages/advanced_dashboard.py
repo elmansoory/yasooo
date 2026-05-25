@@ -685,42 +685,45 @@ def show_ai_recommendations(
 
 
 def load_dashboard_data() -> Dict:
-    """تحميل البيانات من قاعدة البيانات"""
-    # This is a mock function - in real implementation, load from actual database
-    # For now, load from the simple database
-
+    """تحميل البيانات من قاعدة البيانات — uses real skaters table"""
     import sqlite3
 
     conn = sqlite3.connect('skating_database.db')
 
-    # Load members
-    members_df = pd.read_sql_query("SELECT * FROM members", conn)
-    members = members_df.to_dict('records')
+    # Load skaters (was wrongly querying 'members' table)
+    try:
+        members_df = pd.read_sql_query(
+            "SELECT id, name, level AS skill_level, coach_name, "
+            "membership_status, gender FROM skaters", conn
+        )
+        members = members_df.to_dict('records')
+    except Exception:
+        members = []
 
     # Load attendance
     try:
         attendance_df = pd.read_sql_query("SELECT * FROM attendance", conn)
         attendance = attendance_df.to_dict('records')
-    except:
+    except Exception:
         attendance = []
 
-    # Load memberships (as payments proxy)
+    # Load payments
     try:
-        memberships_df = pd.read_sql_query("SELECT * FROM memberships", conn)
-        payments = memberships_df.to_dict('records')
-    except:
+        payments_df = pd.read_sql_query("SELECT * FROM payments", conn)
+        payments = payments_df.to_dict('records')
+    except Exception:
         payments = []
 
-    # Mock scores (since not in simple DB)
+    # Load real analysis scores
     scores = []
-    for member in members:
-        # Generate some mock score data
-        for i in range(5):
-            scores.append({
-                'skater_id': member['id'],
-                'total_score': np.random.uniform(60, 90),
-                'created_at': (datetime.now() - timedelta(days=i*14)).isoformat()
-            })
+    try:
+        scores_df = pd.read_sql_query(
+            "SELECT player_name AS skater_name, total_score, analyzed_at AS created_at "
+            "FROM analysis_results ORDER BY analyzed_at DESC LIMIT 200", conn
+        )
+        scores = scores_df.to_dict('records')
+    except Exception:
+        pass
 
     conn.close()
 

@@ -21,9 +21,9 @@ from typing import Optional
 # Add src to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-# Import analyzer
+# Import new analyzer (replaces old AdvancedSkatingAnalyzer)
 try:
-    from src.ai.advanced_analyzer import AdvancedSkatingAnalyzer, JumpType
+    from src.pages.video_analysis_page import SkatingVideoAnalyzer
     ANALYZER_AVAILABLE = True
 except ImportError:
     ANALYZER_AVAILABLE = False
@@ -158,7 +158,7 @@ def show_analysis_tab():
 
 def analyze_video(uploaded_file, enable_pose, enable_jumps, enable_spins,
                  enable_goe, enable_report, confidence, frame_skip):
-    """تحليل الفيديو"""
+    """تحليل الفيديو — uses new SkatingVideoAnalyzer (dict API)"""
 
     # Save uploaded file
     video_path = f"temp/{uploaded_file.name}"
@@ -169,56 +169,33 @@ def analyze_video(uploaded_file, enable_pose, enable_jumps, enable_spins,
 
     st.info(f"📁 تم حفظ الفيديو في: {video_path}")
 
-    # Initialize analyzer
-    analyzer = AdvancedSkatingAnalyzer()
-
     # Progress tracking
     progress_bar = st.progress(0)
     status_text = st.empty()
 
     try:
-        # Step 1: Extract video info
-        status_text.text("⏳ جاري استخراج معلومات الفيديو...")
-        progress_bar.progress(10)
+        status_text.text("🔍 جاري تحليل الفيديو...")
+        progress_bar.progress(20)
 
-        video_info = analyzer._get_video_info(video_path)
+        analyzer = SkatingVideoAnalyzer()
+        results = analyzer.analyze(video_path)
 
-        st.success(f"✅ معلومات الفيديو: {video_info['duration']:.1f}s, {video_info['fps']:.1f} FPS")
-
-        # Step 2: Extract poses
-        if enable_pose:
-            status_text.text("🔍 جاري كشف الوضعيات...")
-            progress_bar.progress(30)
-
-            poses = analyzer._extract_poses(video_path)
-            st.success(f"✅ تم كشف الوضعيات في {len(poses)} إطار")
-
-        # Step 3: Detect jumps
-        if enable_jumps and enable_pose:
-            status_text.text("🎯 جاري كشف وتحليل القفزات...")
-            progress_bar.progress(60)
-
-            jumps = analyzer._detect_jumps(poses)
-            st.success(f"✅ تم كشف {len(jumps)} قفزة")
-
-        # Step 4: Detect spins
-        if enable_spins and enable_pose:
-            status_text.text("🌀 جاري تحليل الدورانات...")
-            progress_bar.progress(80)
-
-            spins = analyzer._detect_spins(poses)
-            st.success(f"✅ تم كشف {len(spins)} دوران")
-
-        # Step 5: Generate report
-        if enable_report:
-            status_text.text("📊 جاري إنشاء التقرير...")
-            progress_bar.progress(95)
-
-            summary = analyzer._generate_summary(jumps if enable_jumps else [], spins if enable_spins else [])
-
-        # Complete
         progress_bar.progress(100)
         status_text.text("✅ اكتمل التحليل!")
+
+        if 'error' in results:
+            st.error(results['error'])
+            return
+
+        jumps = results.get('jumps', [])
+        spins = results.get('spins', [])
+        video_info = results.get('video_info', {})
+        total_score = results.get('total_score', 0)
+        tes = results.get('tes', 0)
+        pcs = results.get('pcs', 0)
+
+        st.success(f"✅ معلومات الفيديو: {video_info.get('duration', 0):.1f}s, {video_info.get('fps', 0):.1f} FPS")
+        st.success(f"✅ تم كشف {len(jumps)} قفزة و {len(spins)} دوران")
 
         st.balloons()
 
@@ -226,14 +203,16 @@ def analyze_video(uploaded_file, enable_pose, enable_jumps, enable_spins,
         st.markdown("---")
         st.markdown("## 📊 نتائج التحليل")
 
-        display_analysis_results(jumps if enable_jumps else [], spins if enable_spins else [], summary if enable_report else {})
+        display_analysis_results(jumps, spins, {
+            'total_score': total_score, 'tes': tes, 'pcs': pcs
+        })
 
-        # Save results to session state
+        # Save to session state
         st.session_state['last_analysis'] = {
             'video_name': uploaded_file.name,
-            'jumps': jumps if enable_jumps else [],
-            'spins': spins if enable_spins else [],
-            'summary': summary if enable_report else {},
+            'jumps': jumps,
+            'spins': spins,
+            'summary': {'total_score': total_score, 'tes': tes, 'pcs': pcs},
             'video_info': video_info
         }
 
@@ -243,23 +222,21 @@ def analyze_video(uploaded_file, enable_pose, enable_jumps, enable_spins,
 
 
 def display_analysis_results(jumps, spins, summary):
-    """عرض نتائج التحليل"""
+    """عرض نتائج التحليل — dict-based API"""
 
     # Overview metrics
     col1, col2, col3, col4 = st.columns(4)
 
+    total_score = summary.get('total_score', 0) or sum(j.get('final_score', 0) for j in jumps)
+    avg_goe = sum(j.get('goe', 0) for j in jumps) / len(jumps) if jumps else 0
+
     with col1:
         st.metric("🦘 القفزات", len(jumps))
-
     with col2:
         st.metric("🌀 الدورانات", len(spins))
-
     with col3:
-        total_score = sum(j.final_score for j in jumps) + sum(s.final_score for s in spins)
         st.metric("🏆 النقاط الكلية", f"{total_score:.2f}")
-
     with col4:
-        avg_goe = sum(j.goe for j in jumps) / len(jumps) if jumps else 0
         st.metric("📊 متوسط GOE", f"{avg_goe:+.1f}")
 
     st.markdown("---")
@@ -272,15 +249,13 @@ def display_analysis_results(jumps, spins, summary):
         for i, jump in enumerate(jumps, 1):
             jumps_data.append({
                 '#': i,
-                'النوع': jump.jump_type.value,
-                'الدورانات': f"{jump.rotations:.1f}",
-                'الارتفاع (cm)': f"{jump.height_cm:.1f}",
-                'الوقت (s)': f"{jump.airtime_seconds:.2f}",
-                'RPM': f"{jump.rotation_speed_rpm:.0f}",
-                'Base Value': f"{jump.base_value:.2f}",
-                'GOE': f"{jump.goe:+d}",
-                'النقاط': f"{jump.final_score:.2f}",
-                'الثقة': f"{jump.confidence:.0%}"
+                'النوع': jump.get('type', ''),
+                'الدورانات': f"{jump.get('rotations', 0):.1f}",
+                'الارتفاع (cm)': f"{jump.get('height_cm', 0):.1f}",
+                'Base Value': f"{jump.get('base_value', 0):.2f}",
+                'GOE': f"{jump.get('goe', 0):+d}",
+                'النقاط': f"{jump.get('final_score', 0):.2f}",
+                'نظيف': '✅' if jump.get('is_clean', True) else '⚠️'
             })
 
         df = pd.DataFrame(jumps_data)
@@ -292,10 +267,9 @@ def display_analysis_results(jumps, spins, summary):
         col1, col2 = st.columns(2)
 
         with col1:
-            # By type
             type_counts = {}
             for jump in jumps:
-                key = jump.jump_type.value
+                key = jump.get('type', 'Unknown')
                 type_counts[key] = type_counts.get(key, 0) + 1
 
             fig = px.pie(
@@ -306,8 +280,7 @@ def display_analysis_results(jumps, spins, summary):
             st.plotly_chart(fig, use_container_width=True)
 
         with col2:
-            # Score distribution
-            scores = [j.final_score for j in jumps]
+            scores = [j.get('final_score', 0) for j in jumps]
             fig = px.bar(
                 x=[f"Jump {i+1}" for i in range(len(jumps))],
                 y=scores,
@@ -413,7 +386,7 @@ def show_statistics_tab():
             # Performance over time
             st.markdown("### 📊 الأداء عبر البرنامج")
 
-            scores = [j.final_score for j in jumps]
+            scores = [j.get('final_score', 0) for j in jumps]
             fig = go.Figure()
 
             fig.add_trace(go.Scatter(
@@ -440,15 +413,15 @@ def show_statistics_tab():
             col1, col2, col3 = st.columns(3)
 
             with col1:
-                avg_height = sum(j.height_cm for j in jumps) / len(jumps)
+                avg_height = sum(j.get('height_cm', 0) for j in jumps) / len(jumps)
                 st.metric("متوسط الارتفاع", f"{avg_height:.1f} cm")
 
             with col2:
-                avg_rpm = sum(j.rotation_speed_rpm for j in jumps) / len(jumps)
+                avg_rpm = sum(j.get('rpm', 0) for j in jumps) / len(jumps)
                 st.metric("متوسط RPM", f"{avg_rpm:.0f}")
 
             with col3:
-                avg_airtime = sum(j.airtime_seconds for j in jumps) / len(jumps)
+                avg_airtime = sum(j.get('airtime', 0) for j in jumps) / len(jumps)
                 st.metric("متوسط وقت الطيران", f"{avg_airtime:.2f} s")
 
         else:

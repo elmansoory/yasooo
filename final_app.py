@@ -104,6 +104,8 @@ TRANSLATIONS = {
         'photo_upload': '📷 رفع صورة',
         'add_session': '➕ إضافة حصة',
         'weekly_schedule': '📅 الجدول الأسبوعي',
+        'competitions': '🏆 البطولات',
+        'medical': '🏥 السجلات الطبية',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -181,6 +183,8 @@ TRANSLATIONS = {
         'photo_upload': '📷 Upload Photo',
         'add_session': '➕ Add Session',
         'weekly_schedule': '📅 Weekly Schedule',
+        'competitions': '🏆 Competitions',
+        'medical': '🏥 Medical Records',
         'logout': 'Logout',
         'login': 'Login',
         'username': 'Username',
@@ -746,6 +750,8 @@ _nav_pages = [
     t('realtime'),
     t('player_progress'),
     t('analysis_history'),
+    t('competitions'),
+    t('medical'),
     t('ml_training'),
     t('referee'),
     t('stats'),
@@ -1116,6 +1122,71 @@ th{{background:#667eea;color:white}} @media print{{button{{display:none}}}}</sty
                             st.dataframe(pending[['element_name', 'fse_level']], use_container_width=True, height=180)
             except Exception:
                 pass
+
+    # ── Edit / Delete member ─────────────────────────────────────────────────
+    ar_ed = st.session_state.language == 'ar'
+    if len(members) > 0:
+        with st.expander("✏️ " + ("تعديل / حذف عضو" if ar_ed else "Edit / Delete Member")):
+            edit_name = st.selectbox(
+                "اختر العضو" if ar_ed else "Select Member",
+                sorted(members['name'].tolist()),
+                key="edit_select"
+            )
+            if edit_name:
+                row_ed = members[members['name'] == edit_name].iloc[0]
+                with st.form("edit_member_form"):
+                    new_gender = st.selectbox(
+                        t('gender'),
+                        [t('male'), t('female')],
+                        index=0 if row_ed.get('gender') in [t('male'), 'Male', 'ذكر'] else 1,
+                        key="ed_gender"
+                    )
+                    new_level = st.selectbox(
+                        t('skill_level'),
+                        ['Beta', 'Gamma', 'Delta', 'Pre-Freestyle', 'Freestyle'],
+                        index=['Beta','Gamma','Delta','Pre-Freestyle','Freestyle'].index(row_ed.get('skill_level','Beta'))
+                              if row_ed.get('skill_level','') in ['Beta','Gamma','Delta','Pre-Freestyle','Freestyle'] else 0,
+                        key="ed_level"
+                    )
+                    new_coach = st.text_input("Coach", value=row_ed.get('coach_name','') or '', key="ed_coach")
+                    new_bundle = st.text_input("Bundle", value=row_ed.get('bundle','') or '', key="ed_bundle")
+                    new_status = st.selectbox(
+                        "Status",
+                        ['active', 'inactive', 'suspended'],
+                        index=['active','inactive','suspended'].index(row_ed.get('membership_status','active'))
+                              if row_ed.get('membership_status','') in ['active','inactive','suspended'] else 0,
+                        key="ed_status"
+                    )
+                    new_notes = st.text_area(t('notes'), value=row_ed.get('notes','') or '', key="ed_notes")
+                    col_save, col_del = st.columns(2)
+                    with col_save:
+                        if st.form_submit_button("💾 " + ("حفظ التعديلات" if ar_ed else "Save Changes")):
+                            try:
+                                conn = get_conn()
+                                conn.execute(
+                                    "UPDATE skaters SET gender=?, level=?, coach_name=?, bundle=?, "
+                                    "membership_status=?, notes=? WHERE name=?",
+                                    (new_gender, new_level, new_coach, new_bundle, new_status, new_notes, edit_name)
+                                )
+                                conn.commit()
+                                conn.close()
+                                invalidate_cache()
+                                st.success("✅ " + ("تم الحفظ" if ar_ed else "Saved"))
+                                st.rerun()
+                            except Exception as e:
+                                st.error(str(e))
+                    with col_del:
+                        if st.form_submit_button("🗑️ " + ("حذف العضو" if ar_ed else "Delete Member"), type="secondary"):
+                            try:
+                                conn = get_conn()
+                                conn.execute("DELETE FROM skaters WHERE name=?", (edit_name,))
+                                conn.commit()
+                                conn.close()
+                                invalidate_cache()
+                                st.success("🗑️ " + ("تم الحذف" if ar_ed else "Deleted"))
+                                st.rerun()
+                            except Exception as e:
+                                st.error(str(e))
 
     with st.expander(t('add_member')):
         with st.form("add_member"):
@@ -1786,6 +1857,22 @@ def show_club_management():
         st.error(f"تعذّر تحميل إدارة الأندية: {e}")
 
 
+def show_competitions():
+    try:
+        from src.pages.competition_page import show_competition_page
+        show_competition_page(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في صفحة البطولات: {e}")
+
+
+def show_medical():
+    try:
+        from src.pages.medical_page import show_medical_page
+        show_medical_page(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في السجلات الطبية: {e}")
+
+
 def show_login():
     try:
         from src.auth.auth_manager import seed_demo_data
@@ -2279,8 +2366,66 @@ def show_payments():
         filtered_pay = pay_df.copy()
         if search_pay:
             filtered_pay = filtered_pay[filtered_pay['skater_name'].str.contains(search_pay, case=False, na=False)]
-        st.dataframe(filtered_pay, use_container_width=True, height=400)
+        st.dataframe(filtered_pay, use_container_width=True, height=300)
         st.caption(f"{len(filtered_pay)} " + ("سجل" if is_ar else "records"))
+
+        # Invoice / Receipt generator
+        st.divider()
+        st.subheader("🧾 " + ("إنشاء إيصال دفع" if is_ar else "Generate Receipt"))
+        if len(pay_df) > 0:
+            inv_player = st.selectbox(
+                "اختر اللاعب لعرض آخر دفعة" if is_ar else "Select player to show last payment",
+                sorted(pay_df['skater_name'].dropna().unique().tolist()),
+                key="inv_player"
+            )
+            last_pay = pay_df[pay_df['skater_name'] == inv_player].sort_values('payment_date', ascending=False).head(1)
+            if len(last_pay):
+                r = last_pay.iloc[0]
+                receipt_html = f"""<!DOCTYPE html><html dir="{'rtl' if is_ar else 'ltr'}">
+<head><meta charset="utf-8"><title>Receipt</title>
+<style>
+  body{{font-family:Arial,sans-serif;direction:{'rtl' if is_ar else 'ltr'};padding:20px;max-width:600px;margin:auto}}
+  .header{{text-align:center;border-bottom:2px solid #667eea;padding-bottom:15px;margin-bottom:20px}}
+  .logo{{font-size:2em;color:#667eea}}
+  h1{{color:#667eea;margin:5px 0}}
+  .field{{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}}
+  .label{{color:#666;font-weight:bold}}
+  .value{{color:#333}}
+  .total{{font-size:1.4em;font-weight:bold;color:#667eea;text-align:center;padding:15px;
+          background:#f8f8ff;border-radius:8px;margin:20px 0}}
+  .footer{{text-align:center;color:#888;font-size:0.85em;margin-top:20px}}
+  @media print{{button{{display:none}}}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">⛸️</div>
+  <h1>{'نظام التزلج الفني' if is_ar else 'Figure Skating System'}</h1>
+  <p>{'إيصال دفع رسمي' if is_ar else 'Official Payment Receipt'}</p>
+</div>
+<div class="field"><span class="label">{'اللاعب' if is_ar else 'Player'}</span><span class="value">{r['skater_name']}</span></div>
+<div class="field"><span class="label">{'التاريخ' if is_ar else 'Date'}</span><span class="value">{r['payment_date']}</span></div>
+<div class="field"><span class="label">{'الباقة' if is_ar else 'Bundle'}</span><span class="value">{r.get('bundle_type','')}</span></div>
+<div class="field"><span class="label">{'طريقة الدفع' if is_ar else 'Payment Method'}</span><span class="value">{r.get('payment_method','')}</span></div>
+<div class="field"><span class="label">{'خصم' if is_ar else 'Discount'}</span><span class="value">{r.get('discount',0):,.0f} EGP</span></div>
+<div class="field"><span class="label">{'استُلم بواسطة' if is_ar else 'Received By'}</span><span class="value">{r.get('received_by','')}</span></div>
+<div class="total">{'المبلغ المدفوع: ' if is_ar else 'Amount Paid: '}{r['amount']:,.0f} EGP</div>
+<div class="footer">
+  {'شكراً لدفعك — هذا الإيصال صادر تلقائياً من النظام' if is_ar else 'Thank you — this receipt was auto-generated by the system'}<br>
+  {date.today()}
+</div>
+<br><button onclick="window.print()" style="background:#667eea;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;font-size:1em">
+  🖨️ {'طباعة' if is_ar else 'Print'}
+</button>
+</body></html>"""
+                st.download_button(
+                    "🧾 " + ("تحميل الإيصال (HTML)" if is_ar else "Download Receipt (HTML)"),
+                    data=receipt_html.encode('utf-8'),
+                    file_name=f"receipt_{inv_player.replace(' ','_')}_{r['payment_date']}.html",
+                    mime="text/html",
+                    use_container_width=True,
+                    key="receipt_dl"
+                )
 
     with tab_pay2:
         st.subheader("⚠️ " + ("الأعضاء بدون دفع خلال 60 يوم" if is_ar else "Members with no payment in 60 days"))
@@ -2389,6 +2534,8 @@ _ROUTER = {
     t('analysis_history'):show_analysis_history,
     t('ml_training'):     show_ml_training,
     t('referee'):         show_referee,
+    t('competitions'):    show_competitions,
+    t('medical'):         show_medical,
     t('stats'):           show_stats,
     t('club_mgmt'):       show_club_management,
 }
