@@ -1,0 +1,1610 @@
+{
+  "drills": [
+    {
+      "id": 1,
+      "name_ar": "تمرين اللف الثلاثي",
+      "name_en": "Three-Turn Entry Drill",
+      "category": "jumps",
+      "level": "intermediate",
+      "purpose": "Fixes pre-rotation and correct edge on Lutz and Flip jumps",
+      "duration_minutes": 10,
+      "repetitions": "5 sets of 8 reps",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate forward on an outside edge building moderate speed",
+        "Execute a clean three-turn from forward outside to backward inside edge",
+        "Hold the backward inside edge for a count of 2 before any takeoff action",
+        "Feel the edge and resist any rotation of the hip or shoulder",
+        "Repeat continuously down the length of the rink"
+      ],
+      "coach_cues": [
+        "Keep weight on the heel of the blade after the three-turn",
+        "Square shoulders to the direction of travel",
+        "Hip must stay closed — do not open into the jump",
+        "Think: edge FIRST, then jump"
+      ],
+      "common_mistakes": [
+        "Pre-rotating the hip before the three-turn is complete",
+        "Leaning too far forward causing a flat or inside edge",
+        "Rushing off the back edge — not holding long enough"
+      ],
+      "progressions": [
+        "Start with two-foot landing after a waltz jump entry",
+        "Add a single Flip or Lutz with correct edge focus",
+        "Progress to double, then triple with entry focus"
+      ],
+      "target_elements": ["3Lz", "3F", "4Lz", "4F"],
+      "video_description": "Skater approaches on a back outside edge, executes a clean three-turn to back inside edge, holds for 2 counts, then initiates takeoff"
+    },
+    {
+      "id": 2,
+      "name_ar": "تمرين القفز عند الحائط",
+      "name_en": "Wall Jump Drill",
+      "category": "jumps",
+      "level": "basic",
+      "purpose": "Fixes check-out technique and free leg position on landing",
+      "duration_minutes": 8,
+      "repetitions": "3 sets of 10 reps",
+      "location": "off-ice",
+      "equipment": "wall or barrier",
+      "steps": [
+        "Stand facing the wall with arms extended touching it lightly",
+        "Jump straight up from two feet, pulling arms into landing position",
+        "On landing, swing right arm and leg back in a check-out position",
+        "Hold the landing position for 3 seconds",
+        "Progress to turning 180 degrees then 360 degrees"
+      ],
+      "coach_cues": [
+        "Landing arm sweeps back like a wing checking rotation",
+        "Free leg kicks back and holds — do not let it swing forward",
+        "Absorb landing through bent knee — quiet landing",
+        "Eyes look forward on landing, not down"
+      ],
+      "common_mistakes": [
+        "Arms stay in air position too long — must check immediately",
+        "Free leg swings forward causing forward fall",
+        "Stiff knee on landing — leads to injuries and two-footed landings"
+      ],
+      "progressions": [
+        "Two-foot jump and hold landing position",
+        "Add quarter turn, then half turn",
+        "Full rotation wall jump",
+        "Transfer to on-ice single jumps"
+      ],
+      "target_elements": ["1A", "2A", "3A", "all singles"],
+      "video_description": "Skater stands near wall, executes controlled rotation jump, lands in perfect check-out position with free leg extended back"
+    },
+    {
+      "id": 3,
+      "name_ar": "تمرين تثبيت الهبوط على قدم واحدة",
+      "name_en": "One-Foot Landing Hold",
+      "category": "jumps",
+      "level": "basic",
+      "purpose": "Fixes landing position and eliminates two-foot landings",
+      "duration_minutes": 10,
+      "repetitions": "Hold each landing for 3 seconds, 15 reps",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Execute any single jump (waltz jump, toe loop, Salchow)",
+        "Land on outside edge of right foot (or left for left-handed skaters)",
+        "Immediately hold the landing position: free leg back, arms in check",
+        "Count to 3 while holding balance on one foot",
+        "Glide out smoothly before attempting next jump"
+      ],
+      "coach_cues": [
+        "Landing knee bent at 45 degrees minimum",
+        "Free hip down — do not hike the hip up",
+        "Eyes forward — looking down causes forward fall",
+        "Shoulder over the landing foot for balance"
+      ],
+      "common_mistakes": [
+        "Immediately putting down the free foot (two-foot landing habit)",
+        "Arm check too weak — rotation continues after landing",
+        "Landing on flat blade instead of outside edge"
+      ],
+      "progressions": [
+        "Start with waltz jump — simplest landing to hold",
+        "Add toe loop, then Salchow",
+        "Progress to doubles while maintaining 3-count hold",
+        "Competition context: hold for the duration of the musical phrase"
+      ],
+      "target_elements": ["all jumps"],
+      "video_description": "Skater jumps and freezes in textbook landing position, demonstrating perfect check-out with free leg extended back at hip height"
+    },
+    {
+      "id": 4,
+      "name_ar": "تمرين تكرار الإقلاع",
+      "name_en": "Repeated Takeoff Drill",
+      "category": "jumps",
+      "level": "intermediate",
+      "purpose": "Builds muscle memory for correct toe pick timing and takeoff mechanics",
+      "duration_minutes": 12,
+      "repetitions": "4 sets of 12 consecutive takeoffs",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate backward on outside edge preparing for toe pick jumps (Flip/Lutz/Toe Loop)",
+        "Plant toe pick firmly and feel the vaulting sensation upward",
+        "Execute only the takeoff — jump to minimal height — land on two feet",
+        "Immediately reset and repeat without skating away",
+        "Focus entirely on the mechanics of the takeoff, not the air or landing"
+      ],
+      "coach_cues": [
+        "Toe pick plants behind and to the side — not underneath the body",
+        "Drive the free leg UP on the takeoff — knee leads the lift",
+        "Takeoff knee bends then SNAPS straight for maximum power",
+        "Upper body stays calm — the legs do the work"
+      ],
+      "common_mistakes": [
+        "Toe pick too close to the skating foot (causes stumbling)",
+        "Leaning forward over the toe pick (reduces height)",
+        "Inconsistent toe pick depth (different result each time)"
+      ],
+      "progressions": [
+        "Slow motion single toe picks standing nearly still",
+        "Walking pace with repeated takeoffs",
+        "Normal skating speed with rapid consecutive takeoffs",
+        "Full jump with takeoff focus"
+      ],
+      "target_elements": ["3T", "4T", "3F", "4F", "3Lz", "4Lz"],
+      "video_description": "Skater performs rapid consecutive toe pick takeoffs in a line down the ice, focusing purely on the explosive upward drive of each takeoff"
+    },
+    {
+      "id": 5,
+      "name_ar": "دوائر الحافة الخلفية الخارجية",
+      "name_en": "Back Outside Edge Circle",
+      "category": "jumps",
+      "level": "intermediate",
+      "purpose": "Develops the Axel approach edge and back outside edge quality",
+      "duration_minutes": 8,
+      "repetitions": "6 circles each direction",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Step onto a back outside edge skating a large circle",
+        "Hold single back outside edge for the full circle without touching down",
+        "Arms in skating position: one forward, one back",
+        "Knee deeply bent, tracing a clean circle in the ice",
+        "Look over the shoulder in the direction of travel"
+      ],
+      "coach_cues": [
+        "Deep knee bend maintains the edge and prevents slipping off",
+        "Free leg extended back at hip height — parallel to ice",
+        "Ankle must not roll in or out — keep the edge clean",
+        "Circle should be 3-4 meters diameter for proper training effect"
+      ],
+      "common_mistakes": [
+        "Circle shrinking or spiraling — means edge is deteriorating",
+        "Hopping off the edge to reset balance",
+        "Free foot dragging on ice"
+      ],
+      "progressions": [
+        "Two-foot back outside edge circles first",
+        "One-foot circles at slow speed",
+        "One-foot circles building speed",
+        "Enter the circle from a step for Axel simulation"
+      ],
+      "target_elements": ["1A", "2A", "3A", "4A"],
+      "video_description": "Skater carves deep back outside edge circles, body in perfect skating posture, tracing consistent arc in the ice"
+    },
+    {
+      "id": 6,
+      "name_ar": "تمرين تصحيح حافة اللوتز",
+      "name_en": "Counter-Rotation Prep for Lutz",
+      "category": "jumps",
+      "level": "advanced",
+      "purpose": "Fixes the Flutz (wrong edge) by training correct outside edge on Lutz",
+      "duration_minutes": 12,
+      "repetitions": "5 sets of 6 reps",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate a long back outside edge approach from the red line",
+        "Coach or skater places a hand on the left hip to prevent rotation",
+        "Feel that the left shoulder stays back (counter to direction of jump)",
+        "Hold the edge and feel it deepen — back OUTSIDE not inside",
+        "Execute the Lutz pick and maintain the counter-rotation feeling"
+      ],
+      "coach_cues": [
+        "Left arm and shoulder stay BACK — do not open toward the jump",
+        "Think: skating on the outside of the left foot, not inside",
+        "The more the shoulder opens, the more the edge flattens",
+        "Video check: pause the approach to see edge shadow on ice"
+      ],
+      "common_mistakes": [
+        "Opening the left shoulder which flattens or rolls the edge to inside",
+        "Rushing the approach — not holding the outside edge long enough",
+        "Looking back at the pick spot which causes rotation"
+      ],
+      "progressions": [
+        "Practice the approach edge only without jumping",
+        "Add a single Lutz with coach holding hip",
+        "Full Lutz with video feedback",
+        "Double and triple Lutz with edge checks"
+      ],
+      "target_elements": ["1Lz", "2Lz", "3Lz", "4Lz"],
+      "video_description": "Skater executes long Lutz approach with coach providing tactile feedback to maintain outside edge, countering the common flutz habit"
+    },
+    {
+      "id": 7,
+      "name_ar": "تمرين السخب القفز بالحزام",
+      "name_en": "Jump Harness Work",
+      "category": "jumps",
+      "level": "elite",
+      "purpose": "Safe environment for attempting triples and quads, builds height confidence",
+      "duration_minutes": 20,
+      "repetitions": "8-12 assisted attempts per session",
+      "location": "on-ice",
+      "equipment": "jump harness, overhead rig, qualified spotter",
+      "steps": [
+        "Fit skater in harness with qualified coach operating the overhead system",
+        "Begin with supported singles to establish air position",
+        "Progress to doubles with partial assistance (just safety, no lifting)",
+        "For triples/quads: coach provides lift assistance on takeoff phase",
+        "Gradually reduce assistance as skater's confidence and rotation speed increase"
+      ],
+      "coach_cues": [
+        "The harness catches you — commit fully to the rotation",
+        "Pull arms in tight: faster pull = faster rotation",
+        "Head stays up — chin slightly up helps rotation",
+        "Trust the system: fall attempts are completely safe"
+      ],
+      "common_mistakes": [
+        "Cheating the entry edge because harness provides false security",
+        "Not pulling arms in tightly enough",
+        "Psychological dependence on harness — must wean off gradually"
+      ],
+      "progressions": [
+        "Full support: harness carries skater through rotation",
+        "Partial support: harness only prevents falls",
+        "Safety only: harness present but not assisting",
+        "Free skating: harness removed"
+      ],
+      "target_elements": ["3A", "4T", "4S", "4Lo", "4F", "4Lz"],
+      "video_description": "Skater in harness system executes triple Axel with coach assistance, focusing on rotation mechanics and landing position without fear of falling"
+    },
+    {
+      "id": 8,
+      "name_ar": "القفز على قدمين إلى قفز منفرد",
+      "name_en": "Two-Foot Jump to Single",
+      "category": "jumps",
+      "level": "basic",
+      "purpose": "Teaches basic air position and rotation feeling for beginning jumpers",
+      "duration_minutes": 8,
+      "repetitions": "3 sets of 15 reps",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Jump from two feet rotating half turn in the air",
+        "Pull arms and free leg in tight during the air",
+        "Land on two feet, then progress to one-foot landings",
+        "Increase to full rotation (360 degrees)",
+        "Add speed by approaching from crossovers"
+      ],
+      "coach_cues": [
+        "Jump UP not around — height first, then rotation",
+        "Arms pull in at the peak of the jump — not on the way up",
+        "Tight free leg in the air prevents wide landing",
+        "Land on the whole blade, then shift to outside edge"
+      ],
+      "common_mistakes": [
+        "Jumping around instead of up — produces flat low jumps",
+        "Arms too wide in the air — slows rotation",
+        "Looking down on the jump — breaks body alignment"
+      ],
+      "progressions": [
+        "Stationary two-foot jump half rotation",
+        "Moving two-foot full rotation",
+        "One-foot takeoff to two-foot landing",
+        "Full single jump with proper edge"
+      ],
+      "target_elements": ["1T", "1S", "1Lo"],
+      "video_description": "Young skater practices two-foot jumps on ice, learning the fundamental sensation of rotation and air position before progressing to proper singles"
+    },
+    {
+      "id": 9,
+      "name_ar": "تسلسل القفز الوالتز",
+      "name_en": "Waltz Jump Sequence",
+      "category": "jumps",
+      "level": "basic",
+      "purpose": "Axel preparation drill — develops forward takeoff mechanics and half rotation",
+      "duration_minutes": 10,
+      "repetitions": "4 sets of 8 repetitions in a row",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Enter from a forward outside edge on left foot (counter-clockwise jumpers)",
+        "Step onto left forward outside edge, swing right leg forward and up",
+        "Take off from the left forward outside edge",
+        "Rotate half turn in the air",
+        "Land on right backward outside edge",
+        "Chain consecutive waltz jumps without stopping"
+      ],
+      "coach_cues": [
+        "The swing leg drives the takeoff — knee up high",
+        "Take off from the TOE of the blade, not the heel",
+        "Land with knee bent — spring landing, not crash landing",
+        "The forward takeoff is the ONLY difference from other jumps"
+      ],
+      "common_mistakes": [
+        "Taking off from the flat or heel of the blade",
+        "Not completing the full half rotation — landing forward",
+        "Swing leg goes back instead of forward on takeoff"
+      ],
+      "progressions": [
+        "Step into waltz jump from standstill",
+        "Waltz jump from moving forward",
+        "Waltz jump with height focus",
+        "Two waltz jumps in sequence",
+        "Progress to Axel attempt"
+      ],
+      "target_elements": ["1A", "2A", "3A"],
+      "video_description": "Skater executes continuous waltz jump sequences in a straight line, each with perfect forward outside edge takeoff and controlled backward outside edge landing"
+    },
+    {
+      "id": 10,
+      "name_ar": "قفز الانقسام",
+      "name_en": "Split Jump",
+      "category": "jumps",
+      "level": "intermediate",
+      "purpose": "Develops air flexibility, leg strength, and artistic expression for PCS",
+      "duration_minutes": 8,
+      "repetitions": "3 sets of 10 reps",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Approach from forward stroking, building moderate speed",
+        "Take off from left toe pick (similar to Flip takeoff)",
+        "In the air, kick right leg forward and left leg back simultaneously",
+        "Reach maximum split position at the peak of the jump",
+        "Bring legs together and land on right outside edge"
+      ],
+      "coach_cues": [
+        "Split must be at 180 degrees minimum for maximum GOE",
+        "Toes pointed at the peak of the split",
+        "Upper body stays upright — do not collapse forward",
+        "This is a PCS element — expression on the face matters"
+      ],
+      "common_mistakes": [
+        "Split not reaching 180 degrees — looks shallow and earns lower GOE",
+        "Collapsing upper body forward on split",
+        "Landing on two feet due to poor air position transition"
+      ],
+      "progressions": [
+        "Split jump off harness first",
+        "Half-height split jump on floor",
+        "Full split jump off ice",
+        "Full split jump on ice with rotation"
+      ],
+      "target_elements": ["ChSq1", "PCS transitions"],
+      "video_description": "Skater executes beautiful split jump with legs extended to 180 degrees at the peak, demonstrating excellent flexibility and artistic quality"
+    },
+    {
+      "id": 11,
+      "name_ar": "تمرين دخول اللوب",
+      "name_en": "Loop Entry Exercise",
+      "category": "jumps",
+      "level": "intermediate",
+      "purpose": "Isolates the back outside edge for Loop jump and develops correct air position",
+      "duration_minutes": 10,
+      "repetitions": "5 sets of 8 reps",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate backward on a right back outside edge",
+        "Draw the free foot to the side and across — feet parallel",
+        "Feel both feet creating the locked entry position",
+        "Jump from the back outside edge only — no toe pick",
+        "Rotate in a tight position, land on right back outside edge"
+      ],
+      "coach_cues": [
+        "Entry position: feet together, arms crossed or in front of chest",
+        "Jump from the heel of the blade, not the toe",
+        "Wrap both arms into the body for the rotation",
+        "Landing knee bent deeply to absorb the back-weighted landing"
+      ],
+      "common_mistakes": [
+        "Jumping from flat edge instead of outside edge",
+        "Using toe pick to assist the takeoff (makes it a Toe Loop)",
+        "Arms too loose in the air — creates wobbly rotation"
+      ],
+      "progressions": [
+        "Single Loop with two-foot landing",
+        "Single Loop with held landing",
+        "Double Loop approach work",
+        "Triple Loop takeoff mechanics"
+      ],
+      "target_elements": ["1Lo", "2Lo", "3Lo", "4Lo"],
+      "video_description": "Skater in locked entry position with feet parallel jumps a clean loop, demonstrating the back outside edge takeoff with no toe pick assistance"
+    },
+    {
+      "id": 12,
+      "name_ar": "تمرين دخول الفليب",
+      "name_en": "Flip Entry Practice",
+      "category": "jumps",
+      "level": "intermediate",
+      "purpose": "Isolates back inside edge for Flip to prevent Lip (wrong edge) habit",
+      "duration_minutes": 10,
+      "repetitions": "4 sets of 10 reps",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate backward on a left back inside edge in a curve",
+        "Feel the inside edge deeply — weight on inside of blade",
+        "Hold the edge without wobbling for 2 full counts",
+        "Pick with right toe, keeping the left inside edge until last moment",
+        "Execute the Flip jump, focusing on maintaining the inside edge"
+      ],
+      "coach_cues": [
+        "Inside edge means weight on the inner side of the foot",
+        "Think: lean slightly into the circle before the pick",
+        "The pick should feel like a vaulting pole — straight up",
+        "Video the approach — a flat or outside edge is visible in the ice tracing"
+      ],
+      "common_mistakes": [
+        "Rolling onto outside or flat edge just before the pick (the Lip)",
+        "Leaning back into the jump causing the edge to flatten",
+        "Picking too close to the skating foot"
+      ],
+      "progressions": [
+        "Practice the inside edge approach without jumping",
+        "Small Flip jump focusing only on the edge",
+        "Full single Flip with edge focus",
+        "Double and triple Flip with video review"
+      ],
+      "target_elements": ["1F", "2F", "3F", "4F"],
+      "video_description": "Skater traces visible back inside edge in the ice before Flip takeoff, demonstrating proper edge execution with tracing visible to judge angle cameras"
+    },
+    {
+      "id": 13,
+      "name_ar": "الانزلاق قبل القفز",
+      "name_en": "Pre-Jump Glide",
+      "category": "jumps",
+      "level": "basic",
+      "purpose": "Develops correct speed, posture, and control before takeoff for all jumps",
+      "duration_minutes": 8,
+      "repetitions": "10 reps each element",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Begin from a standstill or slow speed",
+        "Build controlled speed with crossovers entering the jump corner",
+        "Transition onto the correct approach edge for the jump",
+        "Hold the approach edge for 3 counts",
+        "Execute the jump from this controlled entry"
+      ],
+      "coach_cues": [
+        "Speed should be fast enough to jump with power, slow enough to control",
+        "Approach edge must be deep — not a flat glide",
+        "Head up — eyes on the horizon, not the ice",
+        "Relax the upper body — tension kills jump height"
+      ],
+      "common_mistakes": [
+        "Too fast on entry — leads to rushed preparation and edge errors",
+        "Too slow — insufficient energy for proper height",
+        "Flat approach edge — no curve, no control"
+      ],
+      "progressions": [
+        "Stationary to jump approach only (no jump)",
+        "Add the jump from a very controlled entry",
+        "Gradually increase entry speed",
+        "Competition-speed entry"
+      ],
+      "target_elements": ["all jumps"],
+      "video_description": "Skater executes a smooth controlled approach to a jump corner, demonstrating the decelerate-to-load then explode-up technique"
+    },
+    {
+      "id": 14,
+      "name_ar": "دوائر التوازن على قدم واحدة",
+      "name_en": "One-Foot Balance Circles",
+      "category": "spins",
+      "level": "basic",
+      "purpose": "Develops centering ability and blade balance for all spins",
+      "duration_minutes": 8,
+      "repetitions": "10 circles on each foot",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Stand on left foot on a back outside edge",
+        "Circle slowly, feeling the sweet spot of the blade",
+        "Move the pressure forward toward the ball of the foot",
+        "Find the spin position: front-center of blade (rocker)",
+        "Hold this position as long as possible without moving"
+      ],
+      "coach_cues": [
+        "The spinning spot is just behind the ball of the foot — not the toe pick",
+        "Press DOWN into the ice — do not lift up",
+        "Free hip must be down and in — not hiking",
+        "Think: grow taller while pressing into the ice"
+      ],
+      "common_mistakes": [
+        "Spinning on the toe pick — creates scratchy, noisy, decentered spin",
+        "Too far back on the heel — spin travels backward across the ice",
+        "Free hip lifted — causes the whole body to tilt"
+      ],
+      "progressions": [
+        "Two-foot spin to find the sweet spot",
+        "One-foot spin from two-foot entry",
+        "Scratch spin entry from backward push",
+        "Competition scratch spin entry"
+      ],
+      "target_elements": ["CCoSp", "CSp", "CSSp", "all spins"],
+      "video_description": "Skater finds the perfect blade balance point for spinning, demonstrating the subtle weight placement that allows for a perfectly centered spin"
+    },
+    {
+      "id": 15,
+      "name_ar": "تنويعات دخول الدوران",
+      "name_en": "Scratch Spin Entry Variations",
+      "category": "spins",
+      "level": "intermediate",
+      "purpose": "Increases RPM and teaches various entry options for scratch spin",
+      "duration_minutes": 10,
+      "repetitions": "12 spin attempts with different entries",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Entry 1: Backward crossover entry into forward scratch",
+        "Entry 2: Three-turn entry (forward outside, three-turn, back spin entry)",
+        "Entry 3: Mohawk entry for variety",
+        "Entry 4: Jump entry (flying spin)",
+        "For each entry, count rotations and note which gives most speed"
+      ],
+      "coach_cues": [
+        "The entry must be committed — no hesitation as speed becomes spin",
+        "Gather the arms smoothly — sudden pull kills centering",
+        "Shoulders stay level throughout the entry",
+        "The faster the crossover approach, the more potential RPM"
+      ],
+      "common_mistakes": [
+        "Entry too slow — insufficient angular momentum to spin well",
+        "Arms yanked in suddenly — causes body to tip",
+        "Leaning forward on entry — travels forward"
+      ],
+      "progressions": [
+        "Slow two-foot spin to establish the feel",
+        "Single backward push into spin",
+        "Crossover entry into spin",
+        "Flying entry into spin"
+      ],
+      "target_elements": ["CSSp4", "FCSSp4"],
+      "video_description": "Skater demonstrates multiple entry options for scratch spin — backward crossovers, three-turn entry, and flying entry — comparing RPM achieved"
+    },
+    {
+      "id": 16,
+      "name_ar": "تثبيت وضعية الدوران الخلفي",
+      "name_en": "Back Scratch Position Hold",
+      "category": "spins",
+      "level": "intermediate",
+      "purpose": "Develops body alignment for back scratch spin and increases rotation speed",
+      "duration_minutes": 8,
+      "repetitions": "15 back scratch spins",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Enter a back spin from a forward three-turn",
+        "Establish balance on the right back inside edge",
+        "Bring free foot in to ankle height, then cross it over",
+        "Pull arms into a tight cross-arm position at chest level",
+        "Count rotations and aim to increase each session"
+      ],
+      "coach_cues": [
+        "Back spin is on back INSIDE edge — weight slightly inside",
+        "Crossing the free foot is what creates the speed increase",
+        "Arms cross: right arm crosses left at chest level",
+        "Head stays up — chin level, not tilted"
+      ],
+      "common_mistakes": [
+        "Back spin on the wrong edge (outside edge causes traveling)",
+        "Free foot only comes to ankle — needs to cross for max RPM",
+        "Arms too far out from body during pull-in phase"
+      ],
+      "progressions": [
+        "Two-foot back spin to find the back inside edge",
+        "One-foot back spin with free leg out",
+        "Pull in to back scratch position",
+        "Flying back camel to back scratch combination"
+      ],
+      "target_elements": ["CCoSp4", "FCSp4"],
+      "video_description": "Skater spins a controlled back scratch, demonstrating the back inside edge balance and the arm pull-in that dramatically increases rotation speed"
+    },
+    {
+      "id": 17,
+      "name_ar": "تمرين وضعية الكامل خارج الجليد",
+      "name_en": "Camel Position Off-Ice",
+      "category": "spins",
+      "level": "intermediate",
+      "purpose": "Develops hip and back flexibility required for a strong camel spin position",
+      "duration_minutes": 12,
+      "repetitions": "3 sets of 10 holds (10 seconds each)",
+      "location": "off-ice",
+      "equipment": "yoga mat, ballet barre optional",
+      "steps": [
+        "Stand at barre, hold with one hand for balance",
+        "Stand on left foot and extend right leg back to hip height",
+        "Hip must be OPEN — right hip rotates up and back",
+        "Upper body tilts forward to 90 degrees (T-position)",
+        "Hold for 10 seconds, maintaining hip rotation and leg height"
+      ],
+      "coach_cues": [
+        "Hip rotation is everything in the camel: open it like a door",
+        "Think: show the bottom of the free foot to the ceiling",
+        "Upper body and free leg must be parallel to floor for a perfect camel",
+        "Engage the core to maintain the position without wobbling"
+      ],
+      "common_mistakes": [
+        "Hip closed (facing down) — makes the free leg look dropped",
+        "Free leg below hip height — not a level camel",
+        "Upper body too high — not reaching full 90 degree tilt"
+      ],
+      "progressions": [
+        "Barre-supported camel position hold",
+        "Free-standing camel balance on floor",
+        "Camel position on balance board",
+        "On-ice camel with counted rotations"
+      ],
+      "target_elements": ["CCSp4", "FCCSp4"],
+      "video_description": "Skater demonstrates camel position off-ice at the barre — right hip fully open, free leg at hip height, upper body at 90 degrees in textbook form"
+    },
+    {
+      "id": 18,
+      "name_ar": "تمرين وضعية الجلوس المنخفض",
+      "name_en": "Sit Spin Low Position",
+      "category": "spins",
+      "level": "intermediate",
+      "purpose": "Develops flexibility and strength for a deep, low sit spin position",
+      "duration_minutes": 10,
+      "repetitions": "20 sit position squats and holds",
+      "location": "off-ice",
+      "equipment": "none",
+      "steps": [
+        "Stand with feet parallel, shoulder width apart",
+        "Lower into deep squat until thigh is below parallel to floor",
+        "Extend right leg straight out to the side (skating free leg)",
+        "Balance on left foot with right leg fully extended",
+        "Hold for 5 seconds, maintaining thigh below parallel"
+      ],
+      "coach_cues": [
+        "Thigh must be below parallel — above is not a proper sit spin",
+        "Free leg fully extended and off the floor the entire time",
+        "Back stays upright — do not hunch forward",
+        "Ankle flexibility helps enormously — point the free foot toe"
+      ],
+      "common_mistakes": [
+        "Thigh not below parallel — the sit spin will be called too high",
+        "Free leg not fully extended — a bent free leg loses level features",
+        "Falling forward — core is not engaged enough"
+      ],
+      "progressions": [
+        "Two-foot squat below parallel",
+        "One-foot squat with free leg extended",
+        "Balance on balance board in sit position",
+        "On-ice sit spin, lowering gradually over multiple sessions"
+      ],
+      "target_elements": ["CSp4", "CSSp4"],
+      "video_description": "Skater holds perfect sit spin position off-ice — thigh clearly below parallel, free leg extended, back upright, demonstrating the required depth"
+    },
+    {
+      "id": 19,
+      "name_ar": "تمرين دخول الكامل الطائر",
+      "name_en": "Flying Camel Approach",
+      "category": "spins",
+      "level": "advanced",
+      "purpose": "Develops the jump into a camel spin with correct air position and entry",
+      "duration_minutes": 12,
+      "repetitions": "10 flying camel attempts",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Approach from backward crossovers building speed",
+        "Step onto left forward outside edge",
+        "Jump from the left outside edge into the camel position",
+        "In the air, kick the right leg up and back into camel angle",
+        "Land on right back outside edge and spin in camel position immediately"
+      ],
+      "coach_cues": [
+        "The jump is a waltz jump — forward outside edge takeoff",
+        "Free leg must be in camel position BEFORE landing",
+        "Do not spin forward — the entry must convert to a back spin quickly",
+        "Think: jump forward, fly like a bird, land in camel"
+      ],
+      "common_mistakes": [
+        "Landing in forward spin instead of backward camel position",
+        "Not enough height in the jump to achieve camel position in air",
+        "Camel position not achieved until after landing — looks like a stumble"
+      ],
+      "progressions": [
+        "Flying camel off harness first",
+        "Small flying camel entry without full height",
+        "Full flying camel to centered camel spin",
+        "Flying camel to combination spin"
+      ],
+      "target_elements": ["FCCSp4", "FCSp4"],
+      "video_description": "Skater executes a flying camel entry — leaping forward and achieving full camel position in the air before landing smoothly into a centered camel spin"
+    },
+    {
+      "id": 20,
+      "name_ar": "تمرين سحب البيلمان",
+      "name_en": "Biellmann Pull-In",
+      "category": "spins",
+      "level": "elite",
+      "purpose": "Develops shoulder and back flexibility for Biellmann spin position",
+      "duration_minutes": 15,
+      "repetitions": "3 sets of 10 stretches, hold 20 seconds each",
+      "location": "off-ice",
+      "equipment": "stretching strap, yoga mat",
+      "steps": [
+        "Lie face down on mat, arms at sides",
+        "Bend right knee, reaching back to hold the right foot with right hand",
+        "Use a stretching strap to assist — loop around right foot, hold overhead",
+        "Gently pull the foot toward and over the head",
+        "Progress over weeks to reach foot to head and eventually past the head"
+      ],
+      "coach_cues": [
+        "This is a long-term flexibility progression — do not force it",
+        "Shoulders must rotate to allow the hands to reach overhead",
+        "Core engaged to protect the lower back during the stretch",
+        "Weekly progress photos show improvement that daily practice misses"
+      ],
+      "common_mistakes": [
+        "Forcing the stretch — causes shoulder and back injuries",
+        "Only stretching one side — the non-dominant side is equally important",
+        "Not maintaining the stretch — consistency is key, 7 days/week"
+      ],
+      "progressions": [
+        "Standard back kick flexibility — foot to head height",
+        "Over-head flexibility — foot above head level",
+        "Biellmann position off-ice with strap assist",
+        "Biellmann position off-ice unassisted",
+        "On-ice Biellmann spin"
+      ],
+      "target_elements": ["CCoSp4 (Biellmann variation)"],
+      "video_description": "Skater demonstrates progressive Biellmann flexibility training with a strap, showing the multi-month progression from basic back kick to full Biellmann position"
+    },
+    {
+      "id": 21,
+      "name_ar": "تمرين وضعية الاستلقاء",
+      "name_en": "Layback Position",
+      "category": "spins",
+      "level": "advanced",
+      "purpose": "Develops back arch and head position for layback spin (primarily ladies)",
+      "duration_minutes": 12,
+      "repetitions": "3 sets of 8 holds (15 seconds each)",
+      "location": "off-ice",
+      "equipment": "yoga mat, yoga block optional",
+      "steps": [
+        "Stand upright, arms in spin position",
+        "Tilt the head back until looking at the ceiling behind you",
+        "Let the upper back arch backward, arms flowing back",
+        "Engage core to protect the lumbar spine",
+        "Hold for 15 seconds breathing normally"
+      ],
+      "coach_cues": [
+        "The arch comes from the upper back, not the lower back",
+        "Head goes back fully — you should see the wall behind you",
+        "Arms flow gracefully back — not thrown back",
+        "Free leg position options: attitude, kick, arabesque angle"
+      ],
+      "common_mistakes": [
+        "Arching from the lower back (lumbar) — causes back pain and injuries",
+        "Not tilting the head far enough — looks like a forward lean",
+        "Losing the spinning position while trying to achieve the layback"
+      ],
+      "progressions": [
+        "Layback position against wall for support",
+        "Free-standing layback balance",
+        "Layback while slowly rotating on floor",
+        "On-ice layback spin"
+      ],
+      "target_elements": ["CCoSp4 (layback variation)", "CSp4"],
+      "video_description": "Skater holds beautiful layback position off-ice — full head tilt, upper back arch, arms flowing gracefully back in elegant artistic position"
+    },
+    {
+      "id": 22,
+      "name_ar": "تمرين الانتقال في الدوران المركب",
+      "name_en": "Combination Spin Transitions",
+      "category": "spins",
+      "level": "advanced",
+      "purpose": "Develops smooth, fast foot changes and position transitions in combination spins",
+      "duration_minutes": 12,
+      "repetitions": "8 combination spin attempts",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Enter a camel spin — spin 4+ rotations in camel position",
+        "Step forward to change foot: step onto left foot smoothly",
+        "Immediately establish a forward camel or sit position on the left",
+        "Transition to sit, then stand, then pull up to back scratch",
+        "Entire combination should have no deceleration between positions"
+      ],
+      "coach_cues": [
+        "The step-forward must be fast — hesitation loses speed",
+        "New foot must land on spin blade spot immediately",
+        "Aim for 4 positions with 4 rotations minimum each for Level 4",
+        "Centering is priority — a traveling combination spin loses levels"
+      ],
+      "common_mistakes": [
+        "Deceleration between positions — causes the spin to stop",
+        "Traveling on the change of foot",
+        "Not completing minimum rotations in each position"
+      ],
+      "progressions": [
+        "Two-position combination (camel-upright)",
+        "Three-position combination",
+        "Change-foot combination",
+        "Full competition combination with all required features"
+      ],
+      "target_elements": ["CCoSp4", "FCCoSp4"],
+      "video_description": "Skater executes a complete combination spin through camel, sit, upright, and change-foot positions, maintaining consistent speed throughout all transitions"
+    },
+    {
+      "id": 23,
+      "name_ar": "تمرين سحب القوة",
+      "name_en": "Power Pull Exercise",
+      "category": "edges",
+      "level": "intermediate",
+      "purpose": "Develops edge quality, power generation, and skating flow without stroking",
+      "duration_minutes": 10,
+      "repetitions": "8 lengths of the rink",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Start skating forward on left outside edge in a large curve",
+        "Without putting down the right foot, generate power by pressing the left knee in and out",
+        "Feel the edge grip and release as you pump through the knee",
+        "Alternate to right outside edge, then backward edges",
+        "Goal: accelerate down the rink using only edge power pulls"
+      ],
+      "coach_cues": [
+        "The power comes from the knee bend and ankle pressure, not the arms",
+        "Edge angle must be aggressive — at least 30 degrees",
+        "Free leg stays off the ice the entire length",
+        "Sound of the blade should be a clean swish, not a scrape"
+      ],
+      "common_mistakes": [
+        "Using arms to generate momentum — cheating the drill",
+        "Letting free foot touch down",
+        "Edge too shallow — not enough angle to create power"
+      ],
+      "progressions": [
+        "Forward outside edge power pulls (easiest)",
+        "Forward inside edge power pulls",
+        "Backward outside edge power pulls",
+        "Backward inside edge power pulls (hardest)",
+        "Alternating edge power pulls in figure-8 pattern"
+      ],
+      "target_elements": ["StSq4", "PCS Skating Skills"],
+      "video_description": "Skater accelerates down the ice using pure edge power pulls — no stroking — demonstrating exceptional edge quality and skating skill"
+    },
+    {
+      "id": 24,
+      "name_ar": "حواف خارجية متتالية",
+      "name_en": "Consecutive Outside Edges",
+      "category": "edges",
+      "level": "basic",
+      "purpose": "Develops deep outside edge quality, body position, and edge sustainability",
+      "duration_minutes": 10,
+      "repetitions": "4 sets down the length of the rink",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Push onto left forward outside edge",
+        "Hold the edge for a full semi-circle (half the width of the rink)",
+        "Step to right forward outside edge without losing flow",
+        "Continue alternating — tracing two connected half-circles down the ice",
+        "Arms: forward arm on the side of the edge, back arm trailing"
+      ],
+      "coach_cues": [
+        "Each lobe should be equal size — consistency is what judges measure",
+        "Deep knee bend maintains the edge — straight knee kills it",
+        "Head looks in the direction of travel — not down at the ice",
+        "The tracing on the ice shows the truth — look back and evaluate"
+      ],
+      "common_mistakes": [
+        "Lobes unequal in size or shape",
+        "Rushing the step — skipping the full semi-circle",
+        "Arms out of skating position — drifting too far out or in"
+      ],
+      "progressions": [
+        "Forward outside edges (starting point for all skaters)",
+        "Forward inside edges",
+        "Backward outside edges",
+        "Backward inside edges",
+        "Edges with free leg extended in spiral position"
+      ],
+      "target_elements": ["StSq4", "PCS Skating Skills", "all spins"],
+      "video_description": "Skater traces perfect consecutive outside edges — each lobe identical in size, deep knee bend, clean tracing visible in the ice"
+    },
+    {
+      "id": 25,
+      "name_ar": "سلسلة اللفات الثلاثية",
+      "name_en": "Three-Turn Series",
+      "category": "edges",
+      "level": "intermediate",
+      "purpose": "Develops edge control through turns and is fundamental to step sequences",
+      "duration_minutes": 10,
+      "repetitions": "6 series each direction",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate forward on left outside edge in a curve",
+        "Execute a three-turn: turn from forward outside to backward inside",
+        "Hold the back inside edge and continue the curve",
+        "Step to other foot and repeat in opposite direction",
+        "Create a continuous serpentine pattern down the ice"
+      ],
+      "coach_cues": [
+        "The turn must be a POINT on the ice — not a scrape or slide",
+        "After the turn, hold the back edge — resist stepping out immediately",
+        "Shoulder rotation executes the three-turn — hip and knee follow",
+        "Look over the shoulder in the direction of travel after the turn"
+      ],
+      "common_mistakes": [
+        "Flat edge before and/or after the turn",
+        "Scraping through the turn instead of a clean point",
+        "Stepping out immediately after the turn — not holding the back edge"
+      ],
+      "progressions": [
+        "Slow forward outside three-turns",
+        "Forward inside three-turns",
+        "Backward outside three-turns",
+        "Backward inside three-turns",
+        "Three-turn series at competition speed"
+      ],
+      "target_elements": ["StSq4", "all jump entries"],
+      "video_description": "Skater executes a flowing series of three-turns creating a smooth serpentine pattern, each turn a clean precise point in the ice"
+    },
+    {
+      "id": 26,
+      "name_ar": "تسلسلات موهوك-شوكتاو",
+      "name_en": "Mohawk-Choctaw Sequences",
+      "category": "edges",
+      "level": "intermediate",
+      "purpose": "Develops turn variety for step sequences and improves transition quality",
+      "duration_minutes": 10,
+      "repetitions": "8 sequences each direction",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate forward on left outside edge in a curve",
+        "Execute a Mohawk: step to right forward inside edge (change of foot, same direction)",
+        "Continue from the inside edge, building speed",
+        "Execute a Choctaw: step to left backward outside edge (change of direction and foot)",
+        "Combine in series: Mohawk-Choctaw-Mohawk-Choctaw"
+      ],
+      "coach_cues": [
+        "Mohawk steps must be light and quick — not heavy stomps",
+        "The step in a Mohawk: new foot steps parallel, then heels together",
+        "Choctaw requires a hip opening — this takes flexibility",
+        "Maintain ice coverage — steps should move you through space"
+      ],
+      "common_mistakes": [
+        "Steps too close together — not covering ice",
+        "Hesitating before the Choctaw — a pause breaks the flow",
+        "Not maintaining speed through the sequence"
+      ],
+      "progressions": [
+        "Mohawks alone at slow speed",
+        "Choctaws alone at slow speed",
+        "Combined Mohawk-Choctaw at slow speed",
+        "Full speed with arm choreography"
+      ],
+      "target_elements": ["StSq4", "PCS Transitions"],
+      "video_description": "Skater executes fluid Mohawk-Choctaw sequence maintaining speed and flow, demonstrating the hip flexibility required for quality Choctaw steps"
+    },
+    {
+      "id": 27,
+      "name_ar": "تمرين اللفة القوسية",
+      "name_en": "Bracket Turn Practice",
+      "category": "edges",
+      "level": "advanced",
+      "purpose": "Adds difficult turns to step sequences for higher GOE and Level 4",
+      "duration_minutes": 12,
+      "repetitions": "5 sets of 8 turns each side",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate forward on outside edge in a curve",
+        "Execute a bracket turn: turn into the curve (as opposed to three-turn which turns out of curve)",
+        "The turn point makes a bracket shape — ] — in the ice",
+        "Hold the resulting back outside edge (for forward outside bracket)",
+        "Practice forward outside, forward inside, backward outside, backward inside brackets"
+      ],
+      "coach_cues": [
+        "Bracket is the OPPOSITE of a three-turn — turn INTO the circle",
+        "It feels counter-intuitive — the body must counter-rotate",
+        "Upper body counter-rotation is what makes brackets difficult",
+        "A clean bracket point is worth significant GOE in step sequences"
+      ],
+      "common_mistakes": [
+        "Executing a three-turn instead of a bracket (turning the wrong direction)",
+        "No counter-rotation — the bracket has no check",
+        "Stepping out immediately — must hold the resulting edge"
+      ],
+      "progressions": [
+        "Stationary bracket turn feeling",
+        "Slow forward outside bracket",
+        "Forward inside bracket",
+        "Backward brackets",
+        "Brackets in combination with other turns"
+      ],
+      "target_elements": ["StSq4 Level 4 feature"],
+      "video_description": "Skater executes bracket turns demonstrating the counter-intuitive technique — turning into the circle rather than out of it, creating the distinctive bracket shape in the ice"
+    },
+    {
+      "id": 28,
+      "name_ar": "سلسلة العداد والهزاز",
+      "name_en": "Counter-Rocker Series",
+      "category": "edges",
+      "level": "elite",
+      "purpose": "Adds the most difficult turns (counters and rockers) for Level 4 step sequences",
+      "duration_minutes": 15,
+      "repetitions": "4 series of 6 turns each",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Rocker: skate on outside edge, turn to inside edge while continuing same direction (reverse of three-turn logic)",
+        "Counter: skate on outside edge, turn to outside edge while reversing direction",
+        "Practice each independently at slow speed first",
+        "Combine in a pattern: Rocker-Counter-Rocker-Counter",
+        "Build to full speed with all turns in a straight line"
+      ],
+      "coach_cues": [
+        "Counters and Rockers require extreme edge control and balance",
+        "These are Level 4 features — each one in a step sequence raises the level",
+        "The body must remain over the skating foot throughout — no hip shifting",
+        "Weekly video review helps identify subtle technique errors"
+      ],
+      "common_mistakes": [
+        "Stepping out of the edge to execute the turn — must stay on edge throughout",
+        "Using the arms to force the turn — should be done with the body core",
+        "Turns too slow — competition-speed execution requires the turns to be quick"
+      ],
+      "progressions": [
+        "Rockers on outside edge (easier) first",
+        "Rockers on inside edge",
+        "Counters on outside edge",
+        "All four counter/rocker combinations",
+        "In combination with other turns at competition speed"
+      ],
+      "target_elements": ["StSq4"],
+      "video_description": "Skater executes rocker and counter turns at competition speed — each turn precise and controlled, demonstrating the highest level of turning technique in figure skating"
+    },
+    {
+      "id": 29,
+      "name_ar": "تطور الدوامات",
+      "name_en": "Twizzle Progressions",
+      "category": "edges",
+      "level": "advanced",
+      "purpose": "Develops twizzles for Ice Dance, free skating step sequences, and choreographic elements",
+      "duration_minutes": 12,
+      "repetitions": "10 twizzles each direction",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Approach on a forward outside edge with speed",
+        "Raise free leg to a bent position at hip height",
+        "Initiate rotation while traveling on the edge",
+        "Complete 1-3 rotations while traveling in a straight line",
+        "Exit on back outside edge and continue skating"
+      ],
+      "coach_cues": [
+        "Twizzles travel across the ice — they are not spins",
+        "The edge must be maintained throughout the rotation",
+        "Arm position: close to body to maintain rotation speed",
+        "Keep head up — dropping the head causes the twizzle to stop"
+      ],
+      "common_mistakes": [
+        "Stopping in place instead of traveling — that is a spin, not a twizzle",
+        "Wobbling off the edge mid-rotation",
+        "Arms too wide — slows the rotation"
+      ],
+      "progressions": [
+        "Single rotation twizzle from slow approach",
+        "Double rotation twizzle",
+        "Triple rotation twizzle",
+        "Sequence of three consecutive twizzles in a line"
+      ],
+      "target_elements": ["StSq4", "ChSq1"],
+      "video_description": "Skater executes a traveling twizzle sequence — rotating 2-3 times while moving across the ice, maintaining balance and edge throughout the turns"
+    },
+    {
+      "id": 30,
+      "name_ar": "لفات ثلاثية خلفية داخلية",
+      "name_en": "Back Inside Three-Turns",
+      "category": "edges",
+      "level": "intermediate",
+      "purpose": "Develops the Flip and Loop jump entry control on the back inside edge",
+      "duration_minutes": 10,
+      "repetitions": "6 sets of 10 turns",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Skate backward on left inside edge in a curve",
+        "Execute a three-turn: backward inside to forward outside",
+        "Hold the forward outside edge and continue the curve",
+        "Step to right back inside edge and repeat",
+        "Create serpentine pattern down the ice"
+      ],
+      "coach_cues": [
+        "Back inside three-turn is the hardest three-turn variant — be patient",
+        "The turn point must be clean and sharp, not a scrape",
+        "After the turn, hold forward outside edge before stepping to next edge",
+        "This edge is the exact approach to Flip and Loop jumps"
+      ],
+      "common_mistakes": [
+        "Stepping out immediately after the turn instead of holding",
+        "Losing the inside edge before the turn (flattening)",
+        "The turn becoming a stumble due to unsteady back inside edge"
+      ],
+      "progressions": [
+        "Forward outside three-turns first (build the concept)",
+        "Slow backward inside edge holds",
+        "Backward inside three-turns very slowly",
+        "Increasing speed gradually"
+      ],
+      "target_elements": ["3F", "3Lo", "4F", "4Lo"],
+      "video_description": "Skater executes series of backward inside three-turns at increasing speed — the foundation for Flip and Loop jump entries"
+    },
+    {
+      "id": 31,
+      "name_ar": "رسم مسار تسلسل الخطوات",
+      "name_en": "Pattern Sequence Mapping",
+      "category": "steps",
+      "level": "advanced",
+      "purpose": "Designs optimal step sequence layout using maximum ice coverage",
+      "duration_minutes": 15,
+      "repetitions": "3 full walk-throughs, then 3 run-throughs",
+      "location": "on-ice",
+      "equipment": "whiteboard or paper for planning",
+      "steps": [
+        "Draw the ice surface on paper and mark entry and exit points",
+        "Plan the sequence to use the full width and length of the rink",
+        "Include a minimum of 7 different turns for Level 4",
+        "Mark where the difficult turns (brackets, counters, rockers) appear",
+        "Walk through at slow speed, then full speed"
+      ],
+      "coach_cues": [
+        "A Level 4 StSq requires: 7+ different turns, steps, 3 difficult turns minimum",
+        "Ice coverage is a GOE bullet — use the whole rink",
+        "The sequence must connect to the music phrasing",
+        "Transitions in and out of the sequence affect PCS Transitions score"
+      ],
+      "common_mistakes": [
+        "Step sequence staying in one part of the ice — poor ice coverage",
+        "Repeating the same turns — not enough variety for higher levels",
+        "Step sequence too simple for the skater's claimed level"
+      ],
+      "progressions": [
+        "Simple Circular Step Sequence (older rules format) for basics",
+        "Straight Line Step Sequence",
+        "Serpentine Step Sequence (highest difficulty)",
+        "Add elements gradually to build toward Level 4"
+      ],
+      "target_elements": ["StSq4"],
+      "video_description": "Coach and skater review the ice pattern drawn on a whiteboard, planning the optimal step sequence layout for maximum ice coverage and Level 4 achievement"
+    },
+    {
+      "id": 32,
+      "name_ar": "الحفاظ على السرعة خلال الخطوات",
+      "name_en": "Speed Through Steps",
+      "category": "steps",
+      "level": "advanced",
+      "purpose": "Maintains and increases speed throughout the step sequence for GOE",
+      "duration_minutes": 12,
+      "repetitions": "8 step sequence run-throughs",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Enter the step sequence from a standstill or slow speed (baseline)",
+        "Run through the entire step sequence, noting where speed is lost",
+        "Identify the 2-3 transitions that cause the most deceleration",
+        "Drill those specific transitions until they generate power",
+        "Re-run the full sequence and compare entry vs exit speed"
+      ],
+      "coach_cues": [
+        "Speed INCREASE through a step sequence is a positive GOE bullet",
+        "Each step should push you forward — edges generate power",
+        "Use knee bend and ankle pressure, not arm swinging, for power",
+        "Exiting faster than you entered shows exceptional Skating Skills"
+      ],
+      "common_mistakes": [
+        "Decelerating through turns — not pushing through the edge",
+        "Over-choreographed arms that take energy away from feet",
+        "Steps too small — tiny steps cannot generate power"
+      ],
+      "progressions": [
+        "Slow motion step sequence with focus on power generation",
+        "Half-speed with power focus",
+        "Full speed run-through",
+        "Full speed with additional arm expression"
+      ],
+      "target_elements": ["StSq4", "PCS Skating Skills"],
+      "video_description": "Skater executes step sequence entering at normal speed and visibly accelerating through the sequence, exiting with more speed than at entry"
+    },
+    {
+      "id": 33,
+      "name_ar": "سلسلة مجموعات اللفات",
+      "name_en": "Turn Combination Series",
+      "category": "steps",
+      "level": "elite",
+      "purpose": "Maximizes turn count in step sequence for Level 4 achievement",
+      "duration_minutes": 15,
+      "repetitions": "5 full series attempts",
+      "location": "on-ice",
+      "equipment": "none",
+      "steps": [
+        "Plan a sequence with: 2 three-turns, 2 brackets, 2 counters or rockers, 2 Mohawks, 1 Choctaw",
+        "Execute all turns consecutively in a linked pattern",
+        "Must include turns on both forward and backward edges",
+        "Must include turns on both inside and outside edges",
+        "All 7+ turns must appear in a single step sequence"
+      ],
+      "coach_cues": [
+        "Level 4 step sequence has 7 DIFFERENT turn types — not just 7 total turns",
+        "After every turn, the connecting edge is as important as the turn itself",
+        "The difficulty of the turn combination raises GOE from +1 to +3 or more",
+        "Memorize the sequence so all focus is on quality during competition"
+      ],
+      "common_mistakes": [
+        "Only using three-turns and Mohawks — limits to Level 2 maximum",
+        "Poor connection between turns — gaps or hesitations",
+        "Turns executed on the wrong edge"
+      ],
+      "progressions": [
+        "Master each turn individually first",
+        "Two turns in combination",
+        "Four turns in combination",
+        "Full 7+ turn combination"
+      ],
+      "target_elements": ["StSq4"],
+      "video_description": "Skater executes full Level 4 turn combination — seven different turn types in a flowing, connected sequence with no hesitation between turns"
+    },
+    {
+      "id": 34,
+      "name_ar": "تنسيق الذراعين والساقين",
+      "name_en": "Synchronized Arm-Leg Coordination",
+      "category": "steps",
+      "level": "intermediate",
+      "purpose": "Develops the arm-leg-body coordination that contributes to PCS Performance",
+      "duration_minutes": 10,
+      "repetitions": "10 lengths of the rink",
+      "location": "on-ice",
+      "equipment": "music player",
+      "steps": [
+        "Skate forward stroking to music",
+        "Add arm movements that coordinate with each stroke and step",
+        "Arms move in opposition: right arm forward when left foot pushes",
+        "Add head movements synchronized with arm movements",
+        "Layer in expression — make the arms reflect the music"
+      ],
+      "coach_cues": [
+        "Arms are the face of the step sequence — audiences watch the arms",
+        "Arm movements should finish on the musical beat",
+        "The arms do not move the skater — they express the music",
+        "Film yourself — arm movements often look bigger in your head than in reality"
+      ],
+      "common_mistakes": [
+        "Arms too stiff and mechanical — no organic expression",
+        "Arms moving independently of the music — off the beat",
+        "Over-choreographed at the expense of skating quality"
+      ],
+      "progressions": [
+        "Stroking with no arm expression (baseline)",
+        "Add simple arm movements on the beat",
+        "Add head and upper body movement",
+        "Full choreography with expression"
+      ],
+      "target_elements": ["StSq4", "ChSq1", "PCS Performance"],
+      "video_description": "Skater performs step sequence with beautifully coordinated arms and body movement perfectly synchronized to the music"
+    },
+    {
+      "id": 35,
+      "name_ar": "تدريب حبل القفز للدوران الثلاثي",
+      "name_en": "Jump Rope Triple Timing",
+      "category": "off-ice",
+      "level": "intermediate",
+      "purpose": "Develops rotation speed and jump rhythm for consistent triples",
+      "duration_minutes": 10,
+      "repetitions": "4 sets of 50 jumps",
+      "location": "off-ice",
+      "equipment": "jump rope",
+      "steps": [
+        "Standard double-under jump rope: rope passes twice per jump",
+        "Advance to triple-under: rope passes three times per jump",
+        "Focus on maximum height, tight air position, fast arm rotation",
+        "Triple-under timing mirrors the rotation speed needed for triple jumps",
+        "Increase set length as endurance improves"
+      ],
+      "coach_cues": [
+        "Maximum height on each jump — height is the foundation",
+        "Arms tight to body while rope rotates — like the arms in a jump",
+        "Consistent timing between jumps — no rushing",
+        "Triple-under takes months to develop — be patient"
+      ],
+      "common_mistakes": [
+        "Not enough height — cannot complete three rope passes in low jump",
+        "Arms too wide — rope hits the feet",
+        "Irregular rhythm — some jumps higher, some lower"
+      ],
+      "progressions": [
+        "Single-under to double-under (basic skill)",
+        "Double-under consistent for 30 in a row",
+        "Triple-under first attempts",
+        "Triple-under consistent for 10 in a row"
+      ],
+      "target_elements": ["3A", "3Lz", "3Lo", "all triple jumps"],
+      "video_description": "Skater executes triple-under jump rope with maximum height and tight body position, demonstrating the rotational speed equivalent to triple jump timing"
+    },
+    {
+      "id": 36,
+      "name_ar": "رمي الكرة الطبية الدوراني",
+      "name_en": "Medicine Ball Rotational Throw",
+      "category": "off-ice",
+      "level": "intermediate",
+      "purpose": "Builds rotational core power essential for quad and triple jump height and speed",
+      "duration_minutes": 12,
+      "repetitions": "4 sets of 12 throws each direction",
+      "location": "off-ice",
+      "equipment": "medicine ball (3-6 kg), wall",
+      "steps": [
+        "Stand sideways 1.5 meters from a solid wall",
+        "Hold medicine ball at hip level on the far side from the wall",
+        "Rotate explosively, throwing the ball against the wall",
+        "Catch the rebound and rotate back for immediate next throw",
+        "Both directions equally important — non-dominant side often weaker"
+      ],
+      "coach_cues": [
+        "Power comes from the hips and core — not the arms",
+        "The rotation feels like the first half of a jump's rotation",
+        "Maintain athletic stance — do not let the rotation lift the heels",
+        "Use as heavy a ball as can be thrown with full speed"
+      ],
+      "common_mistakes": [
+        "Using arms instead of rotating the trunk — misses the training target",
+        "Not using the rebound — the catch is also a training stimulus",
+        "Too light a ball — no resistance training effect"
+      ],
+      "progressions": [
+        "Light ball, slow rotation (learning the movement)",
+        "Medium ball at medium speed",
+        "Heavy ball at maximum speed",
+        "Add a squat before the throw for combined power"
+      ],
+      "target_elements": ["all jumps — rotational power component"],
+      "video_description": "Skater throws medicine ball explosively against wall in rotational pattern, demonstrating the hip and core power that drives jump rotation"
+    },
+    {
+      "id": 37,
+      "name_ar": "قرفصاء على قدم واحدة على قرص بوسو",
+      "name_en": "Bosu Ball Single-Leg Squats",
+      "category": "off-ice",
+      "level": "intermediate",
+      "purpose": "Develops ankle stability, balance, and single-leg strength for landings",
+      "duration_minutes": 12,
+      "repetitions": "4 sets of 12 each leg",
+      "location": "off-ice",
+      "equipment": "Bosu ball",
+      "steps": [
+        "Stand on flat side of Bosu ball on left foot (dome side down for instability)",
+        "Extend right leg slightly in front, simulating landing position",
+        "Lower slowly into a single-leg squat to 90 degrees",
+        "Pause at bottom for 2 seconds",
+        "Drive back up to standing, maintaining balance throughout"
+      ],
+      "coach_cues": [
+        "Knee tracks over the middle toe — do not let it cave in",
+        "Use the ankle to stabilize — the instability is the training",
+        "Hands on hips — not holding anything for balance",
+        "Progress to eyes closed once stable on eyes-open version"
+      ],
+      "common_mistakes": [
+        "Knee caving inward (valgus) — increases injury risk and indicates hip weakness",
+        "Holding onto something for balance — removes the training stimulus",
+        "Not going deep enough — above 90 degrees is insufficient"
+      ],
+      "progressions": [
+        "Two-foot squat on flat ground",
+        "Single-leg squat on flat ground",
+        "Single-leg squat on Bosu ball",
+        "Eyes closed on Bosu ball",
+        "Jump and land single-leg on Bosu ball"
+      ],
+      "target_elements": ["all landings — ankle and knee stability"],
+      "video_description": "Skater performs single-leg squats on Bosu ball — developing the ankle and knee stability essential for consistent jump landings on the ice"
+    },
+    {
+      "id": 38,
+      "name_ar": "ركلات بشريط المقاومة",
+      "name_en": "Resistance Band Kicks",
+      "category": "off-ice",
+      "level": "basic",
+      "purpose": "Builds hip flexor and glute strength for jump height and free leg position",
+      "duration_minutes": 10,
+      "repetitions": "4 sets of 20 kicks each leg",
+      "location": "off-ice",
+      "equipment": "resistance band, anchor point",
+      "steps": [
+        "Attach resistance band around ankle and anchor to a sturdy point at hip height",
+        "Stand facing the anchor, left foot banded",
+        "Kick left leg forward (hip flexor) against the resistance",
+        "Control the return movement slowly",
+        "Turn away from anchor: kick the leg back (glute) against resistance",
+        "Turn sideways: kick leg to the side (abductor)"
+      ],
+      "coach_cues": [
+        "All kicks are controlled — no swinging or momentum",
+        "Standing leg stays strong — do not let the hip tilt on each kick",
+        "The angle of the kick should match the jump swing leg angle",
+        "Slow return (eccentric phase) is as important as the kick"
+      ],
+      "common_mistakes": [
+        "Using momentum to kick — takes the load off the target muscle",
+        "Hip tilting on the standing side",
+        "Range of motion too small — kick to full extension"
+      ],
+      "progressions": [
+        "Light resistance band, small range",
+        "Medium resistance, full range",
+        "Heavy resistance band",
+        "Add a balance challenge: standing on unstable surface while kicking"
+      ],
+      "target_elements": ["all jumps — swing leg power"],
+      "video_description": "Skater performs resistance band kick exercises in all directions, developing the hip strength essential for powerful jump takeoffs and high free leg positions"
+    },
+    {
+      "id": 39,
+      "name_ar": "تثبيت الجذع بشرائط TRX",
+      "name_en": "TRX Core Stability",
+      "category": "off-ice",
+      "level": "intermediate",
+      "purpose": "Builds anti-rotation core strength essential for spin centering and jump control",
+      "duration_minutes": 15,
+      "repetitions": "4 sets of 12 reps each exercise",
+      "location": "off-ice",
+      "equipment": "TRX suspension trainer",
+      "steps": [
+        "TRX Fallout: hold handles, lean forward and extend arms overhead, resist the pull",
+        "TRX Atomic Pushup: feet in straps, perform pushup then draw knees to chest",
+        "TRX Single-leg Squat: one foot in strap behind, single-leg squat on standing leg",
+        "TRX Plank with rotation: plank position, rotate one arm toward ceiling",
+        "TRX Pike: feet in straps, pike hips straight up maintaining straight legs"
+      ],
+      "coach_cues": [
+        "TRX fallout mimics the anti-rotation needed for a centered spin",
+        "Keep hips level in all exercises — hip drop defeats the purpose",
+        "Breathe out on the effort phase of each exercise",
+        "Adjust strap length as needed — steeper angle = easier"
+      ],
+      "common_mistakes": [
+        "Hips sagging in plank exercises — disengages the core",
+        "Moving too fast — momentum replaces muscle engagement",
+        "Not using full range of motion"
+      ],
+      "progressions": [
+        "Stable surface equivalent exercises (floor plank, etc.)",
+        "TRX exercises at moderate difficulty angle",
+        "TRX exercises at challenging difficulty angle",
+        "Add rotation or instability to each exercise"
+      ],
+      "target_elements": ["all spins — centering", "all jumps — air position control"],
+      "video_description": "Skater performs full TRX circuit including fallout, atomic pushup, and rotating plank — core stability work that directly translates to spin centering"
+    },
+    {
+      "id": 40,
+      "name_ar": "تدحريج رغوة لعضلة IT Band",
+      "name_en": "Foam Roller IT Band",
+      "category": "off-ice",
+      "level": "basic",
+      "purpose": "Injury prevention — releases tightness in the IT band that causes knee pain in skaters",
+      "duration_minutes": 8,
+      "repetitions": "2 minutes each leg, daily",
+      "location": "off-ice",
+      "equipment": "foam roller",
+      "steps": [
+        "Lie on right side, right thigh on foam roller, just below the hip",
+        "Support upper body on right forearm",
+        "Roll slowly from hip to just above the knee — 2-3 second passes",
+        "Find tender spots and pause on them for 30-60 seconds",
+        "Complete from hip to knee, then reverse"
+      ],
+      "coach_cues": [
+        "This will hurt initially — that is normal and indicates tightness",
+        "Breathe into the tender spots to release the tissue",
+        "The pain should decrease over 2-4 weeks of consistent rolling",
+        "Do this BEFORE and AFTER ice sessions for maximum benefit"
+      ],
+      "common_mistakes": [
+        "Rolling too fast — the tissue needs slow sustained pressure to release",
+        "Rolling the knee itself — never roll directly on a joint",
+        "Skipping the tender spots — those are exactly where you need to pause"
+      ],
+      "progressions": [
+        "Foam roller (softest)",
+        "Lacrosse ball for targeted spots",
+        "Sports massage for professional release"
+      ],
+      "target_elements": ["injury prevention — all elements"],
+      "video_description": "Skater demonstrates IT band foam rolling technique — slow methodical rolling from hip to knee with pauses on tender spots for effective tissue release"
+    },
+    {
+      "id": 41,
+      "name_ar": "تقوية الكاحل بشريط ثيرابند",
+      "name_en": "Ankle Strengthening Theraband",
+      "category": "off-ice",
+      "level": "basic",
+      "purpose": "Prevents ankle injuries and improves blade control by strengthening ankle stabilizers",
+      "duration_minutes": 10,
+      "repetitions": "3 sets of 20 each movement direction",
+      "location": "off-ice",
+      "equipment": "Theraband resistance band",
+      "steps": [
+        "Sit on edge of a bench, feet hanging free",
+        "Wrap Theraband around foot, anchor the other end to a fixed point",
+        "Plantar flexion: point the foot down against resistance (push down)",
+        "Dorsiflexion: pull the foot up against resistance",
+        "Inversion: turn foot inward against resistance",
+        "Eversion: turn foot outward against resistance"
+      ],
+      "coach_cues": [
+        "All four directions must be trained equally — weakness in one causes injury",
+        "Move only the ankle — the leg stays still",
+        "Resistance should be challenging by rep 15-20",
+        "This is a daily practice — make it a pre-ice ritual"
+      ],
+      "common_mistakes": [
+        "Moving the entire leg instead of just the ankle",
+        "Only doing plantar flexion and dorsiflexion — skipping inversion/eversion",
+        "Band too light — no strengthening stimulus"
+      ],
+      "progressions": [
+        "Light Theraband",
+        "Medium Theraband",
+        "Heavy Theraband",
+        "Balance board ankle strengthening"
+      ],
+      "target_elements": ["injury prevention — all elements, especially landings"],
+      "video_description": "Skater performs complete ankle Theraband circuit — all four directions — demonstrating the comprehensive ankle strengthening essential for landing stability"
+    },
+    {
+      "id": 42,
+      "name_ar": "إطالة عضلة الفخذ الأمامي",
+      "name_en": "Hip Flexor Psoas Stretch",
+      "category": "off-ice",
+      "level": "basic",
+      "purpose": "Improves jump height and range of motion by releasing the hip flexor for fuller leg swing",
+      "duration_minutes": 10,
+      "repetitions": "Hold each stretch 45 seconds, 3 sets each side",
+      "location": "off-ice",
+      "equipment": "yoga mat, yoga block optional",
+      "steps": [
+        "Kneel on right knee, left foot forward in lunge position",
+        "Gently sink the hips forward and down toward the floor",
+        "Feel the stretch deep in the front of the right hip",
+        "Raise both arms overhead to deepen the stretch",
+        "Tilt slightly away from the kneeling leg to intensify",
+        "Hold for 45 seconds, breathing deeply"
+      ],
+      "coach_cues": [
+        "The hip flexor is the most common tight muscle in skaters — do this daily",
+        "A tight psoas steals 10-20cm from jump height — releasing it is immediate gain",
+        "Breathe OUT and sink deeper into the stretch on each exhale",
+        "If there is knee discomfort, place a folded mat under the kneeling knee"
+      ],
+      "common_mistakes": [
+        "Not sinking deep enough — the hip must go forward of the knee",
+        "Holding the breath — prevents the muscle from releasing",
+        "Only stretching the obvious quad stretch — not targeting the deep hip flexor"
+      ],
+      "progressions": [
+        "Standard kneeling hip flexor stretch",
+        "Add arm raise overhead",
+        "Add lateral side bend",
+        "Add a gentle back arch for a full anterior chain stretch"
+      ],
+      "target_elements": ["all jumps — swing leg range and height"],
+      "video_description": "Skater demonstrates deep kneeling hip flexor stretch with arms overhead — releasing the psoas muscle that directly limits jump height when tight"
+    }
+  ]
+}
