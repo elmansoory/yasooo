@@ -1,6 +1,6 @@
 """
-🎿 نظام تحليل أداء لاعبي التزلج
-Skating Analysis & Attendance System
+🎿 نظام تحليل أداء لاعبي التزلج - النسخة الاحترافية
+Skating Analysis & Attendance System - Professional Edition
 """
 import streamlit as st
 import pandas as pd
@@ -20,33 +20,49 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main {background-color: #f0f2f6;}
-    .stMetric {background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
     h1 {color: #1f77b4; text-align: center; padding: 20px 0;}
     h2 {color: #2c3e50;}
     h3 {color: #34495e;}
-    .success-box {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        border-radius: 5px;
-        padding: 15px;
-        margin: 10px 0;
-    }
-    .info-box {
-        background-color: #d1ecf1;
-        border: 1px solid #bee5eb;
-        border-radius: 5px;
-        padding: 15px;
-        margin: 10px 0;
-    }
     div[data-testid="stForm"] {
         background-color: white;
         padding: 20px;
         border-radius: 10px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
+    .element-card {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 6px 0;
+        border-left: 4px solid #1f77b4;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .drill-card {
+        background: #f8f9ff;
+        border-radius: 8px;
+        padding: 14px;
+        margin: 8px 0;
+        border: 1px solid #d0d8f0;
+    }
+    .champion-box {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin: 12px 0;
+        text-align: center;
+    }
+    .goe-positive {background-color: #d4edda; border-radius:4px; padding:4px 8px; color:#155724;}
+    .goe-negative {background-color: #f8d7da; border-radius:4px; padding:4px 8px; color:#721c24;}
+    .score-badge {
+        background: #1f77b4; color: white;
+        border-radius: 20px; padding: 4px 14px;
+        font-weight: bold; font-size: 1.1em;
+    }
 </style>
 """, unsafe_allow_html=True)
 
+# ─── DB HELPERS ───────────────────────────────────────────────────────
 @st.cache_resource
 def get_connection():
     return sqlite3.connect('skating_database.db', check_same_thread=False)
@@ -78,626 +94,890 @@ SESSION_TYPES = ["on-ice", "off-ice", "both"]
 def get_coaches():
     df = get_data("SELECT DISTINCT coach FROM members WHERE coach IS NOT NULL AND coach != '' ORDER BY coach")
     coaches = df['coach'].tolist()
-    att_coaches = get_data("SELECT DISTINCT coach FROM attendance WHERE coach IS NOT NULL AND coach != '' ORDER BY coach")
-    all_coaches = list(set(coaches + att_coaches['coach'].tolist()))
-    all_coaches.sort()
-    return all_coaches
+    att = get_data("SELECT DISTINCT coach FROM attendance WHERE coach IS NOT NULL AND coach != '' ORDER BY coach")
+    return sorted(list(set(coaches + att['coach'].tolist())))
 
-# ───────────────────────────────────────────
-# الصفحة الرئيسية
-# ───────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════
+# 🏠 الصفحة الرئيسية
+# ═══════════════════════════════════════════════════════════════════
 def show_homepage():
     st.title("🎿 نظام تحليل أداء لاعبي التزلج")
-    st.markdown("### مرحباً بك في نظام إدارة وتحليل الأداء الشامل")
+    st.markdown("### مرحباً بك في النظام الاحترافي الشامل لصناعة البطل")
 
     members_df = get_data("SELECT * FROM members")
     attendance_df = get_data("SELECT * FROM attendance")
     memberships_df = get_data("SELECT * FROM memberships")
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("👥 إجمالي الأعضاء", len(members_df))
-    with col2:
-        st.metric("📅 سجلات الحضور", len(attendance_df))
-    with col3:
-        avg_attendance = len(attendance_df) / len(members_df) if len(members_df) > 0 else 0
-        st.metric("📊 متوسط الحضور", f"{avg_attendance:.1f}")
-    with col4:
-        st.metric("💳 العضويات النشطة", len(memberships_df))
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("👥 الأعضاء", len(members_df))
+    c2.metric("📅 سجلات الحضور", len(attendance_df))
+    c3.metric("📊 متوسط الحضور", f"{len(attendance_df)/max(len(members_df),1):.1f}")
+    c4.metric("💳 العضويات", len(memberships_df))
 
     st.markdown("---")
-
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("📈 توزيع الحضور عبر الزمن")
+        st.subheader("📈 الحضور اليومي")
         if len(attendance_df) > 0:
-            attendance_by_date = attendance_df.groupby('date').size().reset_index(name='count')
-            attendance_by_date['date'] = pd.to_datetime(attendance_by_date['date'])
-            attendance_by_date = attendance_by_date.sort_values('date')
-            fig = px.line(
-                attendance_by_date, x='date', y='count',
-                title='عدد الحضور اليومي',
-                labels={'date': 'التاريخ', 'count': 'عدد الحضور'}
-            )
+            att_by_date = attendance_df.groupby('date').size().reset_index(name='count')
+            att_by_date['date'] = pd.to_datetime(att_by_date['date'])
+            att_by_date = att_by_date.sort_values('date')
+            fig = px.line(att_by_date, x='date', y='count', title='عدد الحضور اليومي',
+                         labels={'date': 'التاريخ', 'count': 'عدد الحضور'})
             fig.update_traces(line_color='#1f77b4', line_width=3)
-            fig.update_layout(hovermode='x unified')
             st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("لا توجد بيانات حضور")
 
     with col2:
         st.subheader("👥 توزيع المستويات")
-        if len(members_df) > 0 and 'level' in members_df.columns:
+        if len(members_df) > 0:
             level_counts = members_df['level'].dropna()
             level_counts = level_counts[level_counts != ''].value_counts()
             if len(level_counts) > 0:
-                fig = px.pie(
-                    values=level_counts.values, names=level_counts.index,
-                    title='توزيع الأعضاء حسب المستوى', hole=0.4
-                )
-                fig.update_traces(textposition='inside', textinfo='percent+label')
+                fig = px.pie(values=level_counts.values, names=level_counts.index,
+                            title='توزيع الأعضاء حسب المستوى', hole=0.4)
                 st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("لا توجد بيانات مستويات")
 
     st.markdown("---")
-
     col1, col2 = st.columns(2)
-
     with col1:
         st.subheader("🏆 أعلى 10 أعضاء حضوراً")
         if len(attendance_df) > 0:
-            member_attendance = attendance_df.groupby('member_id').size().reset_index(name='attendance_count')
-            member_attendance = member_attendance.merge(
-                members_df[['id', 'name']], left_on='member_id', right_on='id'
-            )
-            member_attendance = member_attendance.sort_values('attendance_count', ascending=False).head(10)
-            fig = px.bar(
-                member_attendance, x='name', y='attendance_count',
-                title='أعلى 10 أعضاء حضوراً',
-                labels={'name': 'الاسم', 'attendance_count': 'عدد الحضور'},
-                color='attendance_count', color_continuous_scale='blues'
-            )
-            fig.update_layout(showlegend=False, xaxis_tickangle=-45)
+            member_att = attendance_df.groupby('member_id').size().reset_index(name='count')
+            member_att = member_att.merge(members_df[['id','name']], left_on='member_id', right_on='id')
+            member_att = member_att.sort_values('count', ascending=False).head(10)
+            fig = px.bar(member_att, x='name', y='count', color='count', color_continuous_scale='blues')
+            fig.update_layout(showlegend=False, xaxis_tickangle=-40,
+                             xaxis_title="", yaxis_title="عدد الحضور")
             st.plotly_chart(fig, use_container_width=True)
-
     with col2:
-        st.subheader("🎯 توزيع الحضور حسب نوع الحصة")
+        st.subheader("🎯 On-Ice vs Off-Ice")
         if len(attendance_df) > 0 and 'session_type' in attendance_df.columns:
-            session_counts = attendance_df['session_type'].value_counts()
-            fig = px.pie(
-                values=session_counts.values, names=session_counts.index,
-                title='On-Ice vs Off-Ice', hole=0.4
-            )
+            s = attendance_df['session_type'].value_counts()
+            fig = px.pie(values=s.values, names=s.index, hole=0.4)
             st.plotly_chart(fig, use_container_width=True)
 
 
-# ───────────────────────────────────────────
-# صفحة إدارة الأعضاء
-# ───────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+# 👥 إدارة الأعضاء
+# ═══════════════════════════════════════════════════════════════════
 def show_members_page():
     st.title("👥 إدارة الأعضاء")
-
     tab1, tab2, tab3 = st.tabs(["📋 قائمة الأعضاء", "➕ إضافة عضو", "✏️ تعديل / حذف"])
 
     with tab1:
         members_df = get_data("SELECT * FROM members ORDER BY name")
-        if len(members_df) == 0:
-            st.warning("لا يوجد أعضاء في النظام")
-            return
-
-        # Filters
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            search = st.text_input("🔍 بحث بالاسم", "")
-        with col2:
-            levels = ["الكل"] + sorted(members_df['level'].dropna().unique().tolist())
-            selected_level = st.selectbox("🎯 المستوى", levels)
-        with col3:
-            coaches = ["الكل"] + sorted(members_df['coach'].dropna().unique().tolist())
-            selected_coach = st.selectbox("👨‍🏫 المدرب", coaches)
+        c1, c2, c3 = st.columns(3)
+        search = c1.text_input("🔍 بحث", "")
+        levels = ["الكل"] + sorted(members_df['level'].dropna().unique().tolist())
+        sel_level = c2.selectbox("المستوى", levels)
+        coaches = ["الكل"] + sorted(members_df['coach'].dropna().unique().tolist())
+        sel_coach = c3.selectbox("المدرب", coaches)
 
         filtered = members_df.copy()
         if search:
             filtered = filtered[filtered['name'].str.contains(search, case=False, na=False)]
-        if selected_level != "الكل":
-            filtered = filtered[filtered['level'] == selected_level]
-        if selected_coach != "الكل":
-            filtered = filtered[filtered['coach'] == selected_coach]
+        if sel_level != "الكل":
+            filtered = filtered[filtered['level'] == sel_level]
+        if sel_coach != "الكل":
+            filtered = filtered[filtered['coach'] == sel_coach]
 
-        st.markdown(f"**عدد الأعضاء: {len(filtered)}**")
-
-        # Show with attendance count
-        att_counts = get_data("SELECT member_id, COUNT(*) as att_count FROM attendance GROUP BY member_id")
-        if len(att_counts) > 0:
-            filtered = filtered.merge(att_counts, left_on='id', right_on='member_id', how='left')
+        att_c = get_data("SELECT member_id, COUNT(*) as att_count FROM attendance GROUP BY member_id")
+        if len(att_c) > 0:
+            filtered = filtered.merge(att_c, left_on='id', right_on='member_id', how='left')
             filtered['att_count'] = filtered['att_count'].fillna(0).astype(int)
-            display = filtered[['name', 'level', 'coach', 'bundle', 'att_count']].copy()
-            display.columns = ['الاسم', 'المستوى', 'المدرب', 'الباقة', 'عدد الحضور']
+            disp = filtered[['name','level','coach','bundle','att_count']].copy()
+            disp.columns = ['الاسم','المستوى','المدرب','الباقة','عدد الحضور']
         else:
-            display = filtered[['name', 'level', 'coach', 'bundle']].copy()
-            display.columns = ['الاسم', 'المستوى', 'المدرب', 'الباقة']
-
-        display.index = range(1, len(display) + 1)
-        st.dataframe(display, use_container_width=True, height=500)
+            disp = filtered[['name','level','coach','bundle']].copy()
+            disp.columns = ['الاسم','المستوى','المدرب','الباقة']
+        disp.index = range(1, len(disp)+1)
+        st.markdown(f"**{len(filtered)} عضو**")
+        st.dataframe(disp, use_container_width=True, height=500)
 
     with tab2:
         st.subheader("➕ إضافة عضو جديد")
         with st.form("add_member_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            with col1:
-                name = st.text_input("الاسم *", placeholder="أدخل اسم العضو")
-                level = st.selectbox("المستوى", [""] + LEVELS)
-                gender = st.selectbox("الجنس", ["", "ذكر", "أنثى"])
-            with col2:
-                coach = st.text_input("المدرب", placeholder="اسم المدرب")
-                bundle = st.selectbox("الباقة", [""] + BUNDLES)
-                birth_date = st.date_input("تاريخ الميلاد", value=None, min_value=datetime(1990, 1, 1).date())
-
-            submitted = st.form_submit_button("✅ إضافة العضو", use_container_width=True)
-            if submitted:
+            c1, c2 = st.columns(2)
+            name = c1.text_input("الاسم *")
+            level = c1.selectbox("المستوى", [""]+LEVELS)
+            gender = c1.selectbox("الجنس", ["","ذكر","أنثى"])
+            coach = c2.text_input("المدرب")
+            bundle = c2.selectbox("الباقة", [""]+BUNDLES)
+            birth_date = c2.date_input("تاريخ الميلاد", value=None, min_value=datetime(1990,1,1).date())
+            if st.form_submit_button("✅ إضافة", use_container_width=True):
                 if not name.strip():
-                    st.error("❌ الرجاء إدخال اسم العضو")
+                    st.error("الرجاء إدخال الاسم")
+                elif len(get_data("SELECT id FROM members WHERE name=?", (name.strip(),))) > 0:
+                    st.error(f"العضو '{name}' موجود مسبقاً")
                 else:
-                    existing = get_data("SELECT id FROM members WHERE name = ?", params=(name.strip(),))
-                    if len(existing) > 0:
-                        st.error(f"❌ العضو '{name}' موجود مسبقاً")
-                    else:
-                        bd_str = birth_date.strftime('%Y-%m-%d') if birth_date else None
-                        execute_query(
-                            "INSERT INTO members (name, gender, birth_date, level, coach, bundle) VALUES (?,?,?,?,?,?)",
-                            (name.strip(), gender or None, bd_str, level or None, coach.strip() or None, bundle or None)
-                        )
-                        st.success(f"✅ تم إضافة العضو '{name}' بنجاح!")
-                        clear_cache()
+                    bd = birth_date.strftime('%Y-%m-%d') if birth_date else None
+                    execute_query("INSERT INTO members (name,gender,birth_date,level,coach,bundle) VALUES (?,?,?,?,?,?)",
+                                  (name.strip(), gender or None, bd, level or None, coach.strip() or None, bundle or None))
+                    st.success(f"✅ تم إضافة '{name}'")
+                    clear_cache()
 
     with tab3:
         st.subheader("✏️ تعديل أو حذف عضو")
         members_df = get_data("SELECT * FROM members ORDER BY name")
-        if len(members_df) == 0:
-            st.info("لا يوجد أعضاء")
-            return
-
-        member_names = members_df['name'].tolist()
-        selected = st.selectbox("اختر العضو", member_names, key="edit_member_select")
-
+        selected = st.selectbox("اختر العضو", members_df['name'].tolist())
         if selected:
             member = members_df[members_df['name'] == selected].iloc[0]
-
-            with st.form("edit_member_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    new_name = st.text_input("الاسم", value=member['name'])
-                    new_level = st.selectbox("المستوى", [""] + LEVELS,
-                                             index=(LEVELS.index(member['level']) + 1) if member.get('level') in LEVELS else 0)
-                    new_gender = st.selectbox("الجنس", ["", "ذكر", "أنثى"],
-                                              index=["", "ذكر", "أنثى"].index(member['gender']) if member.get('gender') in ["ذكر", "أنثى"] else 0)
-                with col2:
-                    new_coach = st.text_input("المدرب", value=member.get('coach') or "")
-                    new_bundle = st.selectbox("الباقة", [""] + BUNDLES,
-                                              index=(BUNDLES.index(member['bundle']) + 1) if member.get('bundle') in BUNDLES else 0)
-
-                col_save, col_delete = st.columns(2)
-                with col_save:
-                    save = st.form_submit_button("💾 حفظ التعديلات", use_container_width=True)
-                with col_delete:
-                    delete = st.form_submit_button("🗑️ حذف العضو", use_container_width=True, type="secondary")
-
+            with st.form("edit_form"):
+                c1, c2 = st.columns(2)
+                new_name = c1.text_input("الاسم", value=member['name'])
+                new_level = c1.selectbox("المستوى", [""]+LEVELS,
+                    index=(LEVELS.index(member['level'])+1) if member.get('level') in LEVELS else 0)
+                new_gender = c1.selectbox("الجنس", ["","ذكر","أنثى"],
+                    index=["","ذكر","أنثى"].index(member['gender']) if member.get('gender') in ["ذكر","أنثى"] else 0)
+                new_coach = c2.text_input("المدرب", value=member.get('coach') or "")
+                new_bundle = c2.selectbox("الباقة", [""]+BUNDLES,
+                    index=(BUNDLES.index(member['bundle'])+1) if member.get('bundle') in BUNDLES else 0)
+                cs, cd = st.columns(2)
+                save = cs.form_submit_button("💾 حفظ", use_container_width=True)
+                delete = cd.form_submit_button("🗑️ حذف", use_container_width=True)
                 if save:
-                    execute_query(
-                        "UPDATE members SET name=?, level=?, coach=?, gender=?, bundle=? WHERE id=?",
-                        (new_name.strip(), new_level or None, new_coach.strip() or None,
-                         new_gender or None, new_bundle or None, int(member['id']))
-                    )
-                    st.success("✅ تم حفظ التعديلات بنجاح!")
-                    clear_cache()
-                    st.rerun()
-
+                    execute_query("UPDATE members SET name=?,level=?,coach=?,gender=?,bundle=? WHERE id=?",
+                                  (new_name.strip(), new_level or None, new_coach.strip() or None,
+                                   new_gender or None, new_bundle or None, int(member['id'])))
+                    st.success("✅ تم الحفظ"); clear_cache(); st.rerun()
                 if delete:
                     execute_query("DELETE FROM attendance WHERE member_id=?", (int(member['id']),))
                     execute_query("DELETE FROM memberships WHERE member_id=?", (int(member['id']),))
                     execute_query("DELETE FROM members WHERE id=?", (int(member['id']),))
-                    st.success(f"✅ تم حذف العضو '{selected}' وجميع بياناته")
-                    clear_cache()
-                    st.rerun()
+                    st.success(f"✅ تم حذف '{selected}'"); clear_cache(); st.rerun()
 
 
-# ───────────────────────────────────────────
-# صفحة تسجيل الحضور
-# ───────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+# 📅 تسجيل الحضور
+# ═══════════════════════════════════════════════════════════════════
 def show_attendance_page():
     st.title("📅 إدارة الحضور")
-
-    tab1, tab2, tab3 = st.tabs(["➕ تسجيل حضور", "📋 سجل الحضور", "📊 تحليل الحضور"])
+    tab1, tab2, tab3 = st.tabs(["➕ تسجيل حضور", "📋 سجل الحضور", "📊 تحليل"])
 
     with tab1:
-        st.subheader("➕ تسجيل حضور جديد")
         members_df = get_data("SELECT id, name FROM members ORDER BY name")
-
-        if len(members_df) == 0:
-            st.warning("لا يوجد أعضاء. أضف أعضاء أولاً.")
-            return
-
-        with st.form("attendance_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            with col1:
-                selected_members = st.multiselect(
-                    "👥 اختر الأعضاء (يمكن اختيار أكثر من واحد)",
-                    members_df['name'].tolist()
-                )
-                session_date = st.date_input("📅 التاريخ", value=datetime.today())
-            with col2:
-                session_type = st.selectbox("🎿 نوع الحصة", SESSION_TYPES)
-                coaches_list = get_coaches()
-                coach_options = [""] + coaches_list + ["أخرى..."]
-                coach_select = st.selectbox("👨‍🏫 المدرب", coach_options)
-                if coach_select == "أخرى...":
-                    coach_input = st.text_input("اسم المدرب")
+        with st.form("att_form", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            sel_members = c1.multiselect("👥 الأعضاء (متعدد)", members_df['name'].tolist())
+            sess_date = c1.date_input("📅 التاريخ", value=datetime.today())
+            sess_type = c2.selectbox("🎿 نوع الحصة", SESSION_TYPES)
+            coaches_list = get_coaches()
+            coach_opt = c2.selectbox("👨‍🏫 المدرب", [""]+coaches_list+["أخرى..."])
+            coach_in = c2.text_input("اسم المدرب (إذا اخترت أخرى)") if coach_opt == "أخرى..." else coach_opt
+            if st.form_submit_button("✅ تسجيل الحضور", use_container_width=True):
+                if not sel_members:
+                    st.error("اختر عضواً واحداً على الأقل")
                 else:
-                    coach_input = coach_select
-
-            submitted = st.form_submit_button("✅ تسجيل الحضور", use_container_width=True)
-            if submitted:
-                if not selected_members:
-                    st.error("❌ الرجاء اختيار عضو واحد على الأقل")
-                else:
-                    date_str = session_date.strftime('%Y-%m-%d')
-                    coach_val = coach_input.strip() or None
-                    added = 0
-                    skipped = 0
-
-                    for member_name in selected_members:
-                        member_row = members_df[members_df['name'] == member_name]
-                        if len(member_row) == 0:
-                            continue
-                        member_id = int(member_row.iloc[0]['id'])
-
-                        sessions = [session_type] if session_type != "both" else ["on-ice", "off-ice"]
-                        for stype in sessions:
-                            existing = get_data(
-                                "SELECT id FROM attendance WHERE member_id=? AND date=? AND session_type=?",
-                                params=(member_id, date_str, stype)
-                            )
-                            if len(existing) > 0:
+                    date_str = sess_date.strftime('%Y-%m-%d')
+                    added = skipped = 0
+                    for mn in sel_members:
+                        mid = int(members_df[members_df['name']==mn].iloc[0]['id'])
+                        for stype in ([sess_type] if sess_type != "both" else ["on-ice","off-ice"]):
+                            if len(get_data("SELECT id FROM attendance WHERE member_id=? AND date=? AND session_type=?",
+                                           (mid, date_str, stype))) > 0:
                                 skipped += 1
                             else:
-                                execute_query(
-                                    "INSERT INTO attendance (member_id, date, status, session_type, coach) VALUES (?,?,?,?,?)",
-                                    (member_id, date_str, 'present', stype, coach_val)
-                                )
+                                execute_query("INSERT INTO attendance (member_id,date,status,session_type,coach) VALUES (?,?,?,?,?)",
+                                             (mid, date_str, 'present', stype, coach_in.strip() or None))
                                 added += 1
-
-                    msg = f"✅ تم تسجيل {added} سجل حضور"
-                    if skipped > 0:
-                        msg += f" ({skipped} موجود مسبقاً تم تجاهله)"
-                    st.success(msg)
+                    st.success(f"✅ تم تسجيل {added} سجل" + (f" ({skipped} موجود مسبقاً)" if skipped else ""))
                     clear_cache()
 
     with tab2:
-        st.subheader("📋 سجل الحضور")
         members_df = get_data("SELECT id, name FROM members ORDER BY name")
+        c1, c2, c3 = st.columns(3)
+        filter_member = c1.selectbox("العضو", ["الكل"]+members_df['name'].tolist())
+        date_from = c2.date_input("من", value=datetime(2025,10,1).date())
+        date_to = c3.date_input("إلى", value=datetime.today().date())
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            filter_member = st.selectbox("👥 العضو", ["الكل"] + members_df['name'].tolist(), key="att_member_filter")
-        with col2:
-            filter_date_from = st.date_input("من تاريخ", value=datetime(2025, 10, 1).date(), key="att_date_from")
-        with col3:
-            filter_date_to = st.date_input("إلى تاريخ", value=datetime.today().date(), key="att_date_to")
-
-        query = """
-            SELECT a.id, m.name as member_name, a.date, a.session_type, a.coach, a.status
-            FROM attendance a
-            JOIN members m ON a.member_id = m.id
-            WHERE a.date >= ? AND a.date <= ?
-        """
-        params = [filter_date_from.strftime('%Y-%m-%d'), filter_date_to.strftime('%Y-%m-%d')]
-
+        q = """SELECT a.id, m.name, a.date, a.session_type, a.coach
+               FROM attendance a JOIN members m ON a.member_id=m.id
+               WHERE a.date>=? AND a.date<=?"""
+        params = [date_from.strftime('%Y-%m-%d'), date_to.strftime('%Y-%m-%d')]
         if filter_member != "الكل":
-            member_row = members_df[members_df['name'] == filter_member]
-            if len(member_row) > 0:
-                query += " AND a.member_id = ?"
-                params.append(int(member_row.iloc[0]['id']))
+            mid = int(members_df[members_df['name']==filter_member].iloc[0]['id'])
+            q += " AND a.member_id=?"
+            params.append(mid)
+        q += " ORDER BY a.date DESC"
+        att_df = get_data(q, params=params)
 
-        query += " ORDER BY a.date DESC, m.name"
-        att_df = get_data(query, params=params)
-
-        st.markdown(f"**عدد السجلات: {len(att_df)}**")
-
+        st.markdown(f"**{len(att_df)} سجل**")
         if len(att_df) > 0:
-            display = att_df[['member_name', 'date', 'session_type', 'coach', 'status']].copy()
-            display.columns = ['الاسم', 'التاريخ', 'نوع الحصة', 'المدرب', 'الحالة']
-            display.index = range(1, len(display) + 1)
-            st.dataframe(display, use_container_width=True, height=450)
-
-            # Delete a record
-            st.markdown("---")
-            st.subheader("🗑️ حذف سجل حضور")
-            att_id = st.number_input("أدخل رقم السجل للحذف (من عمود الـ ID)", min_value=1, step=1)
-            if st.button("🗑️ حذف السجل"):
-                execute_query("DELETE FROM attendance WHERE id=?", (int(att_id),))
-                st.success(f"✅ تم حذف السجل رقم {att_id}")
-                clear_cache()
-                st.rerun()
-        else:
-            st.info("لا توجد سجلات في هذه الفترة")
+            disp = att_df[['name','date','session_type','coach']].copy()
+            disp.columns = ['الاسم','التاريخ','نوع الحصة','المدرب']
+            disp.index = range(1, len(disp)+1)
+            st.dataframe(disp, use_container_width=True, height=450)
 
     with tab3:
-        st.subheader("📊 تحليل الحضور")
-        att_df = get_data("""
-            SELECT a.date, a.session_type, a.coach, m.name, m.level
-            FROM attendance a
-            JOIN members m ON a.member_id = m.id
-            ORDER BY a.date
-        """)
-
+        att_df = get_data("""SELECT a.date, a.session_type, a.coach, m.name, m.level
+                             FROM attendance a JOIN members m ON a.member_id=m.id""")
         if len(att_df) == 0:
-            st.info("لا توجد بيانات")
-            return
-
+            st.info("لا توجد بيانات"); return
         att_df['date'] = pd.to_datetime(att_df['date'])
-        att_df['month'] = att_df['date'].dt.to_period('M').astype(str)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
+        c1, c2 = st.columns(2)
+        with c1:
             daily = att_df.groupby('date').size().reset_index(name='count')
-            fig = px.bar(daily, x='date', y='count', title='الحضور اليومي',
-                        labels={'date': 'التاريخ', 'count': 'العدد'}, color_discrete_sequence=['#1f77b4'])
+            fig = px.bar(daily, x='date', y='count', title='الحضور اليومي')
             st.plotly_chart(fig, use_container_width=True)
-
-        with col2:
+        with c2:
             coach_att = att_df['coach'].dropna().value_counts().head(10)
             if len(coach_att) > 0:
-                fig = px.bar(x=coach_att.index, y=coach_att.values,
-                            title='أعلى 10 مدربين حضوراً',
-                            labels={'x': 'المدرب', 'y': 'عدد الحصص'},
-                            color_discrete_sequence=['#2ca02c'])
-                fig.update_layout(xaxis_tickangle=-45)
-                st.plotly_chart(fig, use_container_width=True)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            session_dist = att_df['session_type'].value_counts()
-            fig = px.pie(values=session_dist.values, names=session_dist.index,
-                        title='On-Ice vs Off-Ice', hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col2:
-            level_att = att_df['level'].dropna().value_counts()
-            if len(level_att) > 0:
-                fig = px.bar(x=level_att.index, y=level_att.values,
-                            title='الحضور حسب المستوى',
-                            labels={'x': 'المستوى', 'y': 'عدد الحضور'},
-                            color_discrete_sequence=['#ff7f0e'])
+                fig = px.bar(x=coach_att.index, y=coach_att.values, title='الحضور حسب المدرب')
+                fig.update_layout(xaxis_tickangle=-40)
                 st.plotly_chart(fig, use_container_width=True)
 
 
-# ───────────────────────────────────────────
-# صفحة ملفات الأعضاء
-# ───────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+# 🧑‍💼 ملفات الأعضاء
+# ═══════════════════════════════════════════════════════════════════
 def show_member_profiles_page():
     st.title("🧑‍💼 ملفات الأعضاء")
-
     members_df = get_data("SELECT * FROM members ORDER BY name")
     if len(members_df) == 0:
-        st.warning("لا يوجد أعضاء في النظام")
-        return
+        st.warning("لا يوجد أعضاء"); return
 
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        search = st.text_input("🔍 بحث", "")
-    filtered_names = members_df['name'].tolist()
+    search = st.text_input("🔍 بحث", "")
+    names = members_df['name'].tolist()
     if search:
-        filtered_names = [n for n in filtered_names if search.lower() in n.lower()]
+        names = [n for n in names if search.lower() in n.lower()]
+    if not names:
+        st.info("لا توجد نتائج"); return
 
-    if not filtered_names:
-        st.info("لا توجد نتائج")
-        return
-
-    selected_member = st.selectbox("اختر عضو", filtered_names)
-
-    if selected_member:
-        member = members_df[members_df['name'] == selected_member].iloc[0]
-        member_id = int(member['id'])
-
+    selected = st.selectbox("اختر عضو", names)
+    if selected:
+        member = members_df[members_df['name']==selected].iloc[0]
+        mid = int(member['id'])
         st.markdown("---")
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.markdown("### 📝 المعلومات الأساسية")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown("### 📝 المعلومات")
             st.write(f"**الاسم:** {member['name']}")
             st.write(f"**المستوى:** {member.get('level') or '—'}")
             st.write(f"**المدرب:** {member.get('coach') or '—'}")
             st.write(f"**الباقة:** {member.get('bundle') or '—'}")
-            st.write(f"**الجنس:** {member.get('gender') or '—'}")
+        with c2:
+            att = get_data("SELECT * FROM attendance WHERE member_id=?", (mid,))
+            st.markdown("### 📊 الحضور")
+            st.metric("الإجمالي", len(att))
+            if len(att) > 0:
+                oi = len(att[att['session_type']=='on-ice'])
+                ofi = len(att[att['session_type']=='off-ice'])
+                ca, cb = st.columns(2)
+                ca.metric("On-Ice", oi)
+                cb.metric("Off-Ice", ofi)
+                st.write(f"**آخر حضور:** {att['date'].max()}")
+        with c3:
+            mems = get_data("SELECT * FROM memberships WHERE member_id=?", (mid,))
+            st.markdown("### 💳 المالية")
+            if len(mems) > 0:
+                st.metric("المدفوع", f"{mems['amount'].sum():,.0f} جنيه")
+                for _, m in mems.iterrows():
+                    st.write(f"- {m.get('bundle_type','—')}: **{m.get('amount',0):,.0f} ج**")
 
-        with col2:
-            st.markdown("### 📊 إحصائيات الحضور")
-            attendance = get_data("SELECT * FROM attendance WHERE member_id = ?", params=(member_id,))
-            total = len(attendance)
-            on_ice = len(attendance[attendance['session_type'] == 'on-ice']) if total > 0 else 0
-            off_ice = len(attendance[attendance['session_type'] == 'off-ice']) if total > 0 else 0
-
-            st.metric("إجمالي الحضور", total)
-            col_a, col_b = st.columns(2)
-            col_a.metric("On-Ice", on_ice)
-            col_b.metric("Off-Ice", off_ice)
-
-            if total > 0:
-                last_att = attendance['date'].max()
-                st.write(f"**آخر حضور:** {last_att}")
-
-        with col3:
-            st.markdown("### 💳 المعلومات المالية")
-            memberships = get_data("SELECT * FROM memberships WHERE member_id = ?", params=(member_id,))
-            if len(memberships) > 0:
-                total_paid = memberships['amount'].sum()
-                total_discount = memberships['discount'].sum() if 'discount' in memberships.columns else 0
-                st.metric("المدفوع", f"{total_paid:,.0f} جنيه")
-                if total_discount > 0:
-                    st.metric("الخصم", f"{total_discount:,.0f} جنيه")
-
-                for _, mem in memberships.iterrows():
-                    st.write(f"- {mem.get('bundle_type', '—')}: **{mem.get('amount', 0):,.0f} ج**")
-            else:
-                st.info("لا توجد عضوية مسجلة")
-
-        st.markdown("---")
-
-        if total > 0:
-            st.subheader("📅 الحضور الشهري")
-            attendance['date'] = pd.to_datetime(attendance['date'])
-            attendance['month'] = attendance['date'].dt.to_period('M').astype(str)
-            monthly = attendance.groupby(['month', 'session_type']).size().reset_index(name='count')
+        if len(att) > 0:
+            st.markdown("---")
+            att['date'] = pd.to_datetime(att['date'])
+            att['month'] = att['date'].dt.to_period('M').astype(str)
+            monthly = att.groupby(['month','session_type']).size().reset_index(name='count')
             fig = px.bar(monthly, x='month', y='count', color='session_type',
-                        title=f'الحضور الشهري - {selected_member}',
-                        labels={'month': 'الشهر', 'count': 'عدد الأيام', 'session_type': 'النوع'},
-                        barmode='group')
+                        title=f'الحضور الشهري - {selected}', barmode='group')
             st.plotly_chart(fig, use_container_width=True)
 
-            st.subheader("📜 سجل الحضور الكامل")
-            display = attendance[['date', 'session_type', 'coach']].copy()
-            display.columns = ['التاريخ', 'نوع الحصة', 'المدرب']
-            display = display.sort_values('التاريخ', ascending=False)
-            display.index = range(1, len(display) + 1)
-            st.dataframe(display, use_container_width=True)
 
-
-# ───────────────────────────────────────────
-# صفحة التقارير
-# ───────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+# 📊 التقارير
+# ═══════════════════════════════════════════════════════════════════
 def show_reports_page():
     st.title("📊 التقارير والإحصائيات")
-
     members_df = get_data("SELECT * FROM members")
     attendance_df = get_data("SELECT * FROM attendance")
     memberships_df = get_data("SELECT * FROM memberships")
-
-    tab1, tab2, tab3 = st.tabs(["📈 الحضور", "💰 المدفوعات", "👥 الأعضاء"])
+    tab1, tab2, tab3 = st.tabs(["📈 الحضور","💰 المدفوعات","👥 الأعضاء"])
 
     with tab1:
-        st.subheader("تقرير الحضور")
         if len(attendance_df) > 0:
             attendance_df['date'] = pd.to_datetime(attendance_df['date'])
             attendance_df['month'] = attendance_df['date'].dt.to_period('M').astype(str)
-
-            col1, col2 = st.columns(2)
-            with col1:
-                monthly_stats = attendance_df.groupby('month').size().reset_index(name='count')
-                fig = px.bar(monthly_stats, x='month', y='count', title='الحضور الشهري',
-                            labels={'month': 'الشهر', 'count': 'عدد الحضور'})
+            c1, c2 = st.columns(2)
+            with c1:
+                m = attendance_df.groupby('month').size().reset_index(name='count')
+                fig = px.bar(m, x='month', y='count', title='الحضور الشهري')
                 st.plotly_chart(fig, use_container_width=True)
-
-            with col2:
+            with c2:
                 if 'coach' in attendance_df.columns:
-                    coach_stats = attendance_df['coach'].dropna().value_counts().head(8)
-                    if len(coach_stats) > 0:
-                        fig = px.pie(values=coach_stats.values, names=coach_stats.index,
-                                    title='توزيع الحضور حسب المدرب')
+                    cs = attendance_df['coach'].dropna().value_counts().head(8)
+                    if len(cs) > 0:
+                        fig = px.pie(values=cs.values, names=cs.index, title='الحضور حسب المدرب')
                         st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("لا توجد بيانات حضور")
 
     with tab2:
-        st.subheader("تقرير المدفوعات")
         if len(memberships_df) > 0:
-            col1, col2 = st.columns(2)
-            with col1:
-                total_revenue = memberships_df['amount'].sum()
-                total_discount = memberships_df['discount'].sum() if 'discount' in memberships_df.columns else 0
-                net_revenue = total_revenue - total_discount
-
-                st.metric("إجمالي الإيرادات", f"{total_revenue:,.0f} جنيه")
-                st.metric("إجمالي الخصومات", f"{total_discount:,.0f} جنيه")
-                st.metric("صافي الإيرادات", f"{net_revenue:,.0f} جنيه")
-
-            with col2:
+            c1, c2 = st.columns(2)
+            with c1:
+                st.metric("الإيرادات", f"{memberships_df['amount'].sum():,.0f} جنيه")
+                disc = memberships_df['discount'].sum() if 'discount' in memberships_df.columns else 0
+                st.metric("الخصومات", f"{disc:,.0f} جنيه")
+                st.metric("الصافي", f"{memberships_df['amount'].sum()-disc:,.0f} جنيه")
+            with c2:
                 if 'bundle_type' in memberships_df.columns:
-                    bundle_revenue = memberships_df.groupby('bundle_type')['amount'].sum().dropna()
-                    bundle_revenue = bundle_revenue[bundle_revenue.index != '']
-                    if len(bundle_revenue) > 0:
-                        fig = px.bar(x=bundle_revenue.index, y=bundle_revenue.values,
-                                    title='الإيرادات حسب الباقة',
-                                    labels={'x': 'الباقة', 'y': 'المبلغ'})
-                        st.plotly_chart(fig, use_container_width=True)
-
-            # Full table
-            st.subheader("📋 جدول العضويات الكامل")
-            mem_with_names = get_data("""
-                SELECT m.name as member_name, ms.bundle_type, ms.amount, ms.discount, ms.payment_date
-                FROM memberships ms
-                JOIN members m ON ms.member_id = m.id
-                ORDER BY m.name
-            """)
-            if len(mem_with_names) > 0:
-                display = mem_with_names.copy()
-                display.columns = ['الاسم', 'الباقة', 'المبلغ', 'الخصم', 'تاريخ الدفع']
-                display.index = range(1, len(display) + 1)
-                st.dataframe(display, use_container_width=True, height=400)
-        else:
-            st.info("لا توجد بيانات مدفوعات")
+                    br = memberships_df.groupby('bundle_type')['amount'].sum()
+                    fig = px.bar(x=br.index, y=br.values, title='الإيرادات حسب الباقة')
+                    st.plotly_chart(fig, use_container_width=True)
+            mn = get_data("""SELECT m.name, ms.bundle_type, ms.amount, ms.discount, ms.payment_date
+                             FROM memberships ms JOIN members m ON ms.member_id=m.id ORDER BY m.name""")
+            mn.columns = ['الاسم','الباقة','المبلغ','الخصم','تاريخ الدفع']
+            mn.index = range(1, len(mn)+1)
+            st.dataframe(mn, use_container_width=True, height=350)
 
     with tab3:
-        st.subheader("تقرير الأعضاء")
-        col1, col2 = st.columns(2)
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("الأعضاء", len(members_df))
+            ld = members_df['level'].dropna().value_counts()
+            if len(ld) > 0:
+                fig = px.bar(x=ld.index, y=ld.values, title='الأعضاء حسب المستوى',
+                            color_discrete_sequence=['#9467bd'])
+                fig.update_layout(xaxis_tickangle=-40)
+                st.plotly_chart(fig, use_container_width=True)
+        with c2:
+            cd = members_df['coach'].dropna().value_counts()
+            if len(cd) > 0:
+                fig = px.pie(values=cd.values, names=cd.index, title='الأعضاء حسب المدرب', hole=0.35)
+                st.plotly_chart(fig, use_container_width=True)
 
+
+# ═══════════════════════════════════════════════════════════════════
+# 🏆 نظام التدريب الاحترافي - صناعة البطل
+# ═══════════════════════════════════════════════════════════════════
+def show_coaching_hub():
+    from src.coaching.isu_data import (JUMPS, SPINS, STEP_SEQUENCES,
+                                        GOE_CRITERIA_JUMPS, PROGRAM_COMPONENTS,
+                                        LEVEL_PROGRESSION, JUDGING_RULES, INJURY_PREVENTION)
+    from src.coaching.training_generator import (OFF_ICE_EXERCISES, ON_ICE_DRILLS,
+                                                   generate_weekly_plan, generate_monthly_plan,
+                                                   calculate_program_score)
+
+    st.title("🏆 نظام التدريب الاحترافي — صناعة البطل العالمي")
+    st.markdown("""
+    <div class="champion-box">
+        <h2 style="color:gold; margin:0;">🥇 من الجليد إلى منصة التتويج العالمي</h2>
+        <p style="color:#ccc; margin-top:8px; font-size:1.05em;">
+        نظام تدريب شامل مبني على معايير الاتحاد الدولي للتزلج (ISU) — تحليل الأداء، برامج التدريب، دليل المحكمين
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📋 مولّد برامج التدريب",
+        "💪 مكتبة التمارين",
+        "⚡ حاسبة النقاط ISU",
+        "📖 دليل المحكمين",
+        "🎯 مسار البطولة",
+        "🔬 تحليل الأداء",
+    ])
+
+    # ── TAB 1: Training Program Generator ──────────────────────────
+    with tab1:
+        st.subheader("📋 مولّد برنامج التدريب الأسبوعي والشهري")
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("إجمالي الأعضاء", len(members_df))
-
-            if 'level' in members_df.columns:
-                level_dist = members_df['level'].dropna().value_counts()
-                level_dist = level_dist[level_dist.index != '']
-                if len(level_dist) > 0:
-                    fig = px.bar(x=level_dist.index, y=level_dist.values,
-                                title='الأعضاء حسب المستوى',
-                                labels={'x': 'المستوى', 'y': 'العدد'},
-                                color_discrete_sequence=['#9467bd'])
-                    fig.update_layout(xaxis_tickangle=-45)
-                    st.plotly_chart(fig, use_container_width=True)
-
+            selected_level = st.selectbox("🎯 مستوى اللاعب", list(LEVEL_PROGRESSION.keys()) + ["Advanced"])
         with col2:
-            if 'coach' in members_df.columns:
-                coach_dist = members_df['coach'].dropna().value_counts()
-                coach_dist = coach_dist[coach_dist.index != '']
-                if len(coach_dist) > 0:
-                    fig = px.pie(values=coach_dist.values, names=coach_dist.index,
-                                title='الأعضاء حسب المدرب', hole=0.35)
-                    st.plotly_chart(fig, use_container_width=True)
+            goal = st.selectbox("🏆 الهدف", [
+                "التحضير لمنافسة محلية",
+                "التحضير لمنافسة إقليمية",
+                "التحضير لبطولة وطنية",
+                "التحضير للـ Grand Prix",
+                "التحضير للبطولة العالمية",
+                "رفع مستوى التقنية",
+                "بناء اللياقة واللجسم",
+            ])
+        with col3:
+            sessions = st.slider("حصص على الجليد في الأسبوع", 3, 7, 6)
+
+        if st.button("🚀 توليد البرنامج الأسبوعي", use_container_width=True, type="primary"):
+            plan = generate_weekly_plan(selected_level, goal, sessions)
+
+            st.markdown("---")
+            st.markdown(f"### 📅 البرنامج الأسبوعي — المستوى: **{selected_level}** | الهدف: **{goal}**")
+
+            for day, content in plan.items():
+                with st.expander(f"**{day}** — {content['focus_ar']}", expanded=False):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        on_ice = content.get('on_ice', {})
+                        dur = on_ice.get('duration', 0)
+                        if dur > 0:
+                            st.markdown(f"#### 🧊 على الجليد ({dur} دقيقة)")
+                            for s in on_ice.get('sessions', []):
+                                st.markdown(f"""<div class="element-card">
+                                    <b>⏱ {s['time']}</b> &nbsp; {s['activity_ar']}
+                                </div>""", unsafe_allow_html=True)
+                        else:
+                            st.info("🧊 يوم راحة من الجليد")
+                    with c2:
+                        off_ice = content.get('off_ice', {})
+                        dur2 = off_ice.get('duration', 0)
+                        if dur2 > 0:
+                            st.markdown(f"#### 🏋️ خارج الجليد ({dur2} دقيقة)")
+                            for s in off_ice.get('sessions', []):
+                                st.markdown(f"""<div class="drill-card">
+                                    <b>⏱ {s['time']}</b> &nbsp; {s['activity_ar']}
+                                </div>""", unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.subheader("📆 خطة التدوير الشهرية (Periodization)")
+        if st.button("📆 توليد الخطة الشهرية", use_container_width=True):
+            phases = generate_monthly_plan(selected_level)
+            cols = st.columns(4)
+            for i, phase in enumerate(phases):
+                with cols[i]:
+                    color = ["#2196F3","#FF9800","#F44336","#4CAF50"][i]
+                    st.markdown(f"""
+                    <div style="background:{color}22; border:2px solid {color}; border-radius:10px; padding:16px; text-align:center; height:260px;">
+                        <h4 style="color:{color}">الأسبوع {phase['week']}</h4>
+                        <h5>{phase['name_ar']}</h5>
+                        <p><b>الشدة:</b> {phase['intensity']}</p>
+                        <p style="font-size:0.9em">{phase['focus_ar']}</p>
+                    </div>""", unsafe_allow_html=True)
+                    for pr in phase['priority_elements_ar']:
+                        st.write(f"• {pr}")
+
+    # ── TAB 2: Drills Library ───────────────────────────────────────
+    with tab2:
+        st.subheader("💪 مكتبة التمارين الشاملة")
+        drill_tab = st.radio("اختر النوع", [
+            "🧊 تمارين على الجليد — قفزات",
+            "🌀 تمارين على الجليد — سبينات",
+            "🦶 تمارين على الجليد — خطوات",
+            "🏋️ تمارين خارج الجليد — قوة",
+            "🤸 تمارين خارج الجليد — مرونة",
+            "❤️ تمارين خارج الجليد — لياقة",
+            "⚖️ توازن وتنسيق",
+            "🧠 تدريب ذهني",
+        ], horizontal=True)
+
+        if "قفزات" in drill_tab:
+            level_cat = st.selectbox("مستوى التمارين", ["Alpha_Beta","Gamma_Delta","Advanced"])
+            drills = ON_ICE_DRILLS['jump_drills'].get(level_cat, [])
+            for d in drills:
+                with st.expander(f"🎯 {d['name_ar']}"):
+                    c1, c2 = st.columns([2,1])
+                    c1.write(f"**الشرح:** {d['description_ar']}")
+                    c1.write(f"**التركيز:** {d['focus_ar']}")
+                    c2.metric("المدة", d['duration_ar'])
+                    c2.metric("المجموعات", f"{d['sets']} × {d['reps_per_set']}")
+
+        elif "سبينات" in drill_tab:
+            for d in ON_ICE_DRILLS['spin_drills']:
+                with st.expander(f"🌀 {d['name_ar']}"):
+                    st.write(f"**الشرح:** {d['description_ar']}")
+                    st.write(f"**التركيز:** {d['focus_ar']}")
+                    st.write(f"**المدة:** {d['duration_ar']}")
+
+        elif "خطوات" in drill_tab:
+            for d in ON_ICE_DRILLS['steps_and_skating']:
+                with st.expander(f"🦶 {d['name_ar']}"):
+                    st.write(f"**الشرح:** {d['description_ar']}")
+                    st.write(f"**التركيز:** {d['focus_ar']}")
+                    st.write(f"**المدة:** {d['duration_ar']}")
+
+        elif "قوة" in drill_tab:
+            for ex in OFF_ICE_EXERCISES['strength']:
+                with st.expander(f"🏋️ {ex['name_ar']}"):
+                    c1, c2 = st.columns([2,1])
+                    c1.write(f"**العضلات المستهدفة:** {ex['target_ar']}")
+                    c1.write(f"**الفائدة للتزلج:** {ex['skating_benefit_ar']}")
+                    c1.write(f"**التقنية:** {ex['technique_ar']}")
+                    c2.metric("المجموعات", ex['sets'])
+                    c2.metric("التكرار", ex['reps'])
+
+        elif "مرونة" in drill_tab:
+            for ex in OFF_ICE_EXERCISES['flexibility']:
+                with st.expander(f"🤸 {ex['name_ar']}"):
+                    st.write(f"**المنطقة المستهدفة:** {ex['target_ar']}")
+                    st.write(f"**الفائدة:** {ex['skating_benefit_ar']}")
+                    st.write(f"**التقنية:** {ex['technique_ar']}")
+                    st.info(f"⏱ المدة: {ex['duration_ar']}")
+
+        elif "لياقة" in drill_tab:
+            for ex in OFF_ICE_EXERCISES['cardio']:
+                with st.expander(f"❤️ {ex['name_ar']}"):
+                    st.write(f"**البروتوكول:** {ex['protocol_ar']}")
+                    st.write(f"**الفائدة:** {ex['skating_benefit_ar']}")
+                    st.info(f"⏱ المدة: {ex['duration_ar']}")
+
+        elif "توازن" in drill_tab:
+            for ex in OFF_ICE_EXERCISES['balance_coordination']:
+                with st.expander(f"⚖️ {ex['name_ar']}"):
+                    st.write(f"**المستهدف:** {ex['target_ar']}")
+                    st.write(f"**الفائدة:** {ex['skating_benefit_ar']}")
+                    st.info(f"⏱ المدة: {ex['duration_ar']}")
+
+        elif "ذهني" in drill_tab:
+            for ex in OFF_ICE_EXERCISES['mental']:
+                with st.expander(f"🧠 {ex['name_ar']}"):
+                    st.write(f"**الطريقة:** {ex['technique_ar']}")
+                    st.write(f"**الفائدة:** {ex['skating_benefit_ar']}")
+                    st.info(f"⏱ المدة: {ex['duration_ar']}")
+
+    # ── TAB 3: ISU Score Calculator ─────────────────────────────────
+    with tab3:
+        st.subheader("⚡ حاسبة النقاط الرسمية (ISU Scale of Values)")
+        st.info("أضف عناصر البرنامج ثم احسب المجموع التقني المتوقع (TES)")
+
+        if 'program_elements' not in st.session_state:
+            st.session_state.program_elements = []
+
+        all_elements = {**JUMPS, **SPINS, **STEP_SEQUENCES}
+        elem_options = [f"{k} — {v['name_ar']}" for k, v in all_elements.items()]
+
+        with st.form("add_element_form"):
+            c1, c2, c3 = st.columns([3,1,1])
+            elem_sel = c1.selectbox("العنصر", elem_options)
+            goe = c2.slider("GOE", -5, 5, 0)
+            in_second_half = c3.checkbox("النصف الثاني (+10%)")
+            if st.form_submit_button("➕ إضافة عنصر"):
+                code = elem_sel.split(" — ")[0]
+                st.session_state.program_elements.append({
+                    "code": code, "goe": goe, "second_half": in_second_half
+                })
+
+        if st.session_state.program_elements:
+            result = calculate_program_score(st.session_state.program_elements)
+
+            total_bv_raw = sum(all_elements[e['code']]['bv'] for e in st.session_state.program_elements
+                               if e['code'] in all_elements)
+            total_with_sh = 0
+            rows = []
+            for e in st.session_state.program_elements:
+                code = e['code']
+                if code not in all_elements:
+                    continue
+                bv = all_elements[code]['bv']
+                if e.get('second_half'):
+                    bv = bv * 1.1
+                goe_v = e['goe'] * 1.0
+                score = bv + goe_v
+                total_with_sh += score
+                rows.append({
+                    "العنصر": code,
+                    "الاسم": all_elements[code]['name_ar'],
+                    "القيمة الأساسية": f"{all_elements[code]['bv']:.2f}",
+                    "نصف ثاني": "✅" if e.get('second_half') else "",
+                    "GOE": f"{e['goe']:+d}",
+                    "المجموع": f"{score:.2f}",
+                })
+
+            df_elements = pd.DataFrame(rows)
+            st.dataframe(df_elements, use_container_width=True)
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("🎯 TES الإجمالي", f"{total_with_sh:.2f}")
+            c2.metric("📊 عدد العناصر", len(st.session_state.program_elements))
+            c3.metric("🏅 TES بدون GOE", f"{total_bv_raw:.2f}")
+
+            if st.button("🗑️ مسح كل العناصر"):
+                st.session_state.program_elements = []
+                st.rerun()
+
+            # PCS Estimator
+            st.markdown("---")
+            st.subheader("📐 تقدير Program Components Score (PCS)")
+            pcs_cols = st.columns(5)
+            pcs_names = list(PROGRAM_COMPONENTS.keys())
+            pcs_values = {}
+            for i, k in enumerate(pcs_names):
+                with pcs_cols[i]:
+                    comp = PROGRAM_COMPONENTS[k]
+                    pcs_values[k] = st.slider(comp['name_ar'], 1.0, 10.0, 7.0, 0.25)
+            factor = st.radio("المضاعف", ["×1.0 (برنامج قصير)","×2.0 (برنامج حر)"], horizontal=True)
+            mult = 1.0 if "1.0" in factor else 2.0
+            pcs_total = sum(pcs_values.values()) / 5 * 5 * mult
+            st.metric(f"🎭 PCS الإجمالي (×{mult})", f"{pcs_total:.2f}")
+            st.metric("🏆 النقطة الإجمالية المتوقعة", f"{total_with_sh + pcs_total:.2f}")
+        else:
+            st.info("أضف عناصر البرنامج باستخدام النموذج أعلاه")
+
+    # ── TAB 4: Judging Guide ────────────────────────────────────────
+    with tab4:
+        st.subheader("📖 دليل المحكمين الرسمي — ISU International Judging System (IJS)")
+
+        judge_section = st.selectbox("اختر القسم", [
+            "🏃 البرنامج القصير والبرنامج الحر",
+            "⚖️ مقياس GOE والمعايير",
+            "🎭 Program Components (PCS)",
+            "❌ الخصومات والعقوبات",
+            "🔄 الدوران الناقص",
+            "💡 قيم العناصر (Scale of Values)",
+        ])
+
+        if "البرنامج" in judge_section:
+            for prog_key, prog in JUDGING_RULES.items():
+                if prog_key in ["short_program","free_skate"]:
+                    st.markdown(f"### {prog['name_ar']}")
+                    st.markdown(f"**المدة:** {prog['duration_ar']}")
+                    st.markdown(f"**نظام التسجيل:** {prog['scoring_ar']}")
+                    st.markdown("**العناصر المطلوبة:**")
+                    for i, elem in enumerate(prog['elements_ar'], 1):
+                        st.markdown(f"""<div class="element-card">{i}. {elem}</div>""", unsafe_allow_html=True)
+                    st.markdown("---")
+
+        elif "GOE" in judge_section:
+            st.markdown("### مقياس GOE من -5 إلى +5")
+            st.markdown("كل محكم يمنح GOE بناءً على المعايير التالية:")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("#### ✅ معايير GOE الإيجابي")
+                for crit in GOE_CRITERIA_JUMPS['positive']:
+                    st.markdown(f"""<div class="element-card" style="border-left-color:#28a745">✓ {crit}</div>""",
+                               unsafe_allow_html=True)
+            with c2:
+                st.markdown("#### ❌ معايير GOE السلبي")
+                for crit in GOE_CRITERIA_JUMPS['negative']:
+                    st.markdown(f"""<div class="element-card" style="border-left-color:#dc3545">✗ {crit}</div>""",
+                               unsafe_allow_html=True)
+            st.markdown("---")
+            st.markdown("### جدول قيم GOE")
+            goe_data = pd.DataFrame([
+                {"GOE": g, "القيمة": v, "التفسير": ["كارثي","سيء جداً","سيء","ضعيف","مقبول",
+                                                        "جيد","جيد+","ممتاز","ممتاز+","استثنائي"][i]}
+                for i, (g, v) in enumerate(zip(range(-5, 6), range(-5, 6)))
+            ])
+            st.dataframe(goe_data, use_container_width=True)
+
+        elif "PCS" in judge_section:
+            st.markdown("### مكونات درجة البرنامج (PCS) — 5 محاور")
+            for k, comp in PROGRAM_COMPONENTS.items():
+                with st.expander(f"**{k} — {comp['name_ar']}**"):
+                    st.write(f"**التعريف:** {comp['description_ar']}")
+                    st.markdown("**معايير التقييم:**")
+                    for crit in comp['criteria_ar']:
+                        st.write(f"• {crit}")
+
+        elif "خصم" in judge_section or "عقوبات" in judge_section:
+            st.markdown("### ❌ الخصومات الرسمية")
+            for ded in JUDGING_RULES['deductions']['rules_ar']:
+                st.markdown(f"""<div class="element-card" style="border-left-color:#dc3545">⚠️ {ded}</div>""",
+                           unsafe_allow_html=True)
+            st.markdown("---")
+            st.warning("💡 مهم: إجمالي خصومات السقوط محدودة بـ -5.0 في البرنامج الواحد")
+
+        elif "دوران" in judge_section:
+            st.markdown("### 🔄 قواعد الدوران الناقص (Under-Rotation)")
+            for rule in JUDGING_RULES['under_rotation']['rules_ar']:
+                st.markdown(f"""<div class="element-card" style="border-left-color:#ff9800">📐 {rule}</div>""",
+                           unsafe_allow_html=True)
+
+        elif "قيم" in judge_section:
+            st.markdown("### 💡 Scale of Values — القيم الأساسية لكل العناصر")
+            jump_tab, spin_tab, step_tab = st.tabs(["🦅 القفزات","🌀 السبينات","🦶 الخطوات"])
+            with jump_tab:
+                jdf = pd.DataFrame([
+                    {"الرمز": k, "الاسم": v['name_ar'], "الدورات": v['rotations'], "القيمة الأساسية": v['bv']}
+                    for k, v in JUMPS.items()
+                ])
+                st.dataframe(jdf.sort_values("القيمة الأساسية", ascending=False), use_container_width=True)
+            with spin_tab:
+                sdf = pd.DataFrame([
+                    {"الرمز": k, "الاسم": v['name_ar'], "القيمة الأساسية": v['bv']}
+                    for k, v in SPINS.items()
+                ])
+                st.dataframe(sdf.sort_values("القيمة الأساسية", ascending=False), use_container_width=True)
+            with step_tab:
+                stdf = pd.DataFrame([
+                    {"الرمز": k, "الاسم": v['name_ar'], "القيمة الأساسية": v['bv']}
+                    for k, v in STEP_SEQUENCES.items()
+                ])
+                st.dataframe(stdf, use_container_width=True)
+
+    # ── TAB 5: Championship Roadmap ─────────────────────────────────
+    with tab5:
+        st.subheader("🎯 مسار التطور — من المبتدئ إلى بطل العالم")
+
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            current_level = st.selectbox("مستوى اللاعب الحالي", list(LEVEL_PROGRESSION.keys()))
+        with c2:
+            if current_level in LEVEL_PROGRESSION:
+                lvl = LEVEL_PROGRESSION[current_level]
+                st.markdown(f"""
+                <div style="background:#e8f4f8; border-radius:10px; padding:16px;">
+                    <h4 style="color:#1f77b4;">{lvl['name_ar']}</h4>
+                    <p>{lvl['description_ar']}</p>
+                    <p><b>🎯 المنافسات المستهدفة:</b> {lvl['target_competition']}</p>
+                </div>""", unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("### 🗺️ خريطة التطور الكاملة")
+        levels_list = list(LEVEL_PROGRESSION.keys())
+        current_idx = levels_list.index(current_level)
+
+        for i, (lvl_key, lvl_data) in enumerate(LEVEL_PROGRESSION.items()):
+            done = i < current_idx
+            current_mark = i == current_idx
+            future = i > current_idx
+
+            if current_mark:
+                border = "3px solid #1f77b4"
+                bg = "#e3f2fd"
+                icon = "📍"
+            elif done:
+                border = "2px solid #28a745"
+                bg = "#e8f5e9"
+                icon = "✅"
+            else:
+                border = "1px solid #dee2e6"
+                bg = "#f8f9fa"
+                icon = "🔒"
+
+            with st.expander(f"{icon} **{lvl_data['name_ar']}** — {lvl_data['target_competition']}",
+                            expanded=current_mark):
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.markdown("**🦅 القفزات المطلوبة:**")
+                    for j in lvl_data['required_jumps']:
+                        if j in JUMPS:
+                            bv = JUMPS[j]['bv']
+                            st.write(f"• {j} — {JUMPS[j]['name_ar']} (BV: {bv})")
+                        else:
+                            st.write(f"• {j}")
+                with c2:
+                    st.markdown("**🌀 السبينات المطلوبة:**")
+                    for sp in lvl_data['required_spins']:
+                        if sp in SPINS:
+                            st.write(f"• {sp} — {SPINS[sp]['name_ar']}")
+                        else:
+                            st.write(f"• {sp}")
+                with c3:
+                    st.markdown("**📚 المهارات الأساسية:**")
+                    for skill in lvl_data['skills_ar']:
+                        st.write(f"• {skill}")
+
+        # Injury Prevention
+        st.markdown("---")
+        st.subheader("🩺 الوقاية من الإصابات")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**⚠️ الإصابات الشائعة في التزلج:**")
+            for inj in INJURY_PREVENTION['common_injuries_ar']:
+                st.markdown(f"""<div class="element-card" style="border-left-color:#ff9800;">⚠️ {inj}</div>""",
+                           unsafe_allow_html=True)
+        with c2:
+            st.markdown("**✅ طرق الوقاية:**")
+            for prev in INJURY_PREVENTION['prevention_ar']:
+                st.markdown(f"""<div class="element-card" style="border-left-color:#28a745;">✓ {prev}</div>""",
+                           unsafe_allow_html=True)
+
+    # ── TAB 6: Performance Analysis ─────────────────────────────────
+    with tab6:
+        st.subheader("🔬 تحليل أداء اللاعبين من البيانات")
+
+        members_df = get_data("SELECT * FROM members ORDER BY name")
+        if len(members_df) == 0:
+            st.info("لا يوجد أعضاء في النظام"); return
+
+        sel_member = st.selectbox("اختر اللاعب", members_df['name'].tolist())
+        if sel_member:
+            member = members_df[members_df['name']==sel_member].iloc[0]
+            mid = int(member['id'])
+
+            att = get_data("SELECT * FROM attendance WHERE member_id=?", (mid,))
+            mems = get_data("SELECT * FROM memberships WHERE member_id=?", (mid,))
+
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("📅 إجمالي الحضور", len(att))
+            oi = len(att[att['session_type']=='on-ice']) if len(att) > 0 else 0
+            ofi = len(att[att['session_type']=='off-ice']) if len(att) > 0 else 0
+            c2.metric("🧊 On-Ice", oi)
+            c3.metric("🏋️ Off-Ice", ofi)
+            c4.metric("💰 المدفوع", f"{mems['amount'].sum():,.0f} ج" if len(mems) > 0 else "—")
+
+            if len(att) > 0:
+                att['date'] = pd.to_datetime(att['date'])
+
+                # Consistency score
+                if len(att) > 1:
+                    date_range = (att['date'].max() - att['date'].min()).days + 1
+                    consistency = min(100, (len(att) / max(date_range, 1)) * 7 * 100)
+                    st.markdown("---")
+                    col_m, col_g = st.columns([1, 2])
+                    with col_m:
+                        st.markdown("### 📊 مؤشر الانتظام")
+                        st.metric("معدل الانتظام", f"{consistency:.0f}%")
+                        if consistency >= 80:
+                            st.success("🟢 ممتاز — انتظام عالٍ جداً")
+                        elif consistency >= 60:
+                            st.warning("🟡 جيد — يمكن تحسينه")
+                        else:
+                            st.error("🔴 يحتاج تحسين — الانتظام منخفض")
+                    with col_g:
+                        monthly = att.groupby(att['date'].dt.to_period('M').astype(str)).size().reset_index(name='count')
+                        fig = px.bar(monthly, x='date', y='count', title=f'الحضور الشهري - {sel_member}',
+                                    color='count', color_continuous_scale='teal')
+                        st.plotly_chart(fig, use_container_width=True)
+
+                # Recommendations
+                st.markdown("---")
+                st.subheader("💡 توصيات التدريب الشخصية")
+                level = member.get('level', 'Alpha')
+                on_ice_ratio = oi / max(len(att), 1)
+
+                recs = []
+                if len(att) < 10:
+                    recs.append(("⚠️", "زيادة معدل الحضور — عدد الحصص الحالي منخفض جداً للتطور"))
+                if on_ice_ratio < 0.5:
+                    recs.append(("📌", "زيادة حصص On-Ice — النسبة الحالية منخفضة"))
+                if ofi == 0:
+                    recs.append(("🏋️", "إضافة تدريبات Off-Ice — ضرورية لبناء القوة والمرونة"))
+                if level in ["Alpha", "Beta"]:
+                    recs.append(("🎯", "التركيز على أساسيات الانزلاق والحافات قبل القفز"))
+                elif level in ["Gamma", "Delta"]:
+                    recs.append(("🦅", "تعميق تقنية القفزات المزدوجة والبدء بالثلاثية"))
+                else:
+                    recs.append(("🏆", "التحضير لبطولات دولية — تكثيف محاكاة المنافسة"))
+
+                recs.append(("🧠", "إضافة التدريب الذهني (Visualization) قبل كل منافسة"))
+                recs.append(("🩺", "متابعة الوقاية من الإصابات: إحماء 15 دقيقة + تمدد بعد التدريب"))
+
+                for icon, rec in recs:
+                    st.markdown(f"""<div class="element-card">{icon} {rec}</div>""", unsafe_allow_html=True)
 
 
-# ───────────────────────────────────────────
-# القائمة الرئيسية
-# ───────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+# MAIN
+# ═══════════════════════════════════════════════════════════════════
 def main():
     with st.sidebar:
         st.title("🎿 القائمة الرئيسية")
         st.markdown("---")
-
-        page = st.radio(
-            "اختر الصفحة",
-            [
-                "🏠 الرئيسية",
-                "👥 إدارة الأعضاء",
-                "📅 تسجيل الحضور",
-                "🧑‍💼 ملفات الأعضاء",
-                "📊 التقارير والإحصائيات"
-            ]
-        )
-
+        page = st.radio("اختر الصفحة", [
+            "🏠 الرئيسية",
+            "🏆 التدريب الاحترافي",
+            "👥 إدارة الأعضاء",
+            "📅 تسجيل الحضور",
+            "🧑‍💼 ملفات الأعضاء",
+            "📊 التقارير والإحصائيات",
+        ])
         st.markdown("---")
-        members_count = get_data("SELECT COUNT(*) as count FROM members")['count'].iloc[0]
-        attendance_count = get_data("SELECT COUNT(*) as count FROM attendance")['count'].iloc[0]
-
+        members_count = get_data("SELECT COUNT(*) as c FROM members")['c'].iloc[0]
+        att_count = get_data("SELECT COUNT(*) as c FROM attendance")['c'].iloc[0]
         st.markdown("### 📊 إحصائيات سريعة")
         st.write(f"👥 الأعضاء: **{members_count}**")
-        st.write(f"📅 الحضور: **{attendance_count}**")
+        st.write(f"📅 الحضور: **{att_count}**")
         st.markdown("---")
-        st.info("💡 نظام شامل لإدارة وتحليل أداء لاعبي التزلج")
+        st.markdown("""
+        <div style="background:#1a1a2e; color:gold; border-radius:8px; padding:10px; text-align:center; font-size:0.9em;">
+            🥇 نظام صناعة البطل العالمي<br>
+            <span style="color:#aaa; font-size:0.8em;">مبني على معايير ISU الرسمية</span>
+        </div>""", unsafe_allow_html=True)
 
     if page == "🏠 الرئيسية":
         show_homepage()
+    elif page == "🏆 التدريب الاحترافي":
+        show_coaching_hub()
     elif page == "👥 إدارة الأعضاء":
         show_members_page()
     elif page == "📅 تسجيل الحضور":
@@ -706,7 +986,6 @@ def main():
         show_member_profiles_page()
     elif page == "📊 التقارير والإحصائيات":
         show_reports_page()
-
 
 if __name__ == "__main__":
     main()
