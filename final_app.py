@@ -106,6 +106,8 @@ TRANSLATIONS = {
         'weekly_schedule': '📅 الجدول الأسبوعي',
         'competitions': '🏆 البطولات',
         'medical': '🏥 السجلات الطبية',
+        'elite_coach': '🧠 المدرب الاحترافي',
+        'program_optimizer': '🏅 بناء البرنامج',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -185,6 +187,8 @@ TRANSLATIONS = {
         'weekly_schedule': '📅 Weekly Schedule',
         'competitions': '🏆 Competitions',
         'medical': '🏥 Medical Records',
+        'elite_coach': '🧠 Elite Coach',
+        'program_optimizer': '🏅 Program Optimizer',
         'logout': 'Logout',
         'login': 'Login',
         'username': 'Username',
@@ -752,6 +756,8 @@ _nav_pages = [
     t('analysis_history'),
     t('competitions'),
     t('medical'),
+    t('elite_coach'),
+    t('program_optimizer'),
     t('ml_training'),
     t('referee'),
     t('stats'),
@@ -1873,6 +1879,24 @@ def show_medical():
         st.error(f"خطأ في السجلات الطبية: {e}")
 
 
+def show_elite_coach():
+    try:
+        from src.pages.elite_coach_page import show_elite_coach_page
+        show_elite_coach_page(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في صفحة المدرب الاحترافي: {e}")
+        st.exception(e)
+
+
+def show_program_optimizer():
+    try:
+        from src.pages.program_optimizer import show_program_optimizer as _show
+        _show(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في بناء البرنامج: {e}")
+        st.exception(e)
+
+
 def show_login():
     try:
         from src.auth.auth_manager import seed_demo_data
@@ -2534,9 +2558,11 @@ _ROUTER = {
     t('analysis_history'):show_analysis_history,
     t('ml_training'):     show_ml_training,
     t('referee'):         show_referee,
-    t('competitions'):    show_competitions,
-    t('medical'):         show_medical,
-    t('stats'):           show_stats,
+    t('competitions'):      show_competitions,
+    t('medical'):           show_medical,
+    t('elite_coach'):       show_elite_coach,
+    t('program_optimizer'): show_program_optimizer,
+    t('stats'):             show_stats,
     t('club_mgmt'):       show_club_management,
 }
 _ROUTER.get(page, show_settings)()
