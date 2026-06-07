@@ -203,9 +203,9 @@ class SkatingVideoAnalyzer:
         if not poses:
             return self._error_result("No person detected in video")
 
-        # ── Element detection ────────────────────────────────────────────────
-        jumps = self._detect_jumps(poses)
+        # ── Element detection — spins FIRST, then exclude spin windows from jump detection ──
         spins = self._detect_spins(poses)
+        jumps = self._detect_jumps(poses, spin_windows=[(s['t_start'], s['t_end']) for s in spins])
         errors = self._detect_errors(poses, jumps)
         timeline = self._build_timeline(poses, jumps, spins)
 
@@ -421,50 +421,71 @@ class SkatingVideoAnalyzer:
         return gap < 0.20 or (gap < 0.28 and knee_near_hip)
 
     # ── Jump detection ───────────────────────────────────────────────────────
-    def _detect_jumps(self, poses: List) -> List[Dict]:
+    def _detect_jumps(self, poses: List, spin_windows: List = None) -> List[Dict]:
         """
         Detect jumps using vertical position tracking.
         A jump = skater moves significantly ABOVE their average vertical position,
-        then returns. Uses smooth position signal to avoid false positives.
+        then returns. Spin windows are excluded to prevent false positives.
+
+        Key discriminators vs spins:
+        - Airtime SHORT (0.20–1.10s) — spins last 1.5s+
+        - Body TRAVELS laterally during/after jump — spins stay in place
+        - Frame does NOT fall inside a known spin window
         """
         if len(poses) < 10:
             return []
 
-        # Build vertical position array
+        spin_windows = spin_windows or []
+
+        # Build vertical + horizontal position arrays
         times = np.array([p['t'] for p in poses])
-        ys = []
+        ys, xs = [], []
         for p in poses:
             if p.get('kp'):
-                # Use hip center as main reference
-                vals = [p['kp'][i]['y'] for i in [23, 24]
-                        if i < len(p['kp']) and p['kp'][i]['v'] > 0.3]
-                ys.append(np.mean(vals) if vals else p.get('norm_y', 0.5))
+                hip_y = [p['kp'][i]['y'] for i in [23, 24]
+                         if i < len(p['kp']) and p['kp'][i]['v'] > 0.3]
+                hip_x = [p['kp'][i]['x'] for i in [23, 24]
+                         if i < len(p['kp']) and p['kp'][i]['v'] > 0.3]
+                ys.append(np.mean(hip_y) if hip_y else p.get('norm_y', 0.5))
+                xs.append(np.mean(hip_x) if hip_x else p.get('norm_x', 0.5))
             else:
                 ys.append(p.get('norm_y', 0.5))
+                xs.append(p.get('norm_x', 0.5))
 
         ys = np.array(ys)
+        xs = np.array(xs)
 
-        # Smooth the signal (moving average)
+        # Smooth vertical signal
         win = min(7, len(ys) // 4)
         kernel = np.ones(win) / win
         ys_smooth = np.convolve(ys, kernel, mode='same')
 
-        # Baseline: median position (on-ice level)
-        baseline = np.percentile(ys_smooth, 60)  # 60th percentile = typical on-ice position
+        # Baseline: 60th percentile = typical standing position
+        baseline = np.percentile(ys_smooth, 60)
         std_y = np.std(ys_smooth)
 
-        # Jump threshold: skater must rise meaningfully above baseline
-        # In normalized coords: lower y = higher in frame
-        jump_thresh = baseline - max(0.08, std_y * 1.0)
+        # Jump threshold: lower y = higher in frame
+        jump_thresh = baseline - max(0.09, std_y * 1.1)
+
+        # Build spin-occupied mask to skip those frames
+        spin_occupied = np.zeros(len(times), dtype=bool)
+        for t_s, t_e in spin_windows:
+            spin_occupied |= (times >= t_s - 0.3) & (times <= t_e + 0.3)
 
         jumps = []
         in_jump = False
         jump_start_idx = None
         min_y_in_jump = 1.0
-        COOLDOWN_FRAMES = int(self.fps * 0.5)  # 0.5s cooldown after jump
+        COOLDOWN_FRAMES = int(self.fps * 0.5)
         last_jump_end = -COOLDOWN_FRAMES
 
         for i in range(len(ys_smooth)):
+            # Skip frames inside or adjacent to a detected spin
+            if spin_occupied[i]:
+                if in_jump:
+                    in_jump = False
+                continue
+
             above_thresh = ys_smooth[i] < jump_thresh
             in_cooldown = (i - last_jump_end) < COOLDOWN_FRAMES
 
@@ -478,10 +499,18 @@ class SkatingVideoAnalyzer:
 
             elif not above_thresh and in_jump:
                 airtime = times[i] - times[jump_start_idx]
-                # Valid jump: 0.2s – 1.1s airtime
+
                 if 0.20 <= airtime <= 1.10:
-                    height_above = baseline - min_y_in_jump  # higher value = bigger jump
-                    height_norm = height_above / max(std_y, 0.01)  # normalized height
+                    # Lateral-travel check: real jumps move; spins stay put.
+                    # If x-std in this window is < 0.03, it looks like a spin — skip.
+                    seg_x = xs[jump_start_idx:i + 1]
+                    lateral_travel = np.std(seg_x)
+                    if lateral_travel < 0.025:
+                        in_jump = False
+                        continue
+
+                    height_above = baseline - min_y_in_jump
+                    height_norm = height_above / max(std_y, 0.01)
 
                     j = _classify_jump(airtime, min(1.0, height_norm * 0.3))
                     j['t_start'] = round(times[jump_start_idx], 2)
@@ -497,7 +526,17 @@ class SkatingVideoAnalyzer:
 
     # ── Spin detection ───────────────────────────────────────────────────────
     def _detect_spins(self, poses: List) -> List[Dict]:
-        """Detect spins by finding periods of low lateral movement + oscillating body."""
+        """
+        Detect spins by finding periods of low lateral DRIFT + rapid oscillation.
+
+        A spin:
+        - Stays in approximately the same x-position (low drift over 1s window)
+        - Body oscillates back-and-forth faster than a normal skating stride
+        - Lasts at least 1.5 seconds
+
+        Threshold is 0.07 (relaxed from 0.04) because real-world camera noise
+        and bounding-box jitter during a spin can exceed 0.04.
+        """
         if len(poses) < 10:
             return []
 
@@ -505,22 +544,42 @@ class SkatingVideoAnalyzer:
         WIN = int(self.fps)  # 1-second windows
 
         xs = []
+        ys = []
         for p in poses:
             if p.get('kp'):
                 x_vals = [p['kp'][i]['x'] for i in [11, 12, 23, 24]
                           if i < len(p['kp']) and p['kp'][i]['v'] > 0.3]
+                y_vals = [p['kp'][i]['y'] for i in [11, 12, 23, 24]
+                          if i < len(p['kp']) and p['kp'][i]['v'] > 0.3]
                 xs.append(np.mean(x_vals) if x_vals else 0.5)
+                ys.append(np.mean(y_vals) if y_vals else 0.5)
             else:
                 xs.append(p.get('norm_x', 0.5))
+                ys.append(p.get('norm_y', 0.5))
 
         xs = np.array(xs)
+        ys = np.array(ys)
         times = np.array([p['t'] for p in poses])
+
+        # Global travel baseline: how much does x move during normal skating
+        global_x_std = np.std(xs)
 
         spin_mask = np.zeros(len(xs), dtype=bool)
         for i in range(len(xs) - WIN):
-            seg = xs[i:i + WIN]
-            lateral_drift = np.std(seg)
-            if lateral_drift < 0.04:  # staying in one spot
+            seg_x = xs[i:i + WIN]
+            seg_y = ys[i:i + WIN]
+            lateral_drift = np.std(seg_x)
+            vertical_drift = np.std(seg_y)
+
+            # Spin: stays in place laterally (relative to overall movement)
+            # AND does not show a single clean vertical peak (which would be a jump)
+            lateral_ok = lateral_drift < max(0.07, global_x_std * 0.4)
+
+            # During a jump, vertical std is high (goes up then comes down)
+            # During a spin, vertical is relatively stable
+            vertical_stable = vertical_drift < 0.08
+
+            if lateral_ok and vertical_stable:
                 spin_mask[i:i + WIN] = True
 
         # Extract spin segments
