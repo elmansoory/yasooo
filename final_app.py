@@ -1573,18 +1573,11 @@ td,th{{border:1px solid #ccc;padding:6px 10px}} th{{background:#1e3a5f;color:whi
 
 def show_ml_training():
     try:
-        from src.pages.model_training_page import show_model_training_page
-        show_model_training_page(lang=st.session_state.language)
-        return
-    except Exception:
-        pass
-    st.header(t('ml_training'))
-    if not CORE_AI_AVAILABLE:
-        st.error(t('ai_not_available'))
-        st.code("pip install mediapipe opencv-python numpy")
-        return
-    st.success("✅ AI features available!")
-    st.info("Upload a video to analyze skating performance")
+        from src.pages.ai_training_page import show_ai_training_page
+        show_ai_training_page(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في صفحة التدريب: {e}")
+        st.exception(e)
 
 def show_referee():
     try:
