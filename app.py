@@ -545,16 +545,74 @@ def show_coaching_hub():
                     for pr in phase['priority_elements_ar']:
                         st.write(f"• {pr}")
 
-    # ── TAB 2: Drills Library ───────────────────────────────────────
+    # ── TAB 2: Drills Library with Media ───────────────────────────
     with tab2:
-        st.subheader("💪 مكتبة التمارين الشاملة")
+        import streamlit.components.v1 as components
+        from src.coaching.media_data import get_media, yt_search_embed, yt_search_url, EXERCISE_MEDIA
+
+        def render_exercise_card(ex_dict, icon="🎯", extra_fields=None):
+            """Render an exercise card with image, video embed and links"""
+            name = ex_dict.get('name_ar', '')
+            media = get_media(name)
+
+            with st.expander(f"{icon} {name}"):
+                # Top row: info + thumbnail
+                col_info, col_thumb = st.columns([3, 2])
+                with col_info:
+                    for field_key, field_label in (extra_fields or []):
+                        val = ex_dict.get(field_key)
+                        if val:
+                            st.markdown(f"**{field_label}** {val}")
+                with col_thumb:
+                    if media and media.get('image_url'):
+                        try:
+                            st.image(media['image_url'], use_container_width=True)
+                        except:
+                            pass
+
+                if media:
+                    # YouTube embed (search playlist)
+                    embed_query = media.get('embed_query', name)
+                    import urllib.parse
+                    encoded = urllib.parse.quote_plus(embed_query)
+                    embed_url = f"https://www.youtube.com/embed?listType=search&list={encoded}&autoplay=0"
+                    components.html(
+                        f'<iframe width="100%" height="230" src="{embed_url}" '
+                        f'frameborder="0" allowfullscreen style="border-radius:8px;"></iframe>',
+                        height=240,
+                    )
+                    # Source links
+                    links_html = '<div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;">'
+                    for src in media.get('sources', []):
+                        links_html += (
+                            f'<a href="{src["url"]}" target="_blank" style="'
+                            f'padding:6px 14px; background:#1f77b4; color:white; '
+                            f'border-radius:20px; text-decoration:none; font-size:0.82em; '
+                            f'font-weight:bold;">{src["label"]}</a>'
+                        )
+                    links_html += '</div>'
+                    st.markdown(links_html, unsafe_allow_html=True)
+                else:
+                    # Fallback: generic YouTube search button
+                    search_url = yt_search_url(f"figure skating {name}")
+                    st.markdown(
+                        f'<a href="{search_url}" target="_blank" style="'
+                        f'padding:7px 16px; background:#ff0000; color:white; '
+                        f'border-radius:20px; text-decoration:none; font-size:0.85em; '
+                        f'font-weight:bold;">▶ بحث على YouTube</a>',
+                        unsafe_allow_html=True
+                    )
+
+        st.subheader("💪 مكتبة التمارين — مع صور وفيديوهات تعليمية")
+        st.info("🎬 كل تمرين مرفق بفيديو تعليمي مضمّن من YouTube وروابط مصادر متعددة")
+
         drill_tab = st.radio("اختر النوع", [
-            "🧊 تمارين على الجليد — قفزات",
-            "🌀 تمارين على الجليد — سبينات",
-            "🦶 تمارين على الجليد — خطوات",
-            "🏋️ تمارين خارج الجليد — قوة",
-            "🤸 تمارين خارج الجليد — مرونة",
-            "❤️ تمارين خارج الجليد — لياقة",
+            "🧊 على الجليد — قفزات",
+            "🌀 على الجليد — سبينات",
+            "🦶 على الجليد — خطوات",
+            "🏋️ خارج الجليد — قوة",
+            "🤸 خارج الجليد — مرونة",
+            "❤️ خارج الجليد — لياقة",
             "⚖️ توازن وتنسيق",
             "🧠 تدريب ذهني",
         ], horizontal=True)
@@ -563,65 +621,70 @@ def show_coaching_hub():
             level_cat = st.selectbox("مستوى التمارين", ["Alpha_Beta","Gamma_Delta","Advanced"])
             drills = ON_ICE_DRILLS['jump_drills'].get(level_cat, [])
             for d in drills:
-                with st.expander(f"🎯 {d['name_ar']}"):
-                    c1, c2 = st.columns([2,1])
-                    c1.write(f"**الشرح:** {d['description_ar']}")
-                    c1.write(f"**التركيز:** {d['focus_ar']}")
-                    c2.metric("المدة", d['duration_ar'])
-                    c2.metric("المجموعات", f"{d['sets']} × {d['reps_per_set']}")
+                render_exercise_card(d, icon="🎯", extra_fields=[
+                    ("description_ar", "📝 الشرح:"),
+                    ("focus_ar", "🎯 التركيز:"),
+                    ("duration_ar", "⏱ المدة:"),
+                ])
 
         elif "سبينات" in drill_tab:
             for d in ON_ICE_DRILLS['spin_drills']:
-                with st.expander(f"🌀 {d['name_ar']}"):
-                    st.write(f"**الشرح:** {d['description_ar']}")
-                    st.write(f"**التركيز:** {d['focus_ar']}")
-                    st.write(f"**المدة:** {d['duration_ar']}")
+                render_exercise_card(d, icon="🌀", extra_fields=[
+                    ("description_ar", "📝 الشرح:"),
+                    ("focus_ar", "🎯 التركيز:"),
+                    ("duration_ar", "⏱ المدة:"),
+                ])
 
         elif "خطوات" in drill_tab:
             for d in ON_ICE_DRILLS['steps_and_skating']:
-                with st.expander(f"🦶 {d['name_ar']}"):
-                    st.write(f"**الشرح:** {d['description_ar']}")
-                    st.write(f"**التركيز:** {d['focus_ar']}")
-                    st.write(f"**المدة:** {d['duration_ar']}")
+                render_exercise_card(d, icon="🦶", extra_fields=[
+                    ("description_ar", "📝 الشرح:"),
+                    ("focus_ar", "🎯 التركيز:"),
+                    ("duration_ar", "⏱ المدة:"),
+                ])
 
         elif "قوة" in drill_tab:
             for ex in OFF_ICE_EXERCISES['strength']:
-                with st.expander(f"🏋️ {ex['name_ar']}"):
-                    c1, c2 = st.columns([2,1])
-                    c1.write(f"**العضلات المستهدفة:** {ex['target_ar']}")
-                    c1.write(f"**الفائدة للتزلج:** {ex['skating_benefit_ar']}")
-                    c1.write(f"**التقنية:** {ex['technique_ar']}")
-                    c2.metric("المجموعات", ex['sets'])
-                    c2.metric("التكرار", ex['reps'])
+                render_exercise_card(ex, icon="🏋️", extra_fields=[
+                    ("target_ar", "💪 العضلات:"),
+                    ("skating_benefit_ar", "⛸ الفائدة:"),
+                    ("technique_ar", "📋 التقنية:"),
+                    ("sets", "🔢 المجموعات:"),
+                    ("reps", "🔁 التكرار:"),
+                ])
 
         elif "مرونة" in drill_tab:
             for ex in OFF_ICE_EXERCISES['flexibility']:
-                with st.expander(f"🤸 {ex['name_ar']}"):
-                    st.write(f"**المنطقة المستهدفة:** {ex['target_ar']}")
-                    st.write(f"**الفائدة:** {ex['skating_benefit_ar']}")
-                    st.write(f"**التقنية:** {ex['technique_ar']}")
-                    st.info(f"⏱ المدة: {ex['duration_ar']}")
+                render_exercise_card(ex, icon="🤸", extra_fields=[
+                    ("target_ar", "🎯 المنطقة:"),
+                    ("skating_benefit_ar", "⛸ الفائدة:"),
+                    ("technique_ar", "📋 التقنية:"),
+                    ("duration_ar", "⏱ المدة:"),
+                ])
 
         elif "لياقة" in drill_tab:
             for ex in OFF_ICE_EXERCISES['cardio']:
-                with st.expander(f"❤️ {ex['name_ar']}"):
-                    st.write(f"**البروتوكول:** {ex['protocol_ar']}")
-                    st.write(f"**الفائدة:** {ex['skating_benefit_ar']}")
-                    st.info(f"⏱ المدة: {ex['duration_ar']}")
+                render_exercise_card(ex, icon="❤️", extra_fields=[
+                    ("protocol_ar", "📋 البروتوكول:"),
+                    ("skating_benefit_ar", "⛸ الفائدة:"),
+                    ("duration_ar", "⏱ المدة:"),
+                ])
 
         elif "توازن" in drill_tab:
             for ex in OFF_ICE_EXERCISES['balance_coordination']:
-                with st.expander(f"⚖️ {ex['name_ar']}"):
-                    st.write(f"**المستهدف:** {ex['target_ar']}")
-                    st.write(f"**الفائدة:** {ex['skating_benefit_ar']}")
-                    st.info(f"⏱ المدة: {ex['duration_ar']}")
+                render_exercise_card(ex, icon="⚖️", extra_fields=[
+                    ("target_ar", "🎯 المستهدف:"),
+                    ("skating_benefit_ar", "⛸ الفائدة:"),
+                    ("duration_ar", "⏱ المدة:"),
+                ])
 
         elif "ذهني" in drill_tab:
             for ex in OFF_ICE_EXERCISES['mental']:
-                with st.expander(f"🧠 {ex['name_ar']}"):
-                    st.write(f"**الطريقة:** {ex['technique_ar']}")
-                    st.write(f"**الفائدة:** {ex['skating_benefit_ar']}")
-                    st.info(f"⏱ المدة: {ex['duration_ar']}")
+                render_exercise_card(ex, icon="🧠", extra_fields=[
+                    ("technique_ar", "📋 الطريقة:"),
+                    ("skating_benefit_ar", "⛸ الفائدة:"),
+                    ("duration_ar", "⏱ المدة:"),
+                ])
 
     # ── TAB 3: ISU Score Calculator ─────────────────────────────────
     with tab3:
