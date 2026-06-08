@@ -18,6 +18,11 @@ from dataclasses import dataclass
 import json
 
 try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
     from pydub import AudioSegment
     from pydub.effects import normalize, compress_dynamic_range
     from pydub.playback import play
@@ -312,7 +317,7 @@ class AudioProcessor:
 
         return str(output_path)
 
-    def detect_beats(self, filepath: str) -> np.ndarray:
+    def detect_beats(self, filepath: str):
         """
         Detect beats in audio file (requires librosa)
 
