@@ -36,11 +36,11 @@ echo [OK] Python 3.11 found.
 
 echo.
 echo [2/5] Checking required libraries...
-%PYTHON% -c "import streamlit, plotly, pandas, numpy, cv2" >nul 2>&1
+%PYTHON% -c "import streamlit, plotly, pandas, numpy, cv2, sklearn, joblib" >nul 2>&1
 if %errorlevel% neq 0 (
     echo Installing missing libraries... (this may take a few minutes)
     %PIP% install --quiet --upgrade pip >> "%LOG%" 2>&1
-    %PIP% install --quiet streamlit plotly pandas numpy opencv-python openpyxl sqlalchemy >> "%LOG%" 2>&1
+    %PIP% install --quiet streamlit plotly pandas numpy opencv-python openpyxl sqlalchemy scikit-learn joblib >> "%LOG%" 2>&1
     if %errorlevel% neq 0 (
         echo WARNING: Some libraries failed. Check launch.log for details.
     )
