@@ -45,7 +45,7 @@ if ! "$PYTHON_BIN" -c "import streamlit, plotly, pandas, numpy, cv2, sklearn, jo
     "$PYTHON_BIN" -m pip install --quiet --upgrade pip >> "$LOG" 2>&1 || true
     "$PYTHON_BIN" -m pip install --quiet \
         streamlit plotly pandas numpy opencv-python openpyxl sqlalchemy \
-        scikit-learn joblib >> "$LOG" 2>&1
+        scikit-learn joblib pydub >> "$LOG" 2>&1
     echo "[OK] تم تثبيت المكتبات."
 else
     echo "[OK] جميع المكتبات مثبتة."

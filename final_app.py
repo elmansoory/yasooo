@@ -104,6 +104,7 @@ TRANSLATIONS = {
         'photo_upload': '📷 رفع صورة',
         'add_session': '➕ إضافة حصة',
         'weekly_schedule': '📅 الجدول الأسبوعي',
+        'music_editor': '🎵 محرر الموسيقى',
         'competitions': '🏆 البطولات',
         'medical': '🏥 السجلات الطبية',
         'elite_coach': '🧠 المدرب الاحترافي',
@@ -185,6 +186,7 @@ TRANSLATIONS = {
         'photo_upload': '📷 Upload Photo',
         'add_session': '➕ Add Session',
         'weekly_schedule': '📅 Weekly Schedule',
+        'music_editor': '🎵 Music Editor',
         'competitions': '🏆 Competitions',
         'medical': '🏥 Medical Records',
         'elite_coach': '🧠 Elite Coach',
@@ -751,6 +753,7 @@ _nav_pages = [
     t('schedule'),
     t('video_analysis'),
     t('my_videos'),
+    t('music_editor'),
     t('realtime'),
     t('player_progress'),
     t('analysis_history'),
@@ -1889,6 +1892,14 @@ def show_program_optimizer():
         st.error(f"خطأ في بناء البرنامج: {e}")
         st.exception(e)
 
+def show_music_editor():
+    try:
+        from src.pages.music_editor_page import show_music_editor_page
+        show_music_editor_page()
+    except Exception as e:
+        st.error(f"خطأ في محرر الموسيقى: {e}")
+        st.exception(e)
+
 
 def show_login():
     try:
@@ -2546,6 +2557,7 @@ _ROUTER = {
     t('schedule'):        show_schedule,
     t('video_analysis'):  show_video_analysis,
     t('my_videos'):       show_my_videos,
+    t('music_editor'):    show_music_editor,
     t('realtime'):        show_realtime,
     t('player_progress'): show_player_progress,
     t('analysis_history'):show_analysis_history,

@@ -116,6 +116,19 @@ def show_analysis_tab():
             enable_report = st.checkbox("✅ إنشاء تقرير مفصل", value=True,
                                        help="تقرير شامل بجميع التفاصيل")
 
+        col1, col2 = st.columns(2)
+        with col1:
+            program_type = st.selectbox(
+                "🎯 نوع البرنامج", ['short', 'free'],
+                format_func=lambda x: '🎯 برنامج قصير (Short)' if x == 'short' else '🎭 برنامج حر (Free Skate)'
+            )
+        with col2:
+            skater_level = st.selectbox(
+                "📊 مستوى اللاعب", ['novice', 'junior', 'senior'], index=2,
+                format_func=lambda x: {'novice': 'مبتدئ (Novice)', 'junior': 'جونيور (Junior)',
+                                        'senior': 'سينيور (Senior)'}[x]
+            )
+
         st.markdown("---")
 
         # Advanced settings
@@ -146,7 +159,9 @@ def show_analysis_tab():
                 enable_goe,
                 enable_report,
                 confidence_threshold,
-                frame_skip
+                frame_skip,
+                program_type,
+                skater_level
             )
     else:
         st.info("👆 **ارفع فيديو للبدء في التحليل الاحترافي**")
@@ -157,7 +172,8 @@ def show_analysis_tab():
 
 
 def analyze_video(uploaded_file, enable_pose, enable_jumps, enable_spins,
-                 enable_goe, enable_report, confidence, frame_skip):
+                 enable_goe, enable_report, confidence, frame_skip,
+                 program_type='free', skater_level='senior'):
     """تحليل الفيديو — uses new SkatingVideoAnalyzer (dict API)"""
 
     # Save uploaded file
@@ -178,7 +194,7 @@ def analyze_video(uploaded_file, enable_pose, enable_jumps, enable_spins,
         progress_bar.progress(20)
 
         analyzer = SkatingVideoAnalyzer()
-        results = analyzer.analyze(video_path)
+        results = analyzer.analyze(video_path, program_type=program_type, skater_level=skater_level)
 
         progress_bar.progress(100)
         status_text.text("✅ اكتمل التحليل!")

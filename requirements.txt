@@ -40,6 +40,9 @@ moviepy>=1.0.3
 imageio>=2.31.0
 yt-dlp>=2024.3.10  # Video downloader for 1000+ websites
 
+# Audio Processing (music merger for skating programs)
+pydub>=0.25.1
+
 # Utilities
 tqdm>=4.66.0
 pyyaml>=6.0.1

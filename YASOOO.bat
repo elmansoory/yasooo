@@ -40,7 +40,7 @@ echo [2/5] Checking required libraries...
 if %errorlevel% neq 0 (
     echo Installing missing libraries... (this may take a few minutes)
     %PIP% install --quiet --upgrade pip >> "%LOG%" 2>&1
-    %PIP% install --quiet streamlit plotly pandas numpy opencv-python openpyxl sqlalchemy scikit-learn joblib >> "%LOG%" 2>&1
+    %PIP% install --quiet streamlit plotly pandas numpy opencv-python openpyxl sqlalchemy scikit-learn joblib pydub >> "%LOG%" 2>&1
     if %errorlevel% neq 0 (
         echo WARNING: Some libraries failed. Check launch.log for details.
     )

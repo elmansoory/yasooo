@@ -76,6 +76,29 @@ ISU_BASE = {
 }
 
 # ============================================================================
+# PROGRAM-TYPE / LEVEL RULES (Short Program vs Free Skate, ISU 2024)
+# ============================================================================
+PROGRAM_TIME_LIMITS = {
+    'short': {'novice': 140, 'junior': 150, 'senior': 170},
+    'free':  {'novice': 180, 'junior': 210, 'senior': 240},
+}
+MAX_JUMP_ELEMENTS = {'short': 3, 'free': 8}
+MAX_SPIN_ELEMENTS = {'short': 3, 'free': 4}
+MAX_JUMP_REPEATS = 2  # an identical jump (same code) may not appear more than twice
+
+
+def _map_db_level_to_isu(level_text: str) -> str:
+    """Map a free-text 'level' field from the skaters table to novice/junior/senior."""
+    if not level_text:
+        return 'senior'
+    t = str(level_text).strip().lower()
+    if 'novice' in t or 'مبتدئ' in t or 'beginner' in t:
+        return 'novice'
+    if 'junior' in t or 'جونيور' in t or 'صغير' in t:
+        return 'junior'
+    return 'senior'
+
+# ============================================================================
 # CORE ANALYSIS ENGINE (OpenCV + MediaPipe)
 # ============================================================================
 
@@ -166,7 +189,8 @@ class SkatingVideoAnalyzer:
         self.width = 0
         self.height = 0
 
-    def analyze(self, video_path: str, progress_cb=None) -> Dict:
+    def analyze(self, video_path: str, progress_cb=None,
+                program_type: str = 'free', skater_level: str = 'senior') -> Dict:
         """Main entry point. Returns full analysis dict."""
         if not CV2_OK:
             return self._error_result("OpenCV not installed")
@@ -207,6 +231,7 @@ class SkatingVideoAnalyzer:
         spins = self._detect_spins(poses)
         jumps = self._detect_jumps(poses, spin_windows=[(s['t_start'], s['t_end']) for s in spins])
         errors = self._detect_errors(poses, jumps)
+        errors += self._detect_program_errors(program_type, skater_level, duration, jumps, spins)
         timeline = self._build_timeline(poses, jumps, spins)
 
         # ── Scoring ──────────────────────────────────────────────────────────
@@ -225,7 +250,81 @@ class SkatingVideoAnalyzer:
             'pose_count': len(poses),
             'is_demo': False,
             'analyzed_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
+            'program_type': program_type,
+            'skater_level': skater_level,
         }
+
+    # ── Program-type / level-aware error detection ──────────────────────────
+    def _detect_program_errors(self, program_type: str, skater_level: str,
+                                duration: float, jumps: List[Dict],
+                                spins: List[Dict]) -> List[Dict]:
+        """Errors specific to the program segment (Short/Free) and skater level,
+        per ISU rules: time limit, element count limits, jump repetition."""
+        errors = []
+        ptype = program_type if program_type in PROGRAM_TIME_LIMITS else 'free'
+        plevel = skater_level if skater_level in ('novice', 'junior', 'senior') else 'senior'
+        ptype_ar = 'البرنامج القصير' if ptype == 'short' else 'البرنامج الحر'
+        ptype_en = 'Short Program' if ptype == 'short' else 'Free Skate'
+
+        # 1) Time limit violation (±10s tolerance, per ISU rule)
+        limit = PROGRAM_TIME_LIMITS[ptype][plevel]
+        if duration > limit + 10 or duration < limit - 10:
+            errors.append({
+                'category': 'البرنامج', 'severity': 'متوسط',
+                'title_ar': f"مخالفة زمن {ptype_ar}",
+                'title_en': f"{ptype_en} Time Violation",
+                'desc_ar': f"مدة الأداء {duration:.0f}ث خارج الحد المسموح ({limit}±10ث لمستوى {plevel})",
+                'desc_en': f"Performance duration {duration:.0f}s is outside the allowed limit ({limit}±10s for {plevel} level)",
+                'fix_ar': ['ضبط طول الموسيقى مع المدرب', 'مراجعة توقيت العناصر داخل البرنامج'],
+                'fix_en': ['Adjust music length with coach', 'Review element timing within the program'],
+                'goe_impact': -1, 't_start': 0, 't_end': duration,
+            })
+
+        # 2) Too many jump/spin elements for the program type
+        max_jumps = MAX_JUMP_ELEMENTS[ptype]
+        max_spins = MAX_SPIN_ELEMENTS[ptype]
+        if len(jumps) > max_jumps:
+            errors.append({
+                'category': 'البرنامج', 'severity': 'منخفض',
+                'title_ar': f"عدد قفزات زائد عن حد {ptype_ar}",
+                'title_en': f"Jump Count Exceeds {ptype_en} Limit",
+                'desc_ar': f"تم اكتشاف {len(jumps)} قفزة، والحد التقريبي لـ{ptype_ar} هو {max_jumps}",
+                'desc_en': f"Detected {len(jumps)} jumps; approximate {ptype_en} limit is {max_jumps}",
+                'fix_ar': ['مراجعة تركيب البرنامج مع المدرب لتفادي عناصر زائدة'],
+                'fix_en': ['Review program composition with coach to avoid extra elements'],
+                'goe_impact': 0, 't_start': 0, 't_end': duration,
+            })
+        if len(spins) > max_spins:
+            errors.append({
+                'category': 'البرنامج', 'severity': 'منخفض',
+                'title_ar': f"عدد دورانات زائد عن حد {ptype_ar}",
+                'title_en': f"Spin Count Exceeds {ptype_en} Limit",
+                'desc_ar': f"تم اكتشاف {len(spins)} دوران، والحد التقريبي لـ{ptype_ar} هو {max_spins}",
+                'desc_en': f"Detected {len(spins)} spins; approximate {ptype_en} limit is {max_spins}",
+                'fix_ar': ['مراجعة تركيب البرنامج مع المدرب لتفادي عناصر زائدة'],
+                'fix_en': ['Review program composition with coach to avoid extra elements'],
+                'goe_impact': 0, 't_start': 0, 't_end': duration,
+            })
+
+        # 3) Jump repetition rule — same jump code more than twice
+        code_counts: Dict[str, int] = {}
+        for j in jumps:
+            code = j.get('code', j.get('type', ''))
+            code_counts[code] = code_counts.get(code, 0) + 1
+        for code, n in code_counts.items():
+            if n > MAX_JUMP_REPEATS:
+                errors.append({
+                    'category': 'البرنامج', 'severity': 'عالي',
+                    'title_ar': f"تكرار قفزة {code} أكثر من المسموح",
+                    'title_en': f"Jump {code} Repeated More Than Allowed",
+                    'desc_ar': f"القفزة {code} تكررت {n} مرات؛ القاعدة ISU تسمح بتكرارها مرتين كحد أقصى",
+                    'desc_en': f"Jump {code} repeated {n} times; ISU rule allows it at most twice",
+                    'fix_ar': ['استبدال إحدى التكرارات بقفزة مختلفة لرفع الـ Base Value'],
+                    'fix_en': ['Replace one repetition with a different jump to raise base value'],
+                    'goe_impact': -1, 't_start': 0, 't_end': duration,
+                })
+
+        return errors
 
     # ── MediaPipe Tasks API pose extraction ─────────────────────────────────
     def _extract_poses_mediapipe(self, video_path: str, progress_cb) -> Tuple[List, List]:
@@ -819,12 +918,18 @@ def _save_to_db(results: Dict, player_name: str, session_note: str):
                 spin_details TEXT
             )
         """)
+        for col in ('program_type TEXT', 'skater_level TEXT'):
+            try:
+                conn.execute(f"ALTER TABLE analysis_results ADD COLUMN {col}")
+            except Exception:
+                pass
         import json
         conn.execute("""
             INSERT INTO analysis_results
             (player_name, session_note, analyzed_at, duration, total_score, tes, pcs,
-             jumps_count, spins_count, errors_count, jump_details, spin_details)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+             jumps_count, spins_count, errors_count, jump_details, spin_details,
+             program_type, skater_level)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             player_name, session_note,
             results.get('analyzed_at', ''),
@@ -837,6 +942,8 @@ def _save_to_db(results: Dict, player_name: str, session_note: str):
             len(results.get('errors', [])),
             json.dumps(results.get('jumps', []), ensure_ascii=False),
             json.dumps(results.get('spins', []), ensure_ascii=False),
+            results.get('program_type', ''),
+            results.get('skater_level', ''),
         ))
         conn.commit()
         conn.close()
@@ -1068,6 +1175,17 @@ def _tab_upload(ar: bool, lang: str):
         with col_m:
             player_name = st.text_input("👤 اسم اللاعب", placeholder="اختياري")
             session_note = st.text_input("📝 ملاحظة", placeholder="تدريب / منافسة / مراجعة")
+            program_type = st.selectbox(
+                "🎯 نوع البرنامج", ['short', 'free'],
+                format_func=lambda x: '🎯 برنامج قصير (Short)' if x == 'short' else '🎭 برنامج حر (Free Skate)'
+            )
+            skater_level = st.selectbox(
+                "📊 مستوى اللاعب", ['auto', 'novice', 'junior', 'senior'],
+                format_func=lambda x: {
+                    'auto': '🔍 تلقائي (من ملف اللاعب)', 'novice': 'مبتدئ (Novice)',
+                    'junior': 'جونيور (Junior)', 'senior': 'سينيور (Senior)'
+                }[x]
+            )
             st.markdown("---")
             analyze_btn = st.button("🚀 بدء التحليل الكامل", type="primary",
                                     use_container_width=True)
@@ -1087,8 +1205,24 @@ def _tab_upload(ar: bool, lang: str):
                                       text=f"تحليل الإطار {frame} ...")
                     status_txt.caption(f"⚡ تشغيل محرك MediaPipe... {int(frac*100)}%")
 
+                resolved_level = skater_level
+                if resolved_level == 'auto':
+                    resolved_level = 'senior'
+                    if player_name:
+                        try:
+                            conn = sqlite3.connect(DB_PATH)
+                            row = conn.execute(
+                                "SELECT level FROM skaters WHERE name = ?", (player_name,)
+                            ).fetchone()
+                            conn.close()
+                            if row and row[0]:
+                                resolved_level = _map_db_level_to_isu(row[0])
+                        except Exception:
+                            pass
+
                 analyzer = SkatingVideoAnalyzer()
-                results = analyzer.analyze(tmp_path, progress_cb=update_progress)
+                results = analyzer.analyze(tmp_path, progress_cb=update_progress,
+                                            program_type=program_type, skater_level=resolved_level)
 
                 prog_bar.progress(1.0, text="✅ اكتمل التحليل")
                 status_txt.empty()
