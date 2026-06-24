@@ -27,8 +27,15 @@ except ImportError:
     AudioSegment = None
 
 try:
-    import librosa
     import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+    import types
+    np = types.SimpleNamespace(ndarray=list)
+
+try:
+    import librosa
     LIBROSA_AVAILABLE = True
 except ImportError:
     LIBROSA_AVAILABLE = False
