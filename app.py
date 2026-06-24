@@ -1012,6 +1012,279 @@ def show_coaching_hub():
 # ═══════════════════════════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════
+# 🎥 صفحة تحليل الفيديو
+# ═══════════════════════════════════════════════════════════════════
+def show_video_analysis_page():
+    st.title("🎥 تحليل الفيديو الاحترافي")
+    st.markdown("**أداة المدرّب — رفع الفيديو، تحديد العناصر، وتقييم GOE تلقائياً**")
+    st.markdown("---")
+
+    # ISU element values (simplified)
+    JUMP_VALUES = {
+        "1A (Axel مفرد)": 1.10, "2S (Salchow مزدوج)": 1.30, "2T (Toe Loop مزدوج)": 1.30,
+        "2Lo (Loop مزدوج)": 1.70, "2F (Flip مزدوج)": 1.80, "2Lz (Lutz مزدوج)": 2.10,
+        "2A (Axel مزدوج)": 3.30, "3S (Salchow ثلاثي)": 4.30, "3T (Toe Loop ثلاثي)": 4.20,
+        "3Lo (Loop ثلاثي)": 5.10, "3F (Flip ثلاثي)": 5.30, "3Lz (Lutz ثلاثي)": 6.00,
+        "3A (Axel ثلاثي)": 8.00, "4T (Toe Loop رباعي)": 9.50, "4S (Salchow رباعي)": 9.70,
+        "4Lo (Loop رباعي)": 10.50, "4F (Flip رباعي)": 11.00, "4Lz (Lutz رباعي)": 11.50,
+    }
+    SPIN_VALUES = {
+        "SSp (Sit Spin)": 1.70, "CSp (Camel Spin)": 1.80, "USp (Upright Spin)": 1.20,
+        "LSp (Layback Spin)": 1.50, "CCoSp (Combo Spin)": 3.50, "FCCoSp (Combo Flying)": 3.50,
+        "FCSp (Flying Camel)": 2.30, "FSSp (Flying Sit)": 2.30,
+    }
+    STEP_VALUES = {"StSq (Step Sequence)": 3.30, "ChSq (Choreographic Sequence)": 3.00}
+    ALL_ELEMENTS = {**JUMP_VALUES, **SPIN_VALUES, **STEP_VALUES}
+
+    # ── Tab layout ──────────────────────────────────────────────
+    vtab1, vtab2, vtab3 = st.tabs(["📹 الفيديو والتشغيل", "✍️ تحليل العناصر", "📊 التقرير النهائي"])
+
+    # ── TAB 1: Video upload & playback ─────────────────────────
+    with vtab1:
+        st.subheader("📹 رفع وتشغيل الفيديو")
+        col_up, col_info = st.columns([2, 1])
+        with col_up:
+            uploaded = st.file_uploader(
+                "ارفع فيديو البرنامج (MP4 / MOV / AVI)",
+                type=["mp4", "mov", "avi", "mkv"],
+                help="ارفع تسجيل برنامج قصير أو حر للاعب"
+            )
+            if uploaded:
+                st.session_state['video_name'] = uploaded.name
+                st.session_state['video_bytes'] = uploaded.read()
+                st.success(f"✅ تم رفع: **{uploaded.name}**")
+
+        with col_info:
+            st.markdown("""
+            **📋 كيفية الاستخدام:**
+            1. ارفع الفيديو هنا
+            2. شاهده في المشغّل أدناه
+            3. انتقل لـ **"تحليل العناصر"**
+            4. أضف القفزات والسبينات يدوياً
+            5. شاهد **التقرير النهائي**
+            """)
+
+        if 'video_bytes' in st.session_state:
+            st.markdown("### ▶️ مشغّل الفيديو")
+            st.video(st.session_state['video_bytes'])
+            st.info("💡 **نصيحة:** شاهد الفيديو وسجّل توقيت كل عنصر، ثم أدخله في قسم التحليل")
+        else:
+            st.info("👆 ارفع فيديو أعلاه لتشغيله")
+            # Show demo video from YouTube
+            st.markdown("### 🌐 مثال على البرنامج الاحترافي")
+            import streamlit.components.v1 as comp_v
+            import urllib.parse
+            q = urllib.parse.quote_plus("figure skating free program ISU World Championship 2024")
+            comp_v.html(
+                f'<iframe width="100%" height="280" src="https://www.youtube.com/embed?listType=search&list={q}&autoplay=0" '
+                f'frameborder="0" allowfullscreen style="border-radius:8px;"></iframe>',
+                height=290
+            )
+
+    # ── TAB 2: Element annotation ───────────────────────────────
+    with vtab2:
+        st.subheader("✍️ إدخال عناصر البرنامج")
+        st.info("أضف كل عنصر نفّذه اللاعب في الفيديو مع تقييم GOE")
+
+        # Skater info
+        with st.expander("👤 بيانات اللاعب والبرنامج", expanded=True):
+            ci1, ci2, ci3 = st.columns(3)
+            skater_name = ci1.text_input("اسم اللاعب")
+            program_type = ci2.selectbox("نوع البرنامج", ["برنامج قصير (SP)", "برنامج حر (FS)"])
+            skater_level = ci3.selectbox("المستوى", ["Junior", "Senior", "Novice", "Basic"])
+
+        if 'elements' not in st.session_state:
+            st.session_state['elements'] = []
+
+        # Add element form
+        st.markdown("### ➕ إضافة عنصر")
+        with st.form("add_elem", clear_on_submit=True):
+            fc1, fc2, fc3, fc4 = st.columns([3, 1, 1, 1])
+            elem_name = fc1.selectbox("العنصر", list(ALL_ELEMENTS.keys()))
+            goe_val = fc2.select_slider("GOE", options=[-5,-4,-3,-2,-1,0,1,2,3,4,5], value=0)
+            second_half = fc3.checkbox("نصف ثاني")
+            timing = fc4.text_input("التوقيت", placeholder="0:45")
+            notes = st.text_input("ملاحظات (اختياري)", placeholder="مثال: هبوط صحيح، دوران ناقص...")
+            if st.form_submit_button("➕ إضافة", type="primary"):
+                bv = ALL_ELEMENTS[elem_name]
+                if second_half:
+                    bv = round(bv * 1.1, 2)
+                goe_bonus = round(goe_val * (ALL_ELEMENTS[elem_name] * 0.1), 2)
+                final_score = round(bv + goe_bonus, 2)
+                st.session_state['elements'].append({
+                    "timing": timing, "element": elem_name,
+                    "bv": ALL_ELEMENTS[elem_name], "second_half": second_half,
+                    "bv_adj": bv, "goe": goe_val, "goe_bonus": goe_bonus,
+                    "final": final_score, "notes": notes
+                })
+                st.success(f"✅ أُضيف: **{elem_name}** — النقاط: {final_score:.2f}")
+
+        # Display current elements
+        if st.session_state['elements']:
+            st.markdown("### 📋 العناصر المُدخلة")
+            for i, el in enumerate(st.session_state['elements']):
+                goe_color = "#27ae60" if el['goe'] > 0 else ("#e74c3c" if el['goe'] < 0 else "#95a5a6")
+                sh_badge = ' <span style="background:#f39c12;color:white;padding:2px 6px;border-radius:10px;font-size:0.75em;">نصف ثاني</span>' if el['second_half'] else ''
+                st.markdown(f"""
+                <div style="background:white;border-radius:8px;padding:10px 16px;margin:5px 0;
+                            border-left:4px solid {goe_color};box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+                  <b>{i+1}. {el['element']}</b>{sh_badge}
+                  &nbsp;|&nbsp; ⏱ {el['timing'] or '—'}
+                  &nbsp;|&nbsp; BV: <b>{el['bv']:.2f}</b>
+                  &nbsp;|&nbsp; GOE: <b style="color:{goe_color}">{el['goe']:+d}</b>
+                  &nbsp;|&nbsp; النقاط: <b>{el['final']:.2f}</b>
+                  {'<br><small style="color:#666;">📝 ' + el['notes'] + '</small>' if el['notes'] else ''}
+                </div>""", unsafe_allow_html=True)
+
+            # Delete buttons
+            col_del, col_clr = st.columns([3, 1])
+            del_idx = col_del.number_input("احذف عنصر رقم", 1, len(st.session_state['elements']), 1)
+            if col_del.button("🗑 حذف العنصر المحدد"):
+                st.session_state['elements'].pop(del_idx - 1)
+                st.rerun()
+            if col_clr.button("🧹 مسح الكل", type="secondary"):
+                st.session_state['elements'] = []
+                st.rerun()
+        else:
+            st.info("لا توجد عناصر بعد — أضف العناصر من النموذج أعلاه")
+
+    # ── TAB 3: Final Report ─────────────────────────────────────
+    with vtab3:
+        st.subheader("📊 التقرير النهائي — ISU Scoring")
+
+        elements = st.session_state.get('elements', [])
+        if not elements:
+            st.warning("⚠️ أضف العناصر أولاً في قسم **تحليل العناصر**")
+            return
+
+        # Calculate TES
+        tes = sum(e['final'] for e in elements)
+
+        # PCS input
+        st.markdown("### 🎭 مكوّنات الأداء (PCS)")
+        pc1, pc2, pc3, pc4, pc5 = st.columns(5)
+        sk  = pc1.slider("المهارة التزلجية", 0.0, 10.0, 7.0, 0.25)
+        tr  = pc2.slider("الانتقالات", 0.0, 10.0, 6.5, 0.25)
+        pe  = pc3.slider("الأداء", 0.0, 10.0, 7.0, 0.25)
+        co  = pc4.slider("التكوين", 0.0, 10.0, 6.5, 0.25)
+        in_ = pc5.slider("التفسير", 0.0, 10.0, 7.0, 0.25)
+
+        pcs_factor = 2.0 if "حر" in program_type else 1.0
+        pcs = round((sk + tr + pe + co + in_) / 5 * 10 * pcs_factor, 2)
+        total = round(tes + pcs, 2)
+
+        # Deductions
+        st.markdown("### ⚠️ الخصومات")
+        dc1, dc2, dc3 = st.columns(3)
+        falls = dc1.number_input("عدد السقطات", 0, 10, 0)
+        time_vio = dc2.number_input("خصم الوقت (ثواني)", 0, 30, 0)
+        other_ded = dc3.number_input("خصومات أخرى", 0.0, 10.0, 0.0, 0.5)
+        deductions = round(falls * 1.0 + (time_vio // 5) * 1.0 + other_ded, 2)
+        final_score = round(total - deductions, 2)
+
+        # Results dashboard
+        st.markdown("---")
+        st.markdown("### 🏆 النتيجة النهائية")
+        r1, r2, r3, r4, r5 = st.columns(5)
+        r1.metric("TES المجموع التقني", f"{tes:.2f}")
+        r2.metric("PCS الأداء الفني", f"{pcs:.2f}")
+        r3.metric("المجموع", f"{total:.2f}")
+        r4.metric("الخصومات", f"-{deductions:.2f}")
+        r5.metric("🏅 النقاط النهائية", f"{final_score:.2f}")
+
+        # Score gauge
+        max_possible = sum(ALL_ELEMENTS[e['element']] * 1.1 for e in elements) + 100
+        pct = min(final_score / max(max_possible, 1) * 100, 100)
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number+delta",
+            value=final_score,
+            title={'text': "النقاط الإجمالية", 'font': {'size': 18}},
+            gauge={
+                'axis': {'range': [0, max(final_score * 1.5, 100)]},
+                'bar': {'color': "#1f77b4"},
+                'steps': [
+                    {'range': [0, final_score * 0.5], 'color': "#ffeaa7"},
+                    {'range': [final_score * 0.5, final_score * 0.8], 'color': "#81ecec"},
+                    {'range': [final_score * 0.8, final_score * 1.5], 'color': "#55efc4"},
+                ],
+                'threshold': {'line': {'color': "gold", 'width': 4}, 'value': final_score}
+            }
+        ))
+        fig_gauge.update_layout(height=280, margin=dict(t=40, b=10, l=20, r=20))
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+        # Element breakdown table
+        st.markdown("### 📋 تفاصيل العناصر")
+        rows = []
+        for i, e in enumerate(elements, 1):
+            goe_str = f"{e['goe']:+d}"
+            rows.append({
+                "#": i, "التوقيت": e['timing'] or "—",
+                "العنصر": e['element'],
+                "القيمة الأساسية": f"{e['bv']:.2f}",
+                "نصف ثاني": "✅" if e['second_half'] else "",
+                "GOE": goe_str,
+                "النقاط": f"{e['final']:.2f}",
+                "ملاحظات": e['notes'] or ""
+            })
+        df_report = pd.DataFrame(rows)
+        st.dataframe(df_report, use_container_width=True, hide_index=True)
+
+        # PCS breakdown
+        st.markdown("### 🎭 تفاصيل PCS")
+        pcs_df = pd.DataFrame({
+            "المكوّن": ["المهارة التزلجية (SK)", "الانتقالات (TR)", "الأداء (PE)", "التكوين (CO)", "التفسير (IN)"],
+            "التقييم": [sk, tr, pe, co, in_],
+            "النقاط": [sk * 2 * pcs_factor, tr * 2 * pcs_factor, pe * 2 * pcs_factor, co * 2 * pcs_factor, in_ * 2 * pcs_factor]
+        })
+        fig_pcs = px.bar(pcs_df, x="المكوّن", y="التقييم", color="التقييم",
+                         color_continuous_scale="Blues", title="تقييم مكوّنات PCS")
+        fig_pcs.update_layout(height=300, showlegend=False)
+        st.plotly_chart(fig_pcs, use_container_width=True)
+
+        # GOE breakdown chart
+        st.markdown("### ⚡ تحليل GOE لكل عنصر")
+        goe_df = pd.DataFrame({
+            "العنصر": [f"{i+1}. {e['element'][:15]}" for i, e in enumerate(elements)],
+            "GOE": [e['goe'] for e in elements],
+            "اللون": ["إيجابي" if e['goe'] > 0 else ("سلبي" if e['goe'] < 0 else "محايد") for e in elements]
+        })
+        fig_goe = px.bar(goe_df, x="العنصر", y="GOE", color="اللون",
+                         color_discrete_map={"إيجابي": "#27ae60", "سلبي": "#e74c3c", "محايد": "#95a5a6"},
+                         title="GOE لكل عنصر")
+        fig_goe.add_hline(y=0, line_dash="dash", line_color="gray")
+        fig_goe.update_layout(height=300)
+        st.plotly_chart(fig_goe, use_container_width=True)
+
+        # Export report button
+        st.markdown("---")
+        report_text = f"""تقرير تحليل الأداء - ISU Scoring
+=================================
+اللاعب: {skater_name or 'غير محدد'}
+البرنامج: {program_type}
+المستوى: {skater_level}
+التاريخ: {datetime.now().strftime('%Y-%m-%d')}
+
+المجموع التقني (TES): {tes:.2f}
+مكوّنات الأداء (PCS): {pcs:.2f}
+المجموع: {total:.2f}
+الخصومات: -{deductions:.2f}
+النقاط النهائية: {final_score:.2f}
+
+تفاصيل العناصر:
+"""
+        for i, e in enumerate(elements, 1):
+            report_text += f"  {i}. {e['element']} | BV:{e['bv']:.2f} | GOE:{e['goe']:+d} | النقاط:{e['final']:.2f}\n"
+
+        st.download_button(
+            "💾 تحميل التقرير كنص",
+            data=report_text,
+            file_name=f"تقرير_{skater_name or 'لاعب'}_{datetime.now().strftime('%Y%m%d')}.txt",
+            mime="text/plain"
+        )
+
+
 def main():
     with st.sidebar:
         st.title("🎿 القائمة الرئيسية")
@@ -1019,6 +1292,7 @@ def main():
         page = st.radio("اختر الصفحة", [
             "🏠 الرئيسية",
             "🏆 التدريب الاحترافي",
+            "🎥 تحليل الفيديو",
             "👥 إدارة الأعضاء",
             "📅 تسجيل الحضور",
             "🧑‍💼 ملفات الأعضاء",
@@ -1041,6 +1315,8 @@ def main():
         show_homepage()
     elif page == "🏆 التدريب الاحترافي":
         show_coaching_hub()
+    elif page == "🎥 تحليل الفيديو":
+        show_video_analysis_page()
     elif page == "👥 إدارة الأعضاء":
         show_members_page()
     elif page == "📅 تسجيل الحضور":

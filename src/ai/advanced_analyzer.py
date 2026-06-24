@@ -14,7 +14,13 @@ import numpy as np
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
-import cv2
+
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    CV2_AVAILABLE = False
+    cv2 = None
 
 
 class JumpType(Enum):
