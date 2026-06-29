@@ -1340,10 +1340,15 @@ def main():
             "🏆 التدريب الاحترافي",
             "🎥 تحليل الفيديو",
             "📈 تطوّر اللاعبين",
+            "🏅 المسابقات",
+            "🗓 جدول الحصص",
+            "💰 المالية والتجديد",
             "👥 إدارة الأعضاء",
             "📅 تسجيل الحضور",
             "🧑‍💼 ملفات الأعضاء",
             "📊 التقارير والإحصائيات",
+            "👨‍👩‍👧 بوابة ولي الأمر",
+            "🔑 رموز أولياء الأمور",
         ])
         st.markdown("---")
         members_count = get_data("SELECT COUNT(*) as c FROM members")['c'].iloc[0]
@@ -1367,6 +1372,15 @@ def main():
     elif page == "📈 تطوّر اللاعبين":
         from src.pages.progress_page import show_progress_page
         show_progress_page(get_data, execute_query, get_connection, clear_cache)
+    elif page == "🏅 المسابقات":
+        from src.pages.competitions_page import show_competitions_page
+        show_competitions_page(get_data, execute_query, get_connection, clear_cache)
+    elif page == "🗓 جدول الحصص":
+        from src.pages.schedule_view_page import show_schedule_page
+        show_schedule_page(get_data, execute_query, get_connection, clear_cache)
+    elif page == "💰 المالية والتجديد":
+        from src.pages.finance_page import show_finance_page
+        show_finance_page(get_data, execute_query, get_connection, clear_cache)
     elif page == "👥 إدارة الأعضاء":
         show_members_page()
     elif page == "📅 تسجيل الحضور":
@@ -1375,6 +1389,12 @@ def main():
         show_member_profiles_page()
     elif page == "📊 التقارير والإحصائيات":
         show_reports_page()
+    elif page == "👨‍👩‍👧 بوابة ولي الأمر":
+        from src.pages.parent_portal_page import show_parent_portal
+        show_parent_portal(get_data, execute_query, get_connection, clear_cache)
+    elif page == "🔑 رموز أولياء الأمور":
+        from src.pages.parent_portal_page import show_parent_admin
+        show_parent_admin(get_data, execute_query, get_connection, clear_cache)
 
 if __name__ == "__main__":
     main()

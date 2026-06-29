@@ -155,3 +155,8 @@ tmp/
 *.zip
 *.rar
 *.7z
+
+# SQLite runtime files
+*.db-wal
+*.db-shm
+*.db-journal

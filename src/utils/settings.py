@@ -2,8 +2,11 @@
 إعدادات النادي (الاسم + الشعار) المستخدمة في التقارير
 Club settings persisted as a small JSON file.
 """
+import hashlib
+import hmac
 import json
 import os
+import secrets
 
 SETTINGS_PATH = os.path.join("data", "club_settings.json")
 LOGO_PATH = os.path.join("assets", "club_logo.png")
@@ -41,3 +44,24 @@ def save_logo(uploaded_bytes: bytes):
         f.write(uploaded_bytes)
     save_settings({"logo_path": LOGO_PATH})
     return LOGO_PATH
+
+
+# ── Owner PIN (protects the parent-code admin page) ──────────────
+def has_owner_pin() -> bool:
+    s = load_settings()
+    return bool(s.get("owner_pin_hash") and s.get("owner_pin_salt"))
+
+
+def set_owner_pin(pin: str):
+    salt = secrets.token_hex(16)
+    h = hashlib.sha256((salt + str(pin)).encode("utf-8")).hexdigest()
+    save_settings({"owner_pin_salt": salt, "owner_pin_hash": h})
+
+
+def verify_owner_pin(pin: str) -> bool:
+    s = load_settings()
+    salt, h = s.get("owner_pin_salt"), s.get("owner_pin_hash")
+    if not salt or not h:
+        return False
+    cand = hashlib.sha256((salt + str(pin)).encode("utf-8")).hexdigest()
+    return hmac.compare_digest(h, cand)
