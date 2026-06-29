@@ -19,6 +19,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from src.data.isu_elements_catalog import ISU_ELEMENTS_CATALOG, find_by_code
+
 # ── OpenCV ──────────────────────────────────────────────────────────────────
 try:
     import cv2
@@ -1111,25 +1113,31 @@ def show_video_analysis_page(lang: str = 'ar'):
 
     tabs = st.tabs([
         "📹 رفع وتحليل",
+        "🎯 تحليل عنصر واحد",
         "📊 النتائج",
         "🏅 القفزات والدورانات",
         "⚠️ الأخطاء والتصحيحات",
         "📈 الإحصائيات",
-        "📄 التقارير"
+        "📄 التقارير",
+        "📚 كتالوج عناصر ISU"
     ])
 
     with tabs[0]:
         _tab_upload(ar, lang)
     with tabs[1]:
-        _tab_results(ar, lang)
+        _tab_single_element(ar, lang)
     with tabs[2]:
-        _tab_elements(ar, lang)
+        _tab_results(ar, lang)
     with tabs[3]:
-        _tab_errors(ar, lang)
+        _tab_elements(ar, lang)
     with tabs[4]:
-        _tab_stats(ar, lang)
+        _tab_errors(ar, lang)
     with tabs[5]:
+        _tab_stats(ar, lang)
+    with tabs[6]:
         _tab_reports(ar, lang)
+    with tabs[7]:
+        _tab_isu_catalog(ar, lang)
 
 
 # ============================================================================
@@ -1779,3 +1787,153 @@ def _tab_reports(ar: bool, lang: str):
             'التصحيح الأول': e.get('fix_ar', e.get('corrections_ar', ['—']))[0],
         } for e in errors])
         st.dataframe(df_e, use_container_width=True, hide_index=True)
+
+
+# ============================================================================
+# TAB: SINGLE ELEMENT ANALYSIS
+# ============================================================================
+
+def _tab_single_element(ar: bool, lang: str):
+    st.subheader("🎯 تحليل عنصر واحد (قفزة أو دوران فقط)")
+    st.caption("ارفع لقطة قصيرة تحتوي على عنصر واحد فقط — قفزة أو دوران — "
+               "للحصول على تحليل مفصّل له بدون حساب نقاط برنامج كامل.")
+
+    uploaded = st.file_uploader(
+        "اختر لقطة قصيرة (2-10 ثوانٍ)",
+        type=['mp4', 'avi', 'mov', 'mkv'],
+        key='single_element_upload',
+    )
+    expected = st.selectbox(
+        "🔎 العنصر المتوقع",
+        ['auto', 'jump', 'spin'],
+        format_func=lambda x: {'auto': '🔍 تلقائي', 'jump': '🦘 قفزة', 'spin': '🌀 دوران'}[x]
+    )
+
+    if not uploaded:
+        return
+
+    st.video(uploaded)
+    if not st.button("🚀 حلّل هذا العنصر", type="primary", use_container_width=True):
+        return
+
+    suffix = Path(uploaded.name).suffix or '.mp4'
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(uploaded.read())
+        tmp_path = tmp.name
+
+    try:
+        with st.spinner("جارٍ تحليل العنصر..."):
+            analyzer = SkatingVideoAnalyzer()
+            results = analyzer.analyze(tmp_path)
+
+        if 'error' in results:
+            st.error(f"خطأ: {results['error']}")
+            return
+
+        jumps = results.get('jumps', [])
+        spins = results.get('spins', [])
+
+        element = None
+        kind = None
+        if expected == 'jump' and jumps:
+            element, kind = jumps[0], 'jump'
+        elif expected == 'spin' and spins:
+            element, kind = spins[0], 'spin'
+        elif jumps and spins:
+            # Pick whichever scored higher (more confidently detected)
+            if jumps[0].get('final_score', 0) >= spins[0].get('final_score', 0):
+                element, kind = jumps[0], 'jump'
+            else:
+                element, kind = spins[0], 'spin'
+        elif jumps:
+            element, kind = jumps[0], 'jump'
+        elif spins:
+            element, kind = spins[0], 'spin'
+
+        if not element:
+            st.warning("⚠️ لم يتمكن النظام من اكتشاف عنصر واضح في هذه اللقطة. "
+                       "جرّب لقطة أقصر/أوضح تحتوي على عنصر واحد فقط.")
+            return
+
+        catalog_entry = find_by_code(element.get('code', ''))
+
+        st.success(f"✅ تم اكتشاف: **{element.get('type', '')}**"
+                   f" ({'قفزة' if kind == 'jump' else 'دوران'})")
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🔢 الكود ISU", element.get('code', '—'))
+        c2.metric("💰 القيمة الأساسية", f"{element.get('base_value', 0):.2f}")
+        c3.metric("📊 GOE", f"{element.get('goe', 0):+d}")
+        c4.metric("🏆 النقاط النهائية", f"{element.get('final_score', 0):.2f}")
+
+        st.markdown("---")
+        if kind == 'jump':
+            d1, d2, d3 = st.columns(3)
+            d1.metric("🌀 عدد اللفات", f"{element.get('rotations', 0):.1f}")
+            d2.metric("📏 الارتفاع التقديري", f"{element.get('height_cm', 0)} cm")
+            d3.metric("⏱️ وقت الطيران", f"{element.get('airtime', 0):.2f}s")
+        else:
+            d1, d2, d3 = st.columns(3)
+            d1.metric("🌀 عدد اللفات", f"{element.get('rotations', 0):.1f}")
+            d2.metric("⚡ السرعة", f"{element.get('rpm', 0):.0f} RPM")
+            d3.metric("📈 المستوى", element.get('level', '—'))
+
+        if catalog_entry:
+            st.info(f"📚 مرجع كتالوج ISU: **{catalog_entry['name_ar']}** "
+                   f"({catalog_entry['name_en']}) — القيمة الأساسية الرسمية: "
+                   f"{catalog_entry['base_value']:.2f}")
+
+        related_errors = [e for e in results.get('errors', [])
+                           if e.get('t_start', 0) <= element.get('t_start', 0) + 0.5
+                           and e.get('t_end', 1e9) >= element.get('t_start', 0) - 0.5]
+        if related_errors:
+            st.markdown("**⚠️ ملاحظات تقنية على هذا العنصر:**")
+            for e in related_errors:
+                st.warning(f"**{e.get('title_ar','')}** — {e.get('desc_ar','')}")
+                for fx in e.get('fix_ar', []):
+                    st.caption(f"✏️ {fx}")
+        else:
+            st.success("🎉 لا توجد ملاحظات تقنية سلبية على هذا العنصر.")
+
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
+# ============================================================================
+# TAB: ISU ELEMENT CATALOG
+# ============================================================================
+
+def _tab_isu_catalog(ar: bool, lang: str):
+    st.subheader("📚 كتالوج عناصر الاتحاد الدولي للتزلج (ISU)")
+    st.caption(f"إجمالي العناصر المسجّلة: {len(ISU_ELEMENTS_CATALOG)} — "
+               "قفزات · دورانات · متتاليات خطوات · متتالية كوريوغرافيا")
+
+    cats = ['الكل'] + sorted(set(r['category'] for r in ISU_ELEMENTS_CATALOG))
+    col_f, col_s = st.columns([1, 2])
+    with col_f:
+        chosen_cat = st.selectbox("فلتر حسب الفئة:", cats)
+    with col_s:
+        search = st.text_input("🔍 بحث بالاسم أو الكود:", placeholder="مثال: Lutz, CCoSp, StSq")
+
+    rows = ISU_ELEMENTS_CATALOG
+    if chosen_cat != 'الكل':
+        rows = [r for r in rows if r['category'] == chosen_cat]
+    if search:
+        s = search.strip().lower()
+        rows = [r for r in rows if s in r['code'].lower()
+                or s in r['name_ar'].lower() or s in r['name_en'].lower()]
+
+    df = pd.DataFrame([{
+        'الكود': r['code'],
+        'الاسم (عربي)': r['name_ar'],
+        'الاسم (English)': r['name_en'],
+        'الفئة': r['category'],
+        'المستوى': r['level'],
+        'القيمة الأساسية': r['base_value'],
+    } for r in rows]).sort_values(['الفئة', 'القيمة الأساسية'])
+
+    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.caption(f"عدد العناصر المعروضة: {len(rows)}")
