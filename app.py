@@ -10,6 +10,11 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import numpy as np
 
+try:
+    from src.database.migrations import ensure_schema
+except Exception:
+    ensure_schema = None
+
 st.set_page_config(
     page_title="نظام تحليل التزلج 🎿",
     page_icon="🎿",
@@ -65,7 +70,12 @@ st.markdown("""
 # ─── DB HELPERS ───────────────────────────────────────────────────────
 @st.cache_resource
 def get_connection():
-    return sqlite3.connect('skating_database.db', check_same_thread=False)
+    conn = sqlite3.connect('skating_database.db', check_same_thread=False,
+                           timeout=30)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    return conn
 
 def get_data(query, params=None):
     conn = get_connection()
@@ -1284,8 +1294,44 @@ def show_video_analysis_page():
             mime="text/plain"
         )
 
+        # ── Save to progress tracking ──────────────────────────
+        st.markdown("---")
+        st.markdown("### 📈 حفظ في تتبّع التطوّر")
+        st.caption("اربط نتيجة هذا التحليل بلاعب لإضافتها إلى سجل تطوّره ورسومه البيانية")
+        members_save = get_data("SELECT id, name FROM members ORDER BY name")
+        if len(members_save) > 0:
+            sc1, sc2 = st.columns([3, 1])
+            vid_labels = {int(r['id']): f"{r['name']} (#{int(r['id'])})"
+                          for _, r in members_save.iterrows()}
+            link_mid = sc1.selectbox("اختر اللاعب لربط التقييم",
+                                     members_save['id'].astype(int).tolist(),
+                                     format_func=lambda i: vid_labels[i],
+                                     key="vid_link_member")
+            with sc2:
+                st.write("")
+                st.write("")
+                if st.button("💾 حفظ كتقييم", type="primary", key="save_vid_eval"):
+                    from src.progress.service import save_evaluation
+                    link_name = members_save[members_save['id'] == link_mid].iloc[0]['name']
+                    save_evaluation(
+                        get_connection(), int(link_mid), datetime.now().strftime('%Y-%m-%d'),
+                        tes=tes, pcs=pcs, total_score=final_score,
+                        elements_count=len(elements), falls_count=falls,
+                        deductions=deductions,
+                        evaluation_type='competition' if 'حر' in program_type else 'test',
+                        notes=f"من تحليل الفيديو ({program_type} - {skater_level})",
+                        source='video_analysis')
+                    clear_cache()
+                    st.success(f"✅ حُفظ التقييم للاعب {link_name} في سجل التطوّر")
+
 
 def main():
+    if ensure_schema is not None:
+        try:
+            ensure_schema(get_connection())
+        except Exception as exc:
+            st.error(f"⚠️ تعذّر تجهيز قاعدة البيانات: {exc}")
+            st.stop()
     with st.sidebar:
         st.title("🎿 القائمة الرئيسية")
         st.markdown("---")
@@ -1293,6 +1339,7 @@ def main():
             "🏠 الرئيسية",
             "🏆 التدريب الاحترافي",
             "🎥 تحليل الفيديو",
+            "📈 تطوّر اللاعبين",
             "👥 إدارة الأعضاء",
             "📅 تسجيل الحضور",
             "🧑‍💼 ملفات الأعضاء",
@@ -1317,6 +1364,9 @@ def main():
         show_coaching_hub()
     elif page == "🎥 تحليل الفيديو":
         show_video_analysis_page()
+    elif page == "📈 تطوّر اللاعبين":
+        from src.pages.progress_page import show_progress_page
+        show_progress_page(get_data, execute_query, get_connection, clear_cache)
     elif page == "👥 إدارة الأعضاء":
         show_members_page()
     elif page == "📅 تسجيل الحضور":

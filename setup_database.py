@@ -59,6 +59,14 @@ def create_database():
     conn.commit()
     print("✅ Database structure created")
 
+    # Ensure newer tables (evaluations, etc.) exist
+    try:
+        from src.database.migrations import ensure_schema
+        ensure_schema(conn)
+        print("✅ Evaluations table ensured")
+    except Exception as exc:
+        print(f"⚠️ Could not ensure extra schema: {exc}")
+
     # Add sample data
     add_sample_data(conn)
 

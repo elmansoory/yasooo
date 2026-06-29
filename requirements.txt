@@ -83,3 +83,5 @@ requests
 sqlalchemy
 streamlit
 xlsxwriter
+arabic-reshaper
+python-bidi
