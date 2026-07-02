@@ -4,6 +4,7 @@ Finance dashboard + renewal alerts. Receives DB helpers from app.py.
 """
 from datetime import date
 
+import pandas as pd
 import streamlit as st
 import plotly.express as px
 
@@ -85,7 +86,7 @@ def _alerts(conn):
     show = df.copy()
     show["الحالة"] = show["status"].map(_STATUS_AR)
     show["الأيام المتبقية"] = show["days_left"].apply(
-        lambda x: "—" if x is None else (f"{int(x)} يوم" if x >= 0 else f"متأخر {abs(int(x))} يوم"))
+        lambda x: "—" if pd.isna(x) else (f"{int(x)} يوم" if x >= 0 else f"متأخر {abs(int(x))} يوم"))
     out = show[["name", "bundle_type", "payment_date", "expiry_date",
                 "الأيام المتبقية", "الحالة"]].copy()
     out.columns = ["اللاعب", "الباقة", "تاريخ آخر دفعة", "تاريخ الانتهاء",

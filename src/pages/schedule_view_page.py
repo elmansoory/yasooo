@@ -5,6 +5,7 @@ Weekly schedule / calendar. Receives DB helpers from app.py.
 from datetime import time
 from html import escape
 
+import pandas as pd
 import streamlit as st
 
 from src.schedule import service
@@ -43,7 +44,7 @@ def _weekly(conn):
                     extra.append(f"🎯 {escape(str(s['level']))}")
                 if s["location"]:
                     extra.append(f"📍 {escape(str(s['location']))}")
-                if s["capacity"]:
+                if pd.notna(s["capacity"]) and s["capacity"]:
                     extra.append(f"👥 {int(s['capacity'])}")
                 extra_html = "<br>".join(extra)
                 st.markdown(
