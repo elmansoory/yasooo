@@ -1343,6 +1343,7 @@ def main():
             "🏅 المسابقات",
             "🗓 جدول الحصص",
             "💰 المالية والتجديد",
+            "📥 استيراد بيانات",
             "👥 إدارة الأعضاء",
             "📅 تسجيل الحضور",
             "🧑‍💼 ملفات الأعضاء",
@@ -1381,6 +1382,9 @@ def main():
     elif page == "💰 المالية والتجديد":
         from src.pages.finance_page import show_finance_page
         show_finance_page(get_data, execute_query, get_connection, clear_cache)
+    elif page == "📥 استيراد بيانات":
+        from src.pages.import_page import show_import_page
+        show_import_page(get_data, execute_query, get_connection, clear_cache)
     elif page == "👥 إدارة الأعضاء":
         show_members_page()
     elif page == "📅 تسجيل الحضور":

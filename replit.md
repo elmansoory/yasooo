@@ -32,6 +32,12 @@ Run `python setup_database.py` to initialize the SQLite database with sample dat
 - Payment/membership management
 - Interactive charts (attendance trends, level distribution, top members)
 - Arabic language UI
+- Excel import ("📥 استيراد بيانات" page): upload a monthly roster/payments/attendance
+  workbook, get a full preview (new members, field updates, new/duplicate payments,
+  new/duplicate attendance, unmatched attendance names) before anything is saved, then
+  confirm to commit. Safe to re-upload the same file — duplicates are always skipped.
+  Logic lives in `src/importer/parser.py` (pure parsing/classification) and
+  `src/importer/service.py` (DB diff + commit).
 
 ## Dependencies
 See `requirements-minimal.txt` for core dependencies (Streamlit, Pandas, Plotly, SQLAlchemy).
