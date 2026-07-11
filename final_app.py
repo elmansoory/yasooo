@@ -108,6 +108,8 @@ TRANSLATIONS = {
         'medical': '🏥 السجلات الطبية',
         'elite_coach': '🧠 المدرب الاحترافي',
         'program_optimizer': '🏅 بناء البرنامج',
+        'jump_simulator': '🎿 محاكي القفزات 3D',
+        'world_champions': '🏆 أبطال العالم',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -189,6 +191,8 @@ TRANSLATIONS = {
         'medical': '🏥 Medical Records',
         'elite_coach': '🧠 Elite Coach',
         'program_optimizer': '🏅 Program Optimizer',
+        'jump_simulator': '🎿 3D Jump Simulator',
+        'world_champions': '🏆 World Champions',
         'logout': 'Logout',
         'login': 'Login',
         'username': 'Username',
@@ -758,6 +762,8 @@ _nav_pages = [
     t('medical'),
     t('elite_coach'),
     t('program_optimizer'),
+    t('jump_simulator'),
+    t('world_champions'),
     t('ml_training'),
     t('referee'),
     t('stats'),
@@ -2542,6 +2548,26 @@ def show_payments():
 
 
 # ============================================================================
+# 3D JUMP SIMULATOR & WORLD CHAMPIONS WRAPPERS
+# ============================================================================
+
+def show_jump_simulator():
+    try:
+        from src.pages.jump_simulator_page import show_jump_simulator as _sim
+        _sim()
+    except Exception as e:
+        st.error(f"خطأ في تحميل المحاكي: {e}")
+        st.exception(e)
+
+def show_world_champions():
+    try:
+        from src.pages.world_champions_page import show_world_champions as _wc
+        _wc()
+    except Exception as e:
+        st.error(f"خطأ في تحميل لوحة الأبطال: {e}")
+        st.exception(e)
+
+# ============================================================================
 # MAIN ROUTER
 # ============================================================================
 
@@ -2562,6 +2588,8 @@ _ROUTER = {
     t('medical'):           show_medical,
     t('elite_coach'):       show_elite_coach,
     t('program_optimizer'): show_program_optimizer,
+    t('jump_simulator'):    show_jump_simulator,
+    t('world_champions'):   show_world_champions,
     t('stats'):             show_stats,
     t('club_mgmt'):       show_club_management,
 }
@@ -2569,4 +2597,4 @@ _ROUTER.get(page, show_settings)()
 
 # Footer
 st.sidebar.markdown("---")
-st.sidebar.caption("v6.0 - Global Edition | 6 Languages | Auth | Real-Time AI")
+st.sidebar.caption("v6.1 - 3D Simulator + World Champions | 6 Languages | Auth | Real-Time AI")
