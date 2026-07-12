@@ -1338,6 +1338,8 @@ def main():
         page = st.radio("اختر الصفحة", [
             "🏠 الرئيسية",
             "🏆 التدريب الاحترافي",
+            "🤖 مساعد البطولة",
+            "🎮 محاكي القفزات 3D",
             "🎥 تحليل الفيديو",
             "📈 تطوّر اللاعبين",
             "🏅 المسابقات",
@@ -1368,6 +1370,12 @@ def main():
         show_homepage()
     elif page == "🏆 التدريب الاحترافي":
         show_coaching_hub()
+    elif page == "🤖 مساعد البطولة":
+        from src.pages.world_champion_dashboard import show_world_champion_dashboard
+        show_world_champion_dashboard(get_data, execute_query, get_connection, clear_cache)
+    elif page == "🎮 محاكي القفزات 3D":
+        from src.pages.jump_simulator_3d import show_jump_simulator
+        show_jump_simulator(get_data, execute_query, get_connection, clear_cache)
     elif page == "🎥 تحليل الفيديو":
         show_video_analysis_page()
     elif page == "📈 تطوّر اللاعبين":

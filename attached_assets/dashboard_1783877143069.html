@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Champion AI - نظام تحليل وتدريب فيجور اسكيت</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1a73e8;
+            --secondary: #00c853;
+            --accent: #ff6d00;
+            --danger: #ff1744;
+            --warning: #ffd600;
+            --dark: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-light: #8b949e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: var(--card);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .logo-text h1 {
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .logo-text span {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: var(--text);
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(26, 115, 232, 0.15);
+            color: var(--primary);
+        }
+
+        .nav-link i {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-right: 260px;
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h2 {
+            font-size: 28px;
+            color: #fff;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #1557b0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(26, 115, 232, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .card-icon.blue { background: rgba(26, 115, 232, 0.2); }
+        .card-icon.green { background: rgba(0, 200, 83, 0.2); }
+        .card-icon.orange { background: rgba(255, 109, 0, 0.2); }
+        .card-icon.red { background: rgba(255, 23, 68, 0.2); }
+
+        .card-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .card-change {
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-change.positive { color: var(--secondary); }
+        .card-change.negative { color: var(--danger); }
+
+        /* Sections */
+        .section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Video Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(26, 115, 232, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .upload-text h3 {
+            font-size: 20px;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .upload-text p {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Analysis Results */
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .analysis-panel {
+            background: rgba(13, 17, 23, 0.5);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .analysis-panel h4 {
+            color: var(--primary);
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .metric-value.good { color: var(--secondary); }
+        .metric-value.bad { color: var(--danger); }
+        .metric-value.warning { color: var(--warning); }
+
+        /* Progress Bars */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--dark);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+
+        .progress-fill.blue { background: var(--primary); }
+        .progress-fill.green { background: var(--secondary); }
+        .progress-fill.orange { background: var(--accent); }
+        .progress-fill.red { background: var(--danger); }
+
+        /* Training Plan */
+        .training-week {
+            margin-bottom: 24px;
+        }
+
+        .week-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: var(--dark);
+            border-radius: 10px;
+        }
+
+        .week-number {
+            background: var(--primary);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .drill-card {
+            background: rgba(13, 17, 23, 0.5);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-right: 3px solid var(--primary);
+            transition: all 0.3s;
+        }
+
+        .drill-card:hover {
+            background: rgba(26, 115, 232, 0.1);
+            transform: translateX(-4px);
+        }
+
+        .drill-card.invented {
+            border-right-color: var(--accent);
+            background: rgba(255, 109, 0, 0.05);
+        }
+
+        .drill-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .drill-name {
+            font-weight: 600;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .drill-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .drill-badge.invented {
+            background: rgba(255, 109, 0, 0.2);
+            color: var(--accent);
+        }
+
+        .drill-badge.standard {
+            background: rgba(26, 115, 232, 0.2);
+            color: var(--primary);
+        }
+
+        .drill-meta {
+            display: flex;
+            gap: 16px;
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        .drill-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Champion Comparison */
+        .champion-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: rgba(13, 17, 23, 0.5);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .champion-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .champion-info h4 {
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .champion-info p {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        .champion-score {
+            margin-right: auto;
+            text-align: left;
+        }
+
+        .champion-score .score {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        .champion-score .label {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        /* Gap Analysis */
+        .gap-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: rgba(13, 17, 23, 0.5);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .gap-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .gap-icon.high { background: rgba(255, 23, 68, 0.2); }
+        .gap-icon.medium { background: rgba(255, 214, 0, 0.2); }
+        .gap-icon.low { background: rgba(0, 200, 83, 0.2); }
+
+        .gap-details {
+            flex: 1;
+        }
+
+        .gap-details h4 {
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .gap-details p {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        .gap-value {
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .gap-value.high { color: var(--danger); }
+        .gap-value.medium { color: var(--warning); }
+        .gap-value.low { color: var(--secondary); }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar { width: 200px; }
+            .main-content { margin-right: 200px; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-right: 0; }
+            .analysis-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        /* Tab System */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: all 0.3s;
+            border: none;
+            background: none;
+            font-size: 14px;
+        }
+
+        .tab:hover, .tab.active {
+            background: rgba(26, 115, 232, 0.15);
+            color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Score Circle */
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary) 0% var(--score-percent), var(--dark) var(--score-percent) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .score-circle::before {
+            content: '';
+            width: 100px;
+            height: 100px;
+            background: var(--card);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .score-circle span {
+            position: relative;
+            z-index: 1;
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-icon">⛸️</div>
+            <div class="logo-text">
+                <h1>World Champion</h1>
+                <span>AI Training System</span>
+            </div>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a class="nav-link active" onclick="showTab('dashboard')">
+                    <i>📊</i>
+                    <span>لوحة التحكم</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="showTab('analysis')">
+                    <i>🎬</i>
+                    <span>تحليل الفيديو</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="showTab('training')">
+                    <i>🏋️</i>
+                    <span>خطط التدريب</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="showTab('champions')">
+                    <i>🏆</i>
+                    <span>أبطال العالم</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="showTab('rules')">
+                    <i>⚖️</i>
+                    <span>قواعد ISU</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="showTab('progress')">
+                    <i>📈</i>
+                    <span>التقدم</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="header">
+                <h2>لوحة التحكم الرئيسية</h2>
+                <div class="header-actions">
+                    <button class="btn btn-secondary">📅 اليوم: 2026-07-01</button>
+                    <button class="btn btn-primary">➕ تحليل جديد</button>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="cards-grid">
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <span class="card-title">النتيجة الحالية</span>
+                        <div class="card-icon blue">📊</div>
+                    </div>
+                    <div class="card-value">245.0</div>
+                    <div class="card-change positive">
+                        ▲ +12.5 من الموسم الماضي
+                    </div>
+                </div>
+
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <span class="card-title">أعلى قفزة</span>
+                        <div class="card-icon green">🚀</div>
+                    </div>
+                    <div class="card-value">3A</div>
+                    <div class="card-change positive">
+                        ▲ Triple Axel مستقر
+                    </div>
+                </div>
+
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <span class="card-title">التدريبات المكتملة</span>
+                        <div class="card-icon orange">✅</div>
+                    </div>
+                    <div class="card-value">47/56</div>
+                    <div class="card-change positive">
+                        ▲ 84% معدل الإنجاز
+                    </div>
+                </div>
+
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <span class="card-title">الفجوة مع العالم</span>
+                        <div class="card-icon red">📉</div>
+                    </div>
+                    <div class="card-value">-88.7</div>
+                    <div class="card-change negative">
+                        ▼ الهدف: 333.7 (Ilia Malinin)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Analysis -->
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">📹 تحليل سريع</h3>
+                </div>
+                <div class="upload-area" onclick="document.getElementById('videoInput').click()">
+                    <div class="upload-icon">🎥</div>
+                    <div class="upload-text">
+                        <h3>اسحب الفيديو هنا أو انقر للاختيار</h3>
+                        <p>يدعم MP4, AVI, MOV | الحد الأقصى 500MB</p>
+                    </div>
+                    <input type="file" id="videoInput" accept="video/*" style="display:none">
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">🕐 النشاط الأخير</h3>
+                </div>
+                <div class="analysis-panel">
+                    <div class="metric-row">
+                        <span class="metric-label">تحليل فيديو - البرنامج الحر</span>
+                        <span class="metric-value">2026-06-28</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">إكمال تدريب "Air Sculptor"</span>
+                        <span class="metric-value">2026-06-27</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">تحديث خطة التدريب - الأسبوع 6</span>
+                        <span class="metric-value">2026-06-25</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Tab -->
+        <div id="analysis" class="tab-content">
+            <div class="header">
+                <h2>تحليل الفيديو</h2>
+                <div class="header-actions">
+                    <button class="btn btn-primary">▶️ بدء التحليل</button>
+                </div>
+            </div>
+
+            <div class="analysis-grid">
+                <div class="section">
+                    <div class="section-header">
+                        <h3 class="section-title">📊 النتائج التقنية</h3>
+                    </div>
+                    <div class="analysis-panel">
+                        <div class="metric-row">
+                            <span class="metric-label">عدد القفزات</span>
+                            <span class="metric-value good">7</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">عدد التدويرات</span>
+                            <span class="metric-value good">3</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">التتابعات</span>
+                            <span class="metric-value good">1</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">متوسط ارتفاع القفزات</span>
+                            <span class="metric-value warning">0.52m</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">متوسط زمن الهواء</span>
+                            <span class="metric-value warning">0.68s</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">معدل السقوط</span>
+                            <span class="metric-value bad">14%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-header">
+                        <h3 class="section-title">⚖️ التحقق من القواعد</h3>
+                    </div>
+                    <div class="analysis-panel">
+                        <div class="metric-row">
+                            <span class="metric-label">صحة البرنامج</span>
+                            <span class="metric-value good">✅ صالح</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">قاعدة Zayak</span>
+                            <span class="metric-value good">✅ متبعة</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Edge Calls</span>
+                            <span class="metric-value warning">⚠️ 1 تحذير</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Under-rotations</span>
+                            <span class="metric-value bad">❌ 2 حالة</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">الوقت</span>
+                            <span class="metric-value good">4:12 ✅</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">💡 التوصيات</h3>
+                </div>
+                <div class="gap-item">
+                    <div class="gap-icon high">💪</div>
+                    <div class="gap-details">
+                        <h4>زيادة قوة الإقلاع</h4>
+                        <p>متوسط الارتفاع 0.52m - الهدف 0.65m</p>
+                    </div>
+                    <div class="gap-value high">-0.13m</div>
+                </div>
+                <div class="gap-item">
+                    <div class="gap-icon high">🔄</div>
+                    <div class="gap-details">
+                        <h4>تسريع الدوران</h4>
+                        <p>سرعة الدوران 3.2 دورة/ثانية - الهدف 4.0</p>
+                    </div>
+                    <div class="gap-value high">-0.8</div>
+                </div>
+                <div class="gap-item">
+                    <div class="gap-icon medium">⛸️</div>
+                    <div class="gap-details">
+                        <h4>تحسين جودة الحواف</h4>
+                        <p>درجة الحواف 7.5 - الهدف 9.0</p>
+                    </div>
+                    <div class="gap-value medium">-1.5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Tab -->
+        <div id="training" class="tab-content">
+            <div class="header">
+                <h2>خطط التدريب</h2>
+                <div class="header-actions">
+                    <button class="btn btn-primary">🔄 توليد خطة جديدة</button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="showTrainingTab('current')">الخطة الحالية</button>
+                <button class="tab" onclick="showTrainingTab('invented')">تدريبات مبتكرة</button>
+                <button class="tab" onclick="showTrainingTab('history')">السجل</button>
+            </div>
+
+            <div id="training-current" class="tab-content active">
+                <div class="training-week">
+                    <div class="week-header">
+                        <div class="week-number">1</div>
+                        <div>
+                            <h4>الأسبوع 1 - التأسيس</h4>
+                            <p style="color: var(--text-light); font-size: 13px;">التركيز: القوة والمرونة</p>
+                        </div>
+                    </div>
+
+                    <div class="drill-card">
+                        <div class="drill-header">
+                            <span class="drill-name">Landing Mastery - إتقان الهبوط</span>
+                            <span class="drill-badge standard">قياسي</span>
+                        </div>
+                        <div class="drill-meta">
+                            <span>⏱️ 15 دقيقة</span>
+                            <span>🔥 3 مجموعات</span>
+                            <span>📍 خارج الجليد</span>
+                        </div>
+                    </div>
+
+                    <div class="drill-card invented">
+                        <div class="drill-header">
+                            <span class="drill-name">Air Sculptor Protocol - بروتوكول نحات الهواء</span>
+                            <span class="drill-badge invented">مبتكر 🔥</span>
+                        </div>
+                        <div class="drill-meta">
+                            <span>⏱️ 15 دقيقة</span>
+                            <span>🔥 4 مجموعات</span>
+                            <span>📍 خارج الجليد</span>
+                        </div>
+                    </div>
+
+                    <div class="drill-card">
+                        <div class="drill-header">
+                            <span class="drill-name">Edge Precision Lab - مختبر دقة الحواف</span>
+                            <span class="drill-badge standard">قياسي</span>
+                        </div>
+                        <div class="drill-meta">
+                            <span>⏱️ 15 دقيقة</span>
+                            <span>🔥 3 مجموعات</span>
+                            <span>📍 على الجليد</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="training-week">
+                    <div class="week-header">
+                        <div class="week-number">2</div>
+                        <div>
+                            <h4>الأسبوع 2 - التطوير</h4>
+                            <p style="color: var(--text-light); font-size: 13px;">التركيز: السرعة والدوران</p>
+                        </div>
+                    </div>
+
+                    <div class="drill-card invented">
+                        <div class="drill-header">
+                            <span class="drill-name">Neuro-Rotation Accelerator - معجل الدوران العصبي</span>
+                            <span class="drill-badge invented">مبتكر 🔥</span>
+                        </div>
+                        <div class="drill-meta">
+                            <span>⏱️ 12 دقيقة</span>
+                            <span>🔥 4 مجموعات</span>
+                            <span>📍 خارج الجليد</span>
+                        </div>
+                    </div>
+
+                    <div class="drill-card invented">
+                        <div class="drill-header">
+                            <span class="drill-name">Shadow Spin Protocol - بروتوكول التدوير الظل</span>
+                            <span class="drill-badge invented">مبتكر 🔥</span>
+                        </div>
+                        <div class="drill-meta">
+                            <span>⏱️ 10 دقيقة</span>
+                            <span>🔥 3 مجموعات</span>
+                            <span>📍 على الجليد</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="training-invented" class="tab-content">
+                <div class="section">
+                    <div class="section-header">
+                        <h3 class="section-title">🔥 التدريبات المبتكرة (Invented Drills)</h3>
+                    </div>
+                    <p style="color: var(--text-light); margin-bottom: 20px;">
+                        هذه التدريبات مولدة بالذكاء الاصطناعي خصيصاً لك بناءً على تحليل أدائك
+                    </p>
+
+                    <div class="drill-card invented">
+                        <div class="drill-header">
+                            <span class="drill-name">Air Sculptor Protocol</span>
+                            <span class="drill-badge invented">مبتكر</span>
+                        </div>
+                        <p style="color: var(--text-light); margin: 8px 0; font-size: 14px;">
+                            محاكاة وضعيات الهواء باستخدام رباط المقاومة. يحول المتزلج إلى "نحات" يصنع وضعياته في الهواء.
+                        </p>
+                        <div class="drill-meta">
+                            <span>🎯 الهدف: perfect_air_position</span>
+                            <span>💪 العضلات: core, shoulders</span>
+                        </div>
+                    </div>
+
+                    <div class="drill-card invented">
+                        <div class="drill-header">
+                            <span class="drill-name">Shadow Spin Protocol</span>
+                            <span class="drill-badge invented">مبتكر</span>
+                        </div>
+                        <p style="color: var(--text-light); margin: 8px 0; font-size: 14px;">
+                            الدخول إلى التدوير بعيون مغلقة لتعزيز الإحساس الحركي والتوازن الداخلي.
+                        </p>
+                        <div class="drill-meta">
+                            <span>🎯 الهدف: proprioception</span>
+                            <span>💪 العضلات: vestibular_system</span>
+                        </div>
+                    </div>
+
+                    <div class="drill-card invented">
+                        <div class="drill-header">
+                            <span class="drill-name">Musical Edge Symphony</span>
+                            <span class="drill-badge invented">مبتكر</span>
+                        </div>
+                        <p style="color: var(--text-light); margin: 8px 0; font-size: 14px;">
+                            التزلج على حواف محددة متزامنة مع إيقاع الموسيقى. يجعل الحواف "تغني".
+                        </p>
+                        <div class="drill-meta">
+                            <span>🎯 الهدف: musicality</span>
+                            <span>💪 العضلات: ankles, core</span>
+                        </div>
+                    </div>
+
+                    <div class="drill-card invented">
+                        <div class="drill-header">
+                            <span class="drill-name">Recovery Rush Challenge</span>
+                            <span class="drill-badge invented">مبتكر</span>
+                        </div>
+                        <p style="color: var(--text-light); margin: 8px 0; font-size: 14px;">
+                            تنفيذ قفزة + تدويرة + تتابع في 30 ثانية. يبني القدرة على التعافي السريع.
+                        </p>
+                        <div class="drill-meta">
+                            <span>🎯 الهدف: endurance</span>
+                            <span>💪 العضلات: full_body</span>
+                        </div>
+                    </div>
+
+                    <div class="drill-card invented">
+                        <div class="drill-header">
+                            <span class="drill-name">Neuro-Rotation Accelerator</span>
+                            <span class="drill-badge invented">مبتكر</span>
+                        </div>
+                        <p style="color: var(--text-light); margin: 8px 0; font-size: 14px;">
+                            القفز والدوران مع تتبع هدف بصري لتعزيز التركيز البصري وسرعة الدوران.
+                        </p>
+                        <div class="drill-meta">
+                            <span>🎯 الهدف: spotting</span>
+                            <span>💪 العضلات: core, eyes</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Champions Tab -->
+        <div id="champions" class="tab-content">
+            <div class="header">
+                <h2>أبطال العالم</h2>
+                <div class="header-actions">
+                    <button class="btn btn-secondary">🔍 مقارنة</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">🏆 أفضل المتزلجين في العالم</h3>
+                </div>
+
+                <div class="champion-card">
+                    <div class="champion-avatar">1</div>
+                    <div class="champion-info">
+                        <h4>Ilia Malinin</h4>
+                        <p>🇺🇸 USA | 21 سنة | Quad Axel</p>
+                    </div>
+                    <div class="champion-score">
+                        <div class="score">333.69</div>
+                        <div class="label">أفضل نتيجة</div>
+                    </div>
+                </div>
+
+                <div class="champion-card">
+                    <div class="champion-avatar">2</div>
+                    <div class="champion-info">
+                        <h4>Shoma Uno</h4>
+                        <p>🇯🇵 Japan | 28 سنة | Quad Flip</p>
+                    </div>
+                    <div class="champion-score">
+                        <div class="score">301.14</div>
+                        <div class="label">أفضل نتيجة</div>
+                    </div>
+                </div>
+
+                <div class="champion-card">
+                    <div class="champion-avatar">3</div>
+                    <div class="champion-info">
+                        <h4>Yuma Kagiyama</h4>
+                        <p>🇯🇵 Japan | 22 سنة | Quad Toe Loop</p>
+                    </div>
+                    <div class="champion-score">
+                        <div class="score">297.16</div>
+                        <div class="label">أفضل نتيجة</div>
+                    </div>
+                </div>
+
+                <div class="champion-card" style="border: 2px solid var(--primary); background: rgba(26,115,232,0.1);">
+                    <div class="champion-avatar" style="background: var(--primary);">أنت</div>
+                    <div class="champion-info">
+                        <h4>Ahmed Al-Rashid</h4>
+                        <p>🇸🇦 KSA | 19 سنة | Triple Axel</p>
+                    </div>
+                    <div class="champion-score">
+                        <div class="score" style="color: var(--primary);">245.0</div>
+                        <div class="label">النتيجة الحالية</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">📊 مقارنة الأداء</h3>
+                </div>
+                <div class="analysis-panel">
+                    <div class="metric-row">
+                        <span class="metric-label">النتيجة الكلية</span>
+                        <span class="metric-value">245.0 / 333.7</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill blue" style="width: 73%;"></div>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">ارتفاع القفزات</span>
+                        <span class="metric-value">0.52m / 0.72m</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill orange" style="width: 72%;"></div>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">سرعة الدوران</span>
+                        <span class="metric-value">3.2 / 4.0</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill orange" style="width: 80%;"></div>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">المكونات الفنية</span>
+                        <span class="metric-value">7.0 / 9.5</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill red" style="width: 74%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules Tab -->
+        <div id="rules" class="tab-content">
+            <div class="header">
+                <h2>قواعد ISU</h2>
+                <div class="header-actions">
+                    <button class="btn btn-secondary">📄 Communication 2788</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">⚖️ القواعد الأساسية</h3>
+                </div>
+                <div class="analysis-panel">
+                    <div class="metric-row">
+                        <span class="metric-label">قاعدة Zayak</span>
+                        <span class="metric-value">لا يمكن تكرار نفس نوع القفزة أكثر من مرتين</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Edge Call</span>
+                        <span class="metric-value">الحافة الخاطئة = خصم + علامة 'e'</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Under-rotation</span>
+                        <span class="metric-value">نقص ≥90° = خصم كبير</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Fall</span>
+                        <span class="metric-value">-5 GOE + خصم 1.00 نقطة</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">📋 قيم القفزات الأساسية (Base Values)</h3>
+                </div>
+                <div class="analysis-panel">
+                    <div class="metric-row">
+                        <span class="metric-label">Quad Axel (4A)</span>
+                        <span class="metric-value good">12.5</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Quad Lutz (4Lz)</span>
+                        <span class="metric-value good">11.5</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Quad Flip (4F)</span>
+                        <span class="metric-value good">11.0</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Triple Axel (3A)</span>
+                        <span class="metric-value good">8.0</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Triple Lutz (3Lz)</span>
+                        <span class="metric-value">5.9</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Tab -->
+        <div id="progress" class="tab-content">
+            <div class="header">
+                <h2>التقدم والتطور</h2>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">🛤️ مسار التقدم إلى العالمية</h3>
+                </div>
+
+                <div class="gap-item">
+                    <div class="gap-icon low">1️⃣</div>
+                    <div class="gap-details">
+                        <h4>التأسيس (Foundation)</h4>
+                        <p>المدة: 3 أشهر | الهدف: 220 نقطة</p>
+                        <p style="font-size: 12px; margin-top: 4px;">Clean double jumps, Basic spins Level 3, Step sequence</p>
+                    </div>
+                    <div class="gap-value low">✅</div>
+                </div>
+
+                <div class="gap-item">
+                    <div class="gap-icon low">2️⃣</div>
+                    <div class="gap-details">
+                        <h4>التطوير (Development)</h4>
+                        <p>المدة: 6 أشهر | الهدف: 260 نقطة</p>
+                        <p style="font-size: 12px; margin-top: 4px;">Triple Axel, Triple combinations, Flying spins</p>
+                    </div>
+                    <div class="gap-value low">✅</div>
+                </div>
+
+                <div class="gap-item" style="border: 2px solid var(--primary);">
+                    <div class="gap-icon medium">3️⃣</div>
+                    <div class="gap-details">
+                        <h4>التميز (Excellence) - الحالي</h4>
+                        <p>المدة: 6 أشهر | الهدف: 280 نقطة</p>
+                        <p style="font-size: 12px; margin-top: 4px;">Quad Toe Loop, Quad Salchow, PCS 8.5+</p>
+                    </div>
+                    <div class="gap-value medium">🎯</div>
+                </div>
+
+                <div class="gap-item">
+                    <div class="gap-icon high">4️⃣</div>
+                    <div class="gap-details">
+                        <h4>المستوى العالمي (World Class)</h4>
+                        <p>المدة: 12 شهر | الهدف: 300+ نقطة</p>
+                        <p style="font-size: 12px; margin-top: 4px;">Quad Axel, Quad Lutz, Total Score 300+</p>
+                    </div>
+                    <div class="gap-value high">🏆</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Tab Navigation
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            event.target.closest('.nav-link').classList.add('active');
+        }
+
+        // Training Sub-tabs
+        function showTrainingTab(tabId) {
+            document.querySelectorAll('#training .tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('#training .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            document.getElementById('training-' + tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Animate cards on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+
+        // Simulate video upload
+        document.getElementById('videoInput')?.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                alert('🎬 تم رفع الفيديو: ' + e.target.files[0].name + '\n\nجاري التحليل...');
+            }
+        });
+    </script>
+</body>
+</html>
