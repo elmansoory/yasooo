@@ -1026,6 +1026,7 @@ def show_coaching_hub():
 # 🎥 صفحة تحليل الفيديو
 # ═══════════════════════════════════════════════════════════════════
 def show_video_analysis_page():
+    import tempfile, pathlib
     st.title("🎥 تحليل الفيديو الاحترافي")
     st.markdown("**أداة المدرّب — رفع الفيديو، تحديد العناصر، وتقييم GOE تلقائياً**")
     st.markdown("---")
@@ -1061,8 +1062,12 @@ def show_video_analysis_page():
                 help="ارفع تسجيل برنامج قصير أو حر للاعب"
             )
             if uploaded:
+                tmp_dir = pathlib.Path(tempfile.gettempdir()) / "skating_videos"
+                tmp_dir.mkdir(exist_ok=True)
+                tmp_path = tmp_dir / f"video_{uploaded.name}"
+                tmp_path.write_bytes(uploaded.getvalue())
                 st.session_state['video_name'] = uploaded.name
-                st.session_state['video_bytes'] = uploaded.read()
+                st.session_state['video_path'] = str(tmp_path)
                 st.success(f"✅ تم رفع: **{uploaded.name}**")
 
         with col_info:
@@ -1075,9 +1080,9 @@ def show_video_analysis_page():
             5. شاهد **التقرير النهائي**
             """)
 
-        if 'video_bytes' in st.session_state:
+        if 'video_path' in st.session_state and pathlib.Path(st.session_state['video_path']).exists():
             st.markdown("### ▶️ مشغّل الفيديو")
-            st.video(st.session_state['video_bytes'])
+            st.video(st.session_state['video_path'])
             st.info("💡 **نصيحة:** شاهد الفيديو وسجّل توقيت كل عنصر، ثم أدخله في قسم التحليل")
         else:
             st.info("👆 ارفع فيديو أعلاه لتشغيله")
