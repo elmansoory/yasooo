@@ -110,6 +110,7 @@ TRANSLATIONS = {
         'program_optimizer': '🏅 بناء البرنامج',
         'jump_simulator': '🎿 محاكي القفزات 3D',
         'world_champions': '🏆 أبطال العالم',
+        'fse_analysis': '📊 تحليل FSE المالي',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -193,6 +194,7 @@ TRANSLATIONS = {
         'program_optimizer': '🏅 Program Optimizer',
         'jump_simulator': '🎿 3D Jump Simulator',
         'world_champions': '🏆 World Champions',
+        'fse_analysis': '📊 FSE Financial Analysis',
         'logout': 'Logout',
         'login': 'Login',
         'username': 'Username',
@@ -764,6 +766,7 @@ _nav_pages = [
     t('program_optimizer'),
     t('jump_simulator'),
     t('world_champions'),
+    t('fse_analysis'),
     t('ml_training'),
     t('referee'),
     t('stats'),
@@ -2567,6 +2570,14 @@ def show_world_champions():
         st.error(f"خطأ في تحميل لوحة الأبطال: {e}")
         st.exception(e)
 
+def show_fse_analysis():
+    try:
+        from src.pages.fse_analysis_page import show_fse_analysis as _fse
+        _fse()
+    except Exception as e:
+        st.error(f"خطأ في تحميل تحليل FSE: {e}")
+        st.exception(e)
+
 # ============================================================================
 # MAIN ROUTER
 # ============================================================================
@@ -2590,6 +2601,7 @@ _ROUTER = {
     t('program_optimizer'): show_program_optimizer,
     t('jump_simulator'):    show_jump_simulator,
     t('world_champions'):   show_world_champions,
+    t('fse_analysis'):      show_fse_analysis,
     t('stats'):             show_stats,
     t('club_mgmt'):       show_club_management,
 }
@@ -2597,4 +2609,4 @@ _ROUTER.get(page, show_settings)()
 
 # Footer
 st.sidebar.markdown("---")
-st.sidebar.caption("v6.1 - 3D Simulator + World Champions | 6 Languages | Auth | Real-Time AI")
+st.sidebar.caption("v6.2 - FSE Analysis + 3D Simulator + World Champions | 6 Languages | Auth | Real-Time AI")
