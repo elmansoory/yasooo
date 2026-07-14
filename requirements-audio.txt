@@ -1,0 +1,18 @@
+# Audio Processing Dependencies for Music Editor
+# تبعيات معالجة الصوت لمحرر الموسيقى
+
+# Core audio processing
+pydub>=0.25.1
+
+# Advanced audio analysis (optional but recommended)
+librosa>=0.10.0
+soundfile>=0.12.1
+
+# NumPy (required by librosa)
+numpy>=1.24.0
+
+# Note: FFmpeg is also required for pydub
+# Install FFmpeg separately:
+#   Ubuntu/Debian: sudo apt-get install ffmpeg
+#   Mac: brew install ffmpeg
+#   Windows: Download from https://ffmpeg.org/download.html
