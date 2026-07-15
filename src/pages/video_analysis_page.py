@@ -192,6 +192,8 @@ class SkatingVideoAnalyzer:
         }
 
         # ── Pose extraction ──────────────────────────────────────────────────
+        self._skeleton_frames = []
+        self._pose_samples = []
         try:
             if MP_OK:
                 poses, frame_scores = self._extract_poses_mediapipe(video_path, progress_cb)
@@ -206,6 +208,36 @@ class SkatingVideoAnalyzer:
         # ── Element detection — spins FIRST, then exclude spin windows from jump detection ──
         spins = self._detect_spins(poses)
         jumps = self._detect_jumps(poses, spin_windows=[(s['t_start'], s['t_end']) for s in spins])
+
+        # ── Refine rotation count using real shoulder-angle tracking ─────────
+        for j in jumps:
+            t0, t1 = j.get('t_start', 0), j.get('t_end', 0)
+            seg_kp = [p['kp'] for p in poses if t0 <= p['t'] <= t1 and 'kp' in p]
+            real_rot = _compute_rotation_from_kp(seg_kp)
+            if real_rot is not None:
+                j['rotations'] = round(real_rot, 1)
+                # Re-classify with refined rotations
+                j['rpm'] = round(real_rot / j['airtime'] * 60) if j['airtime'] > 0 else j['rpm']
+                # Update code/type based on measured rotations
+                if real_rot >= 3.5:
+                    j['code'] = '4T'; j['type'] = 'Quad Toe'
+                elif real_rot >= 2.8:
+                    j['code'] = '3Lz'; j['type'] = 'Triple Lutz'
+                elif real_rot >= 2.3:
+                    j['code'] = '3A' if j['airtime'] > 0.6 else '3F'
+                    j['type'] = 'Triple Axel' if j['airtime'] > 0.6 else 'Triple Flip'
+                elif real_rot >= 1.8:
+                    j['code'] = '2A'; j['type'] = 'Double Axel'
+                elif real_rot >= 1.3:
+                    j['code'] = '2Lz'; j['type'] = 'Double Lutz'
+                else:
+                    j['code'] = '1A'; j['type'] = 'Single Axel'
+                j['base_value'] = ISU_BASE.get(j['code'], 1.0)
+                j['final_score'] = round(j['base_value'] + j['goe'] * j['base_value'] * 0.1, 2)
+                j['rotation_method'] = 'shoulder_tracking'
+            else:
+                j['rotation_method'] = 'airtime_heuristic'
+
         errors = self._detect_errors(poses, jumps)
         timeline = self._build_timeline(poses, jumps, spins)
 
@@ -223,6 +255,8 @@ class SkatingVideoAnalyzer:
             'tes': round(tes, 2),
             'pcs': pcs,
             'pose_count': len(poses),
+            'skeleton_frames': self._skeleton_frames,   # [{b64, t, airborne}]
+            'pose_samples': self._pose_samples,          # [{kp, t, airborne}]
             'is_demo': False,
             'analyzed_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
         }
@@ -230,6 +264,9 @@ class SkatingVideoAnalyzer:
     # ── MediaPipe Tasks API pose extraction ─────────────────────────────────
     def _extract_poses_mediapipe(self, video_path: str, progress_cb) -> Tuple[List, List]:
         poses = []
+        self._skeleton_frames = []   # base64-encoded JPEG frames with skeleton overlay
+        self._pose_samples = []      # every 10th pose kp list for 3D playback
+
         options = _PoseLandmarkerOptions(
             base_options=_MP_BaseOptions(model_asset_path=str(_MP_MODEL)),
             running_mode=_RunningMode.VIDEO,
@@ -240,7 +277,8 @@ class SkatingVideoAnalyzer:
         )
         cap = cv2.VideoCapture(video_path)
         fi = 0
-        SKIP = 2
+        SKIP = 2                   # process every 2nd frame
+        SKEL_EVERY = max(1, int(self.fps))   # save skeleton frame every ~1s
 
         with _PoseLandmarker.create_from_options(options) as lm_model:
             while cap.isOpened():
@@ -259,11 +297,39 @@ class SkatingVideoAnalyzer:
                             {'x': lm.x, 'y': lm.y, 'z': lm.z, 'v': lm.visibility, 'idx': i}
                             for i, lm in enumerate(lms)
                         ]
+                        # Shoulder rotation angle (XZ plane) for rotation tracking
+                        ls, rs = kp[11], kp[12]
+                        if ls['v'] > 0.2 and rs['v'] > 0.2:
+                            sh_angle = float(np.arctan2(
+                                rs['z'] - ls['z'], rs['x'] - ls['x']
+                            ))
+                        else:
+                            sh_angle = 0.0
+
                         is_airborne = self._is_airborne(kp)
-                        poses.append({
+                        pose_entry = {
                             'frame': fi, 't': fi / self.fps,
                             'kp': kp, 'airborne': is_airborne,
-                        })
+                            'sh_angle': sh_angle,
+                        }
+                        poses.append(pose_entry)
+
+                        # Save skeleton overlay frame (~1 per second, max 60 frames)
+                        pose_idx = len(poses) - 1
+                        if pose_idx % max(1, SKEL_EVERY // SKIP) == 0 and len(self._skeleton_frames) < 60:
+                            ann = _draw_skeleton_on_frame(frame, kp, self.width, self.height)
+                            self._skeleton_frames.append({
+                                'b64': _frame_to_b64(ann),
+                                't': fi / self.fps,
+                                'airborne': is_airborne,
+                            })
+
+                        # Store every 10th detected pose for 3D playback
+                        if pose_idx % 10 == 0 and len(self._pose_samples) < 120:
+                            self._pose_samples.append({
+                                'kp': kp, 't': fi / self.fps,
+                                'airborne': is_airborne,
+                            })
 
                     if progress_cb and self.total_frames > 0:
                         progress_cb(fi / self.total_frames, fi)
@@ -740,15 +806,15 @@ def _demo_data(lang: str = 'ar') -> Dict:
             {'type': 'Double Axel', 'code': '2A', 'rotations': 2.5, 'height_cm': 48,
              'airtime': 0.52, 'rpm': 288, 'goe': 2, 'base_value': 3.30,
              'final_score': 3.96, 'is_clean': True, 't_start': 3.6, 't_end': 4.1,
-             'frame_start': 108, 'frame_end': 123},
+             'frame_start': 108, 'frame_end': 123, 'rotation_method': 'shoulder_tracking'},
             {'type': 'Triple Lutz', 'code': '3Lz', 'rotations': 3.1, 'height_cm': 52,
              'airtime': 0.68, 'rpm': 273, 'goe': 1, 'base_value': 5.90,
              'final_score': 6.49, 'is_clean': True, 't_start': 7.0, 't_end': 7.7,
-             'frame_start': 210, 'frame_end': 231},
+             'frame_start': 210, 'frame_end': 231, 'rotation_method': 'shoulder_tracking'},
             {'type': 'Triple Flip', 'code': '3F', 'rotations': 2.75, 'height_cm': 38,
              'airtime': 0.61, 'rpm': 270, 'goe': -1, 'base_value': 5.30,
              'final_score': 4.77, 'is_clean': False, 't_start': 12.2, 't_end': 12.8,
-             'frame_start': 366, 'frame_end': 384},
+             'frame_start': 366, 'frame_end': 384, 'rotation_method': 'airtime_heuristic'},
         ],
         'spins': [
             {'type': 'Camel Spin', 'code': 'CSp', 'rotations': 7, 'rpm': 70,
@@ -782,6 +848,8 @@ def _demo_data(lang: str = 'ar') -> Dict:
         ],
         'total_score': 22.74, 'tes': 17.50, 'pcs': 8.00,
         'pose_count': 330,
+        'skeleton_frames': [],
+        'pose_samples': [],
         'is_demo': True,
         'analyzed_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
     }
@@ -796,6 +864,168 @@ SEV_COLOR = {'حرج': '#dc2626', 'CRITICAL': '#dc2626', 'عالي': '#ea580c',
              'منخفض': '#65a30d', 'LOW': '#65a30d'}
 SEV_ICON = {'حرج': '🔴', 'CRITICAL': '🔴', 'عالي': '🟠', 'HIGH': '🟠',
             'متوسط': '🟡', 'MEDIUM': '🟡', 'منخفض': '🟢', 'LOW': '🟢'}
+
+# ============================================================================
+# SKELETON & 3D CONSTANTS
+# ============================================================================
+
+# MediaPipe body bone connections (index pairs)
+BODY_CONNECTIONS = [
+    (0, 11), (0, 12),
+    (11, 12),
+    (11, 13), (13, 15),
+    (12, 14), (14, 16),
+    (15, 17), (15, 19), (17, 19),
+    (16, 18), (16, 20), (18, 20),
+    (11, 23), (12, 24),
+    (23, 24),
+    (23, 25), (25, 27), (27, 29), (27, 31), (29, 31),
+    (24, 26), (26, 28), (28, 30), (28, 32), (30, 32),
+]
+
+# Joint group colors for 3D visualization
+_JC = {
+    'head':  ([0,1,2,3,4,5,6,7,8,9,10], '#60A5FA'),
+    'arms':  ([11,12,13,14,15,16,17,18,19,20,21,22], '#F59E0B'),
+    'torso': ([23,24], '#10B981'),
+    'legs':  ([25,26,27,28,29,30,31,32], '#A78BFA'),
+}
+
+
+def _joint_color(idx: int) -> str:
+    for grp, (indices, color) in _JC.items():
+        if idx in indices:
+            return color
+    return '#94A3B8'
+
+
+def _draw_skeleton_on_frame(frame_bgr: np.ndarray, kp_list: list, W: int, H: int) -> np.ndarray:
+    """Draw MediaPipe skeleton overlay on a BGR frame using cv2."""
+    if not CV2_OK or not kp_list or len(kp_list) < 29:
+        return frame_bgr
+    out = frame_bgr.copy()
+    # Draw bones
+    for a, b in BODY_CONNECTIONS:
+        if a >= len(kp_list) or b >= len(kp_list):
+            continue
+        pa, pb = kp_list[a], kp_list[b]
+        if pa.get('v', 0) < 0.25 or pb.get('v', 0) < 0.25:
+            continue
+        x1, y1 = int(pa['x'] * W), int(pa['y'] * H)
+        x2, y2 = int(pb['x'] * W), int(pb['y'] * H)
+        cv2.line(out, (x1, y1), (x2, y2), (80, 180, 255), 2, cv2.LINE_AA)
+    # Draw joints
+    KEY = {11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28}
+    for i, kp in enumerate(kp_list):
+        if kp.get('v', 0) < 0.25:
+            continue
+        x, y = int(kp['x'] * W), int(kp['y'] * H)
+        if i in KEY:
+            cv2.circle(out, (x, y), 7, (0, 230, 120), -1)
+            cv2.circle(out, (x, y), 8, (255, 255, 255), 1, cv2.LINE_AA)
+        else:
+            cv2.circle(out, (x, y), 3, (80, 180, 255), -1)
+    return out
+
+
+def _frame_to_b64(frame_bgr: np.ndarray) -> str:
+    """Encode a BGR frame as a base64 JPEG string."""
+    import base64
+    _, buf = cv2.imencode('.jpg', frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 82])
+    return base64.b64encode(buf.tobytes()).decode()
+
+
+def _build_3d_skeleton_fig(kp_list: list, title: str = "هيكل عظمي 3D",
+                            dark: bool = True) -> go.Figure:
+    """Return a Plotly 3D figure for a single pose frame."""
+    if not kp_list or len(kp_list) < 29:
+        return None
+    n = len(kp_list)
+    xs = [p['x'] for p in kp_list]
+    ys = [-p['y'] for p in kp_list]   # flip: screen Y is down, 3D Y up
+    zs = [-p.get('z', 0) for p in kp_list]  # negate depth for readable view
+    vis = [p.get('v', 1.0) for p in kp_list]
+    colors = [_joint_color(i) for i in range(n)]
+    sizes = [10 if i in {0,11,12,13,14,15,16,23,24,25,26,27,28} else 5 for i in range(n)]
+
+    bg = 'rgba(8,18,30,0.97)' if dark else 'rgba(240,248,255,0.97)'
+    line_c = 'rgba(80,180,255,0.6)' if dark else 'rgba(30,100,200,0.5)'
+    paper = 'rgba(8,18,30,1)' if dark else 'rgba(240,248,255,1)'
+    font_c = '#E8F0FA' if dark else '#0F2033'
+    grid_c = 'rgba(100,150,255,0.12)'
+
+    fig = go.Figure()
+
+    # Bones
+    for a, b in BODY_CONNECTIONS:
+        if a >= n or b >= n:
+            continue
+        if vis[a] < 0.2 or vis[b] < 0.2:
+            continue
+        fig.add_trace(go.Scatter3d(
+            x=[xs[a], xs[b], None],
+            y=[zs[a], zs[b], None],
+            z=[ys[a], ys[b], None],
+            mode='lines',
+            line=dict(color=line_c, width=4),
+            showlegend=False,
+            hoverinfo='skip',
+        ))
+
+    # Joints
+    fig.add_trace(go.Scatter3d(
+        x=xs, y=zs, z=ys,
+        mode='markers',
+        marker=dict(size=sizes, color=colors, opacity=[min(1.0, v + 0.3) for v in vis],
+                    line=dict(color='white', width=0.5)),
+        name='مفاصل',
+        text=[f'Joint {i} ({p.get("v",0):.2f})' for i, p in enumerate(kp_list)],
+        hoverinfo='text',
+    ))
+
+    fig.update_layout(
+        title=dict(text=title, font=dict(color=font_c, size=14)),
+        scene=dict(
+            xaxis=dict(title='X', showgrid=True, gridcolor=grid_c,
+                       zeroline=False, backgroundcolor=bg),
+            yaxis=dict(title='عمق Z', showgrid=True, gridcolor=grid_c,
+                       zeroline=False, backgroundcolor=bg),
+            zaxis=dict(title='ارتفاع Y', showgrid=True, gridcolor=grid_c,
+                       zeroline=False, backgroundcolor=bg),
+            bgcolor=bg,
+            aspectmode='data',
+            camera=dict(eye=dict(x=1.4, y=-1.2, z=0.8)),
+        ),
+        paper_bgcolor=paper,
+        font=dict(color=font_c),
+        height=540,
+        margin=dict(l=0, r=0, t=40, b=0),
+        showlegend=False,
+    )
+    return fig
+
+
+def _compute_rotation_from_kp(kp_segment: list) -> Optional[float]:
+    """
+    Estimate rotation count during a jump from the shoulder-line angle
+    change in the XZ plane (x = lateral, z = depth).
+    Returns None if insufficient data.
+    """
+    angles = []
+    for kp in kp_segment:
+        if not kp:
+            continue
+        ls = kp[11] if len(kp) > 12 else None
+        rs = kp[12] if len(kp) > 12 else None
+        if ls and rs and ls.get('v', 0) > 0.2 and rs.get('v', 0) > 0.2:
+            dx = rs['x'] - ls['x']
+            dz = rs.get('z', 0) - ls.get('z', 0)
+            angles.append(np.arctan2(dz, dx))
+    if len(angles) < 4:
+        return None
+    unwrapped = np.unwrap(np.array(angles))
+    total = abs(unwrapped[-1] - unwrapped[0]) / (2 * np.pi)
+    return max(0.3, total)
 
 
 def _save_to_db(results: Dict, player_name: str, session_note: str):
@@ -997,9 +1227,10 @@ def show_video_analysis_page(lang: str = 'ar'):
     """, unsafe_allow_html=True)
 
     # Status bar
-    mp_status = "✅ MediaPipe" if MP_OK else "⚠️ OpenCV فقط"
+    mp_status = "✅ MediaPipe + هيكل 3D" if MP_OK else "⚠️ OpenCV فقط (بدون هيكل 3D)"
     cv_status = "✅ OpenCV" if CV2_OK else "❌ OpenCV غير متوفر"
-    st.caption(f"محرك التحليل: {mp_status} | {cv_status}")
+    rot_status = "✅ تتبع دوران حقيقي" if MP_OK else "⚠️ تقدير الدوران بالوقت"
+    st.caption(f"محرك التحليل: {mp_status} | {cv_status} | {rot_status}")
     st.markdown("---")
 
     tabs = st.tabs([
@@ -1007,6 +1238,7 @@ def show_video_analysis_page(lang: str = 'ar'):
         "📊 النتائج",
         "🏅 القفزات والدورانات",
         "⚠️ الأخطاء والتصحيحات",
+        "🦴 الهيكل العظمي 3D",
         "📈 الإحصائيات",
         "📄 التقارير"
     ])
@@ -1020,8 +1252,10 @@ def show_video_analysis_page(lang: str = 'ar'):
     with tabs[3]:
         _tab_errors(ar, lang)
     with tabs[4]:
-        _tab_stats(ar, lang)
+        _tab_skeleton_3d(ar, lang)
     with tabs[5]:
+        _tab_stats(ar, lang)
+    with tabs[6]:
         _tab_reports(ar, lang)
 
 
@@ -1289,7 +1523,11 @@ def _tab_elements(ar: bool, lang: str):
                 """, unsafe_allow_html=True)
 
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
-                c1.metric("🔁 دورات", f"{j.get('rotations',0):.1f}")
+                rot_method = j.get('rotation_method', 'airtime_heuristic')
+                rot_icon = '🎯' if rot_method == 'shoulder_tracking' else '📐'
+                rot_label = f"{j.get('rotations',0):.1f} {rot_icon}"
+                c1.metric("🔁 دورات", rot_label,
+                          help="🎯 = تتبع كتفين فعلي | 📐 = تقدير بالوقت")
                 c2.metric("📏 ارتفاع", f"{j.get('height_cm',0)} cm")
                 c3.metric("⏱️ طيران", f"{j.get('airtime',0):.2f}s")
                 c4.metric("⚡ RPM", f"{j.get('rpm',0):.0f}")
@@ -1542,6 +1780,251 @@ def _tab_stats(ar: bool, lang: str):
 # ============================================================================
 # TAB: REPORTS
 # ============================================================================
+
+# ============================================================================
+# TAB: SKELETON 3D
+# ============================================================================
+
+def _tab_skeleton_3d(ar: bool, lang: str):
+    results = st.session_state.get('analysis_results')
+    if not results:
+        st.info("ارفع فيديو أو استخدم العرض التجريبي أولاً" if ar else
+                "Upload a video or use demo first")
+        return
+
+    is_demo = results.get('is_demo', False)
+    skel_frames = results.get('skeleton_frames', [])
+    pose_samples = results.get('pose_samples', [])
+
+    st.markdown("""
+    <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);
+                border-radius:14px;padding:20px 24px;margin-bottom:20px;color:white">
+      <h3 style="margin:0 0 6px;font-size:1.3em">🦴 الهيكل العظمي ثلاثي الأبعاد</h3>
+      <p style="margin:0;opacity:.75;font-size:.9em">
+        تصوير تفاعلي ثلاثي الأبعاد لمفاصل الجسم المُستخرجة بـ MediaPipe (33 نقطة مرجعية)
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if is_demo or (not skel_frames and not pose_samples):
+        # Show demo 3D skeleton
+        st.info("⚡ عرض تجريبي — ارفع فيديو حقيقي للحصول على هيكل عظمي مُحلَّل فعلياً")
+        _show_demo_skeleton_3d()
+        return
+
+    # ── SECTION 1: 3D Interactive Skeleton ───────────────────────────────────
+    if pose_samples:
+        st.subheader("🔵 هيكل عظمي تفاعلي — اختر الإطار")
+
+        sample_count = len(pose_samples)
+        frame_idx = st.slider(
+            "الإطار الزمني",
+            min_value=0, max_value=max(0, sample_count - 1),
+            value=0, step=1,
+            format="إطار %d",
+            key='skel_frame_slider'
+        )
+
+        sample = pose_samples[frame_idx]
+        t_sec = sample.get('t', 0)
+        is_air = sample.get('airborne', False)
+
+        # Build 3D figure
+        fig3d = _build_3d_skeleton_fig(
+            sample['kp'],
+            title=f"الهيكل العظمي عند {t_sec:.1f}ث {'🟡 في الهواء' if is_air else '⬇️ على الأرض'}"
+        )
+        if fig3d:
+            st.plotly_chart(fig3d, use_container_width=True)
+
+        # Joint angles readout
+        kp = sample['kp']
+        st.markdown("**📐 زوايا المفاصل الرئيسية:**")
+
+        def ang3(a, b, c):
+            """Angle at joint b formed by a-b-c."""
+            try:
+                va = np.array([kp[a]['x']-kp[b]['x'], kp[a]['y']-kp[b]['y'], kp[a].get('z',0)-kp[b].get('z',0)])
+                vc = np.array([kp[c]['x']-kp[b]['x'], kp[c]['y']-kp[b]['y'], kp[c].get('z',0)-kp[b].get('z',0)])
+                cos = np.dot(va,vc)/(np.linalg.norm(va)*np.linalg.norm(vc)+1e-9)
+                return round(np.degrees(np.arccos(np.clip(cos,-1,1))), 1)
+            except Exception:
+                return None
+
+        joint_angles = {
+            'كوع أيسر':  ang3(11, 13, 15),
+            'كوع أيمن':  ang3(12, 14, 16),
+            'ركبة يسرى': ang3(23, 25, 27),
+            'ركبة يمنى': ang3(24, 26, 28),
+            'ورك أيسر':  ang3(11, 23, 25),
+            'ورك أيمن':  ang3(12, 24, 26),
+        }
+
+        angle_cols = st.columns(6)
+        for (name, deg), col in zip(joint_angles.items(), angle_cols):
+            if deg is not None:
+                color = '#10B981' if 150 <= deg <= 180 else ('#F59E0B' if 100 <= deg < 150 else '#EF4444')
+                col.markdown(
+                    f"<div style='text-align:center;background:#1e293b;border-radius:10px;"
+                    f"padding:10px 6px;color:{color}'>"
+                    f"<div style='font-size:1.4em;font-weight:800'>{deg}°</div>"
+                    f"<div style='font-size:.72em;color:#94a3b8;margin-top:2px'>{name}</div></div>",
+                    unsafe_allow_html=True
+                )
+
+        # Airborne timeline bar
+        if sample_count > 1:
+            st.markdown("**📈 حالة الجسم عبر الزمن:**")
+            ts = [s.get('t', i/10) for i, s in enumerate(pose_samples)]
+            air = [1 if s.get('airborne') else 0 for s in pose_samples]
+            fig_air = go.Figure()
+            fig_air.add_trace(go.Scatter(
+                x=ts, y=air, mode='lines', fill='tozeroy',
+                line=dict(color='#60A5FA', width=2),
+                fillcolor='rgba(96,165,250,0.25)',
+                name='في الهواء'
+            ))
+            fig_air.add_vline(x=t_sec, line_width=2, line_dash='dash', line_color='#F59E0B')
+            fig_air.update_layout(
+                height=120, margin=dict(l=0,r=0,t=10,b=0),
+                yaxis=dict(tickvals=[0,1], ticktext=['أرض','هواء'], range=[-0.1, 1.3]),
+                xaxis_title='الوقت (ث)',
+                plot_bgcolor='rgba(15,23,42,1)',
+                paper_bgcolor='rgba(15,23,42,1)',
+                font_color='#94a3b8',
+            )
+            st.plotly_chart(fig_air, use_container_width=True)
+
+    st.markdown("---")
+
+    # ── SECTION 2: Skeleton overlay frames ───────────────────────────────────
+    if skel_frames:
+        st.subheader("📸 إطارات مع الهيكل العظمي")
+        st.caption(f"تم حفظ {len(skel_frames)} إطار خلال التحليل")
+
+        # Controls
+        col_flt, col_jump = st.columns([3, 1])
+        with col_flt:
+            show_all = st.checkbox("إظهار جميع الإطارات", value=False)
+        with col_jump:
+            jump_only = st.checkbox("إطارات الطيران فقط", value=False)
+
+        filtered = skel_frames
+        if jump_only:
+            filtered = [f for f in skel_frames if f.get('airborne')]
+        if not show_all:
+            filtered = filtered[:12]
+
+        if not filtered:
+            st.info("لا توجد إطارات مطابقة")
+        else:
+            num_cols = 3
+            for row_start in range(0, len(filtered), num_cols):
+                row = filtered[row_start:row_start + num_cols]
+                cols = st.columns(num_cols)
+                for col, frm in zip(cols, row):
+                    with col:
+                        t_val = frm.get('t', 0)
+                        air_badge = "🟡 طيران" if frm.get('airborne') else "⬇️ أرض"
+                        st.markdown(
+                            f"<img src='data:image/jpeg;base64,{frm['b64']}' "
+                            f"style='width:100%;border-radius:10px;border:2px solid "
+                            f"{'#F59E0B' if frm.get('airborne') else '#334155'}'>",
+                            unsafe_allow_html=True
+                        )
+                        st.caption(f"{t_val:.1f}ث — {air_badge}")
+
+    else:
+        st.info("الهيكل العظمي على الإطارات يتطلب MediaPipe — الملف لم يُعالَج بالكامل بـ MediaPipe")
+
+    st.markdown("---")
+
+    # ── SECTION 3: Rotation tracking chart ───────────────────────────────────
+    jumps = results.get('jumps', [])
+    if jumps and pose_samples:
+        st.subheader("🔄 تتبع الدوران بمحاذاة الكتفين")
+        times_ps = [s.get('t', 0) for s in pose_samples]
+        sh_angles = []
+        for s in pose_samples:
+            kp = s.get('kp', [])
+            if len(kp) > 12:
+                ls, rs = kp[11], kp[12]
+                if ls.get('v', 0) > 0.2 and rs.get('v', 0) > 0.2:
+                    sh_angles.append(float(np.degrees(np.arctan2(
+                        rs.get('z', 0) - ls.get('z', 0),
+                        rs['x'] - ls['x']
+                    ))))
+                else:
+                    sh_angles.append(None)
+            else:
+                sh_angles.append(None)
+
+        valid = [(t, a) for t, a in zip(times_ps, sh_angles) if a is not None]
+        if valid:
+            vt, va = zip(*valid)
+            fig_rot = go.Figure()
+            fig_rot.add_trace(go.Scatter(
+                x=list(vt), y=list(va),
+                mode='lines', name='زاوية الكتفين',
+                line=dict(color='#A78BFA', width=2)
+            ))
+            # Mark jump windows
+            for j in jumps:
+                fig_rot.add_vrect(
+                    x0=j.get('t_start', 0), x1=j.get('t_end', 0),
+                    fillcolor='rgba(245,158,11,0.15)',
+                    layer='below', line_width=0,
+                    annotation_text=j.get('code', ''), annotation_position='top left'
+                )
+            fig_rot.update_layout(
+                height=260, margin=dict(l=0,r=0,t=30,b=0),
+                xaxis_title='الوقت (ث)',
+                yaxis_title='زاوية الكتف (°)',
+                plot_bgcolor='rgba(15,23,42,1)',
+                paper_bgcolor='rgba(15,23,42,1)',
+                font_color='#94a3b8',
+            )
+            st.plotly_chart(fig_rot, use_container_width=True)
+            st.caption("المناطق البرتقالية = نوافذ القفز. تذبذبات الزاوية خلالها = دورانات فعلية")
+
+
+def _show_demo_skeleton_3d():
+    """Show a synthetic demo skeleton when no real data available."""
+    import math
+    # T-pose synthetic keypoints
+    demo_kp = []
+    defs = {
+        0:  (0.50, 0.08, 0.00, 1.0),  # nose
+        11: (0.40, 0.25, 0.00, 1.0), 12: (0.60, 0.25, 0.00, 1.0),  # shoulders
+        13: (0.32, 0.40, 0.00, 1.0), 14: (0.68, 0.40, 0.00, 1.0),  # elbows
+        15: (0.24, 0.52, 0.00, 1.0), 16: (0.76, 0.52, 0.00, 1.0),  # wrists
+        23: (0.43, 0.55, 0.00, 1.0), 24: (0.57, 0.55, 0.00, 1.0),  # hips
+        25: (0.42, 0.72, 0.00, 1.0), 26: (0.58, 0.72, 0.00, 1.0),  # knees
+        27: (0.41, 0.88, 0.00, 1.0), 28: (0.59, 0.88, 0.00, 1.0),  # ankles
+        29: (0.40, 0.92, 0.00, 1.0), 30: (0.60, 0.92, 0.00, 1.0),  # heels
+        31: (0.38, 0.95, 0.00, 1.0), 32: (0.62, 0.95, 0.00, 1.0),  # foot index
+    }
+    for i in range(33):
+        if i in defs:
+            x, y, z, v = defs[i]
+        else:
+            x, y, z, v = 0.5, 0.5, 0.0, 0.3
+        demo_kp.append({'x': x, 'y': y, 'z': z, 'v': v, 'idx': i})
+
+    fig = _build_3d_skeleton_fig(demo_kp, title="هيكل عظمي تجريبي — وضع T-Pose")
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("""
+    <div style="background:#1e293b;border-radius:10px;padding:14px;color:#94a3b8;font-size:.85em">
+    <b style="color:#60A5FA">كيف تعمل تقنية الهيكل العظمي 3D:</b><br>
+    • MediaPipe يستخرج 33 نقطة مرجعية (مفصل) من كل إطار فيديو<br>
+    • كل نقطة لها إحداثيات X (أفقي) وY (رأسي) وZ (العمق)<br>
+    • يتم رصد زاوية الكتفين عبر الزمن لحساب الدورانات الفعلية في الهواء<br>
+    • الإطارات المحفوظة تُظهر الهيكل العظمي مرسوماً فوق الفيديو الأصلي
+    </div>
+    """, unsafe_allow_html=True)
+
 
 def _tab_reports(ar: bool, lang: str):
     st.subheader("📄 التقارير والتصدير")
