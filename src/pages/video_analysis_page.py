@@ -976,7 +976,7 @@ def _build_3d_skeleton_fig(kp_list: list, title: str = "هيكل عظمي 3D",
     fig.add_trace(go.Scatter3d(
         x=xs, y=zs, z=ys,
         mode='markers',
-        marker=dict(size=sizes, color=colors, opacity=[min(1.0, v + 0.3) for v in vis],
+        marker=dict(size=sizes, color=colors, opacity=0.92,
                     line=dict(color='white', width=0.5)),
         name='مفاصل',
         text=[f'Joint {i} ({p.get("v",0):.2f})' for i, p in enumerate(kp_list)],
