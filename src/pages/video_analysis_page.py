@@ -239,24 +239,42 @@ class SkatingVideoAnalyzer:
                 j['rotation_method'] = 'airtime_heuristic'
 
         errors = self._detect_errors(poses, jumps)
-        timeline = self._build_timeline(poses, jumps, spins)
+
+        # ── AI Movement Engine enhancement ────────────────────────────────────
+        step_sequences = []
+        ai_status = {}
+        try:
+            from src.analysis.ai_movement_engine import AIMovementEngine
+            engine = AIMovementEngine()
+            ai_status = engine.status()
+            jumps  = [engine.enhance_jump(j, poses) for j in jumps]
+            spins  = [engine.enhance_spin(s, poses) for s in spins]
+            step_sequences = engine.detect_step_sequences(poses, jumps, spins)
+        except Exception:
+            pass
+
+        timeline = self._build_timeline(poses, jumps, spins, step_sequences)
 
         # ── Scoring ──────────────────────────────────────────────────────────
-        tes = sum(j['final_score'] for j in jumps) + sum(s['final_score'] for s in spins)
+        tes = (sum(j['final_score'] for j in jumps)
+               + sum(s['final_score'] for s in spins)
+               + sum(ss['final_score'] for ss in step_sequences))
         pcs = round(min(10, max(3, 8 - len(errors) * 0.5)) * 2, 2)
 
         return {
             'video_info': video_info,
             'jumps': jumps,
             'spins': spins,
+            'step_sequences': step_sequences,
             'errors': errors,
             'timeline': timeline,
             'total_score': round(tes + pcs, 2),
             'tes': round(tes, 2),
             'pcs': pcs,
             'pose_count': len(poses),
-            'skeleton_frames': self._skeleton_frames,   # [{b64, t, airborne}]
-            'pose_samples': self._pose_samples,          # [{kp, t, airborne}]
+            'skeleton_frames': self._skeleton_frames,
+            'pose_samples': self._pose_samples,
+            'ai_status': ai_status,
             'is_demo': False,
             'analyzed_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
         }
@@ -768,21 +786,28 @@ class SkatingVideoAnalyzer:
         return errors
 
     # ── Timeline ─────────────────────────────────────────────────────────────
-    def _build_timeline(self, poses, jumps, spins) -> List[Dict]:
+    def _build_timeline(self, poses, jumps, spins, step_sequences=None) -> List[Dict]:
         timeline = []
         for j in jumps:
             timeline.append({
-                'type': 'jump', 'label': j['type'],
+                'type': 'jump', 'label': j.get('ai_name', j['type']),
                 't': j.get('t_start', 0), 'duration': j.get('airtime', 0.3),
                 'score': j['final_score'], 'goe': j['goe'],
                 'color': '#22c55e' if j['goe'] >= 0 else '#ef4444',
             })
         for s in spins:
             timeline.append({
-                'type': 'spin', 'label': s['type'],
+                'type': 'spin', 'label': s.get('ai_name', s['type']),
                 't': s.get('t_start', 0), 'duration': s.get('duration', 2),
                 'score': s['final_score'], 'goe': s['goe'],
                 'color': '#3b82f6',
+            })
+        for ss in (step_sequences or []):
+            timeline.append({
+                'type': 'step', 'label': ss['type'],
+                't': ss.get('t_start', 0), 'duration': ss.get('duration', 5),
+                'score': ss['final_score'], 'goe': ss.get('goe', 0),
+                'color': '#a78bfa',
             })
         timeline.sort(key=lambda x: x['t'])
         return timeline
@@ -846,10 +871,17 @@ def _demo_data(lang: str = 'ar') -> Dict:
             {'type': 'spin', 'label': 'Camel Spin', 't': 9.0, 'duration': 6.0, 'score': 2.28, 'goe': 1, 'color': '#3b82f6'},
             {'type': 'jump', 'label': 'Triple Flip', 't': 12.2, 'duration': 0.61, 'score': 4.77, 'goe': -1, 'color': '#ef4444'},
         ],
-        'total_score': 22.74, 'tes': 17.50, 'pcs': 8.00,
+        'step_sequences': [
+            {'type': 'Step Sequence', 'code': 'StSq2', 'level': 2,
+             'duration': 8.5, 't_start': 16.0, 't_end': 24.5,
+             'complexity': 0.62, 'base_value': 2.60, 'final_score': 2.60,
+             'goe': 0, 'color': '#a78bfa'},
+        ],
+        'total_score': 25.34, 'tes': 20.10, 'pcs': 8.00,
         'pose_count': 330,
         'skeleton_frames': [],
         'pose_samples': [],
+        'ai_status': {'movement_classifier': False, 'lstm': False, 'pose_comparator': False},
         'is_demo': True,
         'analyzed_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
     }
@@ -1369,11 +1401,26 @@ def _tab_results(ar: bool, lang: str):
     if results.get('is_demo'):
         st.caption("🎭 عرض تجريبي — بيانات للتوضيح فقط")
 
+    # AI engine status banner
+    ai_status = results.get('ai_status', {})
+    if ai_status:
+        active = [k for k, v in ai_status.items() if v]
+        if active:
+            model_names = {
+                'movement_classifier': 'MovementClassifier',
+                'lstm': 'LSTM',
+                'pose_comparator': 'PoseComparator',
+            }
+            active_labels = " · ".join(model_names.get(k, k) for k in active)
+            st.success(f"🤖 الذكاء الاصطناعي نشط: {active_labels}")
+        else:
+            st.info("ℹ️ نماذج AI غير محملة — النتائج بالخوارزميات الأساسية فقط")
+
     vi = results.get('video_info', {})
     player_name = results.get('player_name', '')
 
     # Top metrics
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
     with col1:
         st.metric("⏱️ المدة", f"{vi.get('duration', 0):.1f}s")
     with col2:
@@ -1386,6 +1433,8 @@ def _tab_results(ar: bool, lang: str):
         st.metric("🦘 قفزات", len(results.get('jumps', [])))
     with col6:
         st.metric("🌀 دورانات", len(results.get('spins', [])))
+    with col7:
+        st.metric("👣 خطوات", len(results.get('step_sequences', [])))
 
     st.markdown("---")
 
@@ -1536,6 +1585,42 @@ def _tab_elements(ar: bool, lang: str):
                             f"color:{goe_color};font-weight:700;font-size:1.1em'>"
                             f"GOE: {goe:+d}</div>", unsafe_allow_html=True)
 
+                # AI-enhanced details
+                ai_code = j.get('ai_code')
+                if ai_code:
+                    with st.expander(f"🤖 تحليل الذكاء الاصطناعي — {ai_code}", expanded=False):
+                        a1, a2, a3, a4 = st.columns(4)
+                        a1.metric("🏷️ كود AI", j.get('ai_code', '—'))
+                        conf_pct = int(j.get('ai_confidence', 0) * 100)
+                        a2.metric("📊 ثقة", f"{conf_pct}%")
+                        a3.metric("↗️ إقلاع", j.get('ai_takeoff', '—'))
+                        a4.metric("⚡ حافة", j.get('ai_edge', '—'))
+
+                        lstm_label = j.get('lstm_label')
+                        if lstm_label:
+                            st.markdown(f"**🧠 LSTM:** `{lstm_label}`"
+                                        f" ({int(j.get('lstm_confidence',0)*100)}%)")
+                            top3 = j.get('lstm_top3', [])
+                            if top3:
+                                top3_str = " · ".join(f"{lb} {int(c*100)}%" for lb, c in top3)
+                                st.caption(f"أعلى 3: {top3_str}")
+
+                        pose_score = j.get('pose_score')
+                        if pose_score is not None:
+                            rating = j.get('pose_rating', '')
+                            phase_map = {
+                                'axel_takeoff': 'الإقلاع',
+                                'axel_flight':  'الطيران',
+                                'axel_landing': 'الهبوط',
+                            }
+                            phase_label = phase_map.get(j.get('pose_phase',''), j.get('pose_phase',''))
+                            st.markdown(f"**🦴 جودة الوضعية ({phase_label}):** "
+                                        f"`{int(pose_score*100)}%` {rating}")
+                            corrections = j.get('pose_corrections_ar', [])
+                            if corrections:
+                                for corr in corrections[:3]:
+                                    st.markdown(f"   • {corr}")
+
         # Jump comparison chart
         st.markdown("---")
         labels = [f"{i}.{j.get('type','')}" for i, j in enumerate(jumps, 1)]
@@ -1592,8 +1677,55 @@ def _tab_elements(ar: bool, lang: str):
                 c5.markdown(f"<div style='text-align:center;padding-top:12px;"
                             f"color:{goe_color};font-weight:700;font-size:1.1em'>"
                             f"GOE: {goe:+d}</div>", unsafe_allow_html=True)
+
+                # AI spin details
+                ai_code_s = s.get('ai_code')
+                if ai_code_s:
+                    with st.expander(f"🤖 تحليل الذكاء الاصطناعي — {ai_code_s}", expanded=False):
+                        b1, b2, b3 = st.columns(3)
+                        b1.metric("🎭 وضعية", s.get('ai_position', '—'))
+                        stab = s.get('axis_stability', 0)
+                        b2.metric("🎯 استقرار المحور", f"{int(stab*100)}%")
+                        b3.metric("🏅 مستوى AI", f"L{s.get('ai_level', s.get('level',1))}")
+
+                        pose_score_s = s.get('pose_score')
+                        if pose_score_s is not None:
+                            st.markdown(f"**🦴 جودة الوضعية:** `{int(pose_score_s*100)}%` "
+                                        f"{s.get('pose_rating','')}")
+                            corrs_s = s.get('pose_corrections_ar', [])
+                            for corr in corrs_s[:3]:
+                                st.markdown(f"   • {corr}")
     else:
         st.info("لم يتم اكتشاف دورانات في هذا الفيديو")
+
+    # ── STEP SEQUENCES ────────────────────────────────────────────────────────
+    step_seqs = results.get('step_sequences', [])
+    if step_seqs:
+        st.markdown("---")
+        st.subheader(f"👣 تسلسلات الخطوات ({len(step_seqs)})")
+        for i, ss in enumerate(step_seqs, 1):
+            with st.container():
+                st.markdown(f"""
+                <div style="border:2px solid #a78bfa;border-radius:12px;
+                            padding:14px 18px;margin-bottom:12px;background:#faf5ff">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font-size:1.1em;font-weight:700">
+                      👣 {i}. {ss.get('type','Step Sequence')}
+                      <span style="font-size:0.75em;color:#94a3b8;margin-right:8px">
+                        ({ss.get('code','')}) Level {ss.get('level',1)}
+                      </span>
+                    </span>
+                    <span style="font-size:1.4em;font-weight:800;color:#7c3aed">
+                      {ss.get('final_score',0):.2f} pts
+                    </span>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+                s1, s2, s3, s4 = st.columns(4)
+                s1.metric("⏱️ المدة", f"{ss.get('duration',0):.1f}s")
+                s2.metric("🏅 المستوى", f"L{ss.get('level',1)}")
+                s3.metric("📌 Base Value", f"{ss.get('base_value',0):.2f}")
+                s4.metric("🔀 تعقيد", f"{int(ss.get('complexity',0)*100)}%")
 
 
 # ============================================================================
