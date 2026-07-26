@@ -973,12 +973,15 @@ def _build_3d_skeleton_fig(kp_list: list, title: str = "هيكل عظمي 3D",
     if not kp_list or len(kp_list) < 29:
         return None
     n = len(kp_list)
-    xs = [p['x'] for p in kp_list]
-    ys = [-p['y'] for p in kp_list]   # flip: screen Y is down, 3D Y up
-    zs = [-p.get('z', 0) for p in kp_list]  # negate depth for readable view
-    vis = [p.get('v', 1.0) for p in kp_list]
+    xs = [float(p['x']) for p in kp_list]
+    ys = [float(-p['y']) for p in kp_list]    # flip: screen Y is down, 3D Y up
+    zs = [float(-p.get('z', 0)) for p in kp_list]  # negate depth for readable view
+    joint_vis = [float(p.get('v', 1.0)) for p in kp_list]  # visibility per joint
     colors = [_joint_color(i) for i in range(n)]
     sizes = [10 if i in {0,11,12,13,14,15,16,23,24,25,26,27,28} else 5 for i in range(n)]
+
+    # opacity MUST be a scalar for scatter3d.marker — Plotly rejects lists
+    MARKER_OPACITY = float(0.92)
 
     bg = 'rgba(8,18,30,0.97)' if dark else 'rgba(240,248,255,0.97)'
     line_c = 'rgba(80,180,255,0.6)' if dark else 'rgba(30,100,200,0.5)'
@@ -988,11 +991,11 @@ def _build_3d_skeleton_fig(kp_list: list, title: str = "هيكل عظمي 3D",
 
     fig = go.Figure()
 
-    # Bones
+    # Bones — skip low-visibility joints
     for a, b in BODY_CONNECTIONS:
         if a >= n or b >= n:
             continue
-        if vis[a] < 0.2 or vis[b] < 0.2:
+        if joint_vis[a] < 0.2 or joint_vis[b] < 0.2:
             continue
         fig.add_trace(go.Scatter3d(
             x=[xs[a], xs[b], None],
@@ -1004,14 +1007,18 @@ def _build_3d_skeleton_fig(kp_list: list, title: str = "هيكل عظمي 3D",
             hoverinfo='skip',
         ))
 
-    # Joints
+    # Joints — opacity must be a plain float scalar
     fig.add_trace(go.Scatter3d(
         x=xs, y=zs, z=ys,
         mode='markers',
-        marker=dict(size=sizes, color=colors, opacity=0.92,
-                    line=dict(color='white', width=0.5)),
+        marker=dict(
+            size=sizes,
+            color=colors,
+            opacity=MARKER_OPACITY,
+            line=dict(color='white', width=0.5),
+        ),
         name='مفاصل',
-        text=[f'Joint {i} ({p.get("v",0):.2f})' for i, p in enumerate(kp_list)],
+        text=[f'Joint {i} ({joint_vis[i]:.2f})' for i in range(n)],
         hoverinfo='text',
     ))
 
@@ -1962,12 +1969,15 @@ def _tab_skeleton_3d(ar: bool, lang: str):
         is_air = sample.get('airborne', False)
 
         # Build 3D figure
-        fig3d = _build_3d_skeleton_fig(
-            sample['kp'],
-            title=f"الهيكل العظمي عند {t_sec:.1f}ث {'🟡 في الهواء' if is_air else '⬇️ على الأرض'}"
-        )
-        if fig3d:
-            st.plotly_chart(fig3d, use_container_width=True)
+        try:
+            fig3d = _build_3d_skeleton_fig(
+                sample['kp'],
+                title=f"الهيكل العظمي عند {t_sec:.1f}ث {'🟡 في الهواء' if is_air else '⬇️ على الأرض'}"
+            )
+            if fig3d:
+                st.plotly_chart(fig3d, use_container_width=True)
+        except Exception as _e3d:
+            st.warning(f"تعذّر رسم الهيكل العظمي 3D: {_e3d}")
 
         # Joint angles readout
         kp = sample['kp']
@@ -2143,9 +2153,12 @@ def _show_demo_skeleton_3d():
             x, y, z, v = 0.5, 0.5, 0.0, 0.3
         demo_kp.append({'x': x, 'y': y, 'z': z, 'v': v, 'idx': i})
 
-    fig = _build_3d_skeleton_fig(demo_kp, title="هيكل عظمي تجريبي — وضع T-Pose")
-    if fig:
-        st.plotly_chart(fig, use_container_width=True)
+    try:
+        fig = _build_3d_skeleton_fig(demo_kp, title="هيكل عظمي تجريبي — وضع T-Pose")
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
+    except Exception as _e_demo:
+        st.warning(f"تعذّر رسم الهيكل التجريبي: {_e_demo}")
 
     st.markdown("""
     <div style="background:#1e293b;border-radius:10px;padding:14px;color:#94a3b8;font-size:.85em">
