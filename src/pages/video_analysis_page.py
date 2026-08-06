@@ -915,29 +915,60 @@ BODY_CONNECTIONS = [
     (24, 26), (26, 28), (28, 30), (28, 32), (30, 32),
 ]
 
-# Joint group colors for 3D visualization
-_JC = {
-    'head':  ([0,1,2,3,4,5,6,7,8,9,10], '#60A5FA'),
-    'arms':  ([11,12,13,14,15,16,17,18,19,20,21,22], '#F59E0B'),
-    'torso': ([23,24], '#10B981'),
-    'legs':  ([25,26,27,28,29,30,31,32], '#A78BFA'),
+# ── Per-segment body colors matching the MediaPipe video style ────────────────
+# BGR tuples for cv2 · hex strings for Plotly 3D
+_SEG = {
+    #          BGR (cv2)            Hex (Plotly)
+    'face':  ((255,  80, 200), '#FF50C8'),   # magenta-pink  (head/face)
+    'torso': ((255, 255, 255), '#FFFFFF'),   # white         (spine/shoulders/hips)
+    'l_arm': ((  0, 200, 255), '#FFC800'),   # amber/yellow  (left arm)
+    'r_arm': ((255, 120,  30), '#1E78FF'),   # electric blue (right arm)
+    'l_leg': (( 60, 220,  60), '#3CDC3C'),   # lime green    (left leg)
+    'r_leg': ((220, 210,   0), '#00D2DC'),   # teal/cyan     (right leg)
+}
+
+# Map each BODY_CONNECTIONS pair to a segment
+_CONN_SEG: dict = {
+    (0,  11): 'face',  (0,  12): 'face',
+    (11, 12): 'torso', (11, 23): 'torso', (12, 24): 'torso', (23, 24): 'torso',
+    (11, 13): 'l_arm', (13, 15): 'l_arm',
+    (15, 17): 'l_arm', (15, 19): 'l_arm', (17, 19): 'l_arm',
+    (12, 14): 'r_arm', (14, 16): 'r_arm',
+    (16, 18): 'r_arm', (16, 20): 'r_arm', (18, 20): 'r_arm',
+    (23, 25): 'l_leg', (25, 27): 'l_leg', (27, 29): 'l_leg',
+    (27, 31): 'l_leg', (29, 31): 'l_leg',
+    (24, 26): 'r_leg', (26, 28): 'r_leg', (28, 30): 'r_leg',
+    (28, 32): 'r_leg', (30, 32): 'r_leg',
+}
+
+# Map each joint index to its segment
+_JOINT_SEG: dict = {
+    **{i: 'face'  for i in range(11)},          # 0–10  face
+    **{i: 'l_arm' for i in [11,13,15,17,19,21]},
+    **{i: 'r_arm' for i in [12,14,16,18,20,22]},
+    **{i: 'l_leg' for i in [23,25,27,29,31]},
+    **{i: 'r_leg' for i in [24,26,28,30,32]},
 }
 
 
 def _joint_color(idx: int) -> str:
-    for grp, (indices, color) in _JC.items():
-        if idx in indices:
-            return color
-    return '#94A3B8'
+    """Return Plotly hex color for joint index (body-segment scheme)."""
+    seg = _JOINT_SEG.get(idx, 'torso')
+    return _SEG[seg][1]
 
 
 def _draw_skeleton_on_frame(frame_bgr: np.ndarray, kp_list: list, W: int, H: int) -> np.ndarray:
-    """Draw MediaPipe skeleton overlay on a BGR frame using cv2."""
+    """
+    Draw color-coded MediaPipe skeleton overlay on a BGR frame.
+    Each body segment has a distinct color matching the video style:
+      face=pink, torso=white, L-arm=yellow, R-arm=blue, L-leg=green, R-leg=teal
+    """
     if not CV2_OK or not kp_list or len(kp_list) < 29:
         return frame_bgr
     out = frame_bgr.copy()
-    # Draw bones
-    for a, b in BODY_CONNECTIONS:
+
+    # Draw bones with per-segment color
+    for (a, b), seg in _CONN_SEG.items():
         if a >= len(kp_list) or b >= len(kp_list):
             continue
         pa, pb = kp_list[a], kp_list[b]
@@ -945,18 +976,21 @@ def _draw_skeleton_on_frame(frame_bgr: np.ndarray, kp_list: list, W: int, H: int
             continue
         x1, y1 = int(pa['x'] * W), int(pa['y'] * H)
         x2, y2 = int(pb['x'] * W), int(pb['y'] * H)
-        cv2.line(out, (x1, y1), (x2, y2), (80, 180, 255), 2, cv2.LINE_AA)
-    # Draw joints
-    KEY = {11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28}
+        bgr = _SEG[seg][0]
+        cv2.line(out, (x1, y1), (x2, y2), bgr, 3, cv2.LINE_AA)
+
+    # Draw joints — large white-outlined circle in segment color
+    KEY = {0,11,12,13,14,15,16,23,24,25,26,27,28}
     for i, kp in enumerate(kp_list):
-        if kp.get('v', 0) < 0.25:
+        if kp.get('v', 0) < 0.20:
             continue
         x, y = int(kp['x'] * W), int(kp['y'] * H)
-        if i in KEY:
-            cv2.circle(out, (x, y), 7, (0, 230, 120), -1)
-            cv2.circle(out, (x, y), 8, (255, 255, 255), 1, cv2.LINE_AA)
-        else:
-            cv2.circle(out, (x, y), 3, (80, 180, 255), -1)
+        seg  = _JOINT_SEG.get(i, 'torso')
+        bgr  = _SEG[seg][0]
+        r    = 8 if i in KEY else 4
+        cv2.circle(out, (x, y), r,     bgr,           -1,           cv2.LINE_AA)
+        cv2.circle(out, (x, y), r + 1, (255,255,255), 1,            cv2.LINE_AA)
+
     return out
 
 
@@ -977,8 +1011,9 @@ def _build_3d_skeleton_fig(kp_list: list, title: str = "هيكل عظمي 3D",
     ys = [float(-p['y']) for p in kp_list]    # flip: screen Y is down, 3D Y up
     zs = [float(-p.get('z', 0)) for p in kp_list]  # negate depth for readable view
     joint_vis = [float(p.get('v', 1.0)) for p in kp_list]  # visibility per joint
+    # Use body-segment hex colors (same scheme as 2D overlay)
     colors = [_joint_color(i) for i in range(n)]
-    sizes = [10 if i in {0,11,12,13,14,15,16,23,24,25,26,27,28} else 5 for i in range(n)]
+    sizes  = [12 if i in {0,11,12,13,14,15,16,23,24,25,26,27,28} else 6 for i in range(n)]
 
     # opacity MUST be a scalar for scatter3d.marker — Plotly rejects lists
     MARKER_OPACITY = float(0.92)
@@ -991,18 +1026,20 @@ def _build_3d_skeleton_fig(kp_list: list, title: str = "هيكل عظمي 3D",
 
     fig = go.Figure()
 
-    # Bones — skip low-visibility joints
+    # Bones — per-segment color matching the 2D overlay
     for a, b in BODY_CONNECTIONS:
         if a >= n or b >= n:
             continue
         if joint_vis[a] < 0.2 or joint_vis[b] < 0.2:
             continue
+        seg      = _CONN_SEG.get((a, b), 'torso')
+        bone_hex = _SEG[seg][1]
         fig.add_trace(go.Scatter3d(
             x=[xs[a], xs[b], None],
             y=[zs[a], zs[b], None],
             z=[ys[a], ys[b], None],
             mode='lines',
-            line=dict(color=line_c, width=4),
+            line=dict(color=bone_hex, width=5),
             showlegend=False,
             hoverinfo='skip',
         ))
