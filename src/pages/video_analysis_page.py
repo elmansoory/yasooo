@@ -250,6 +250,7 @@ class SkatingVideoAnalyzer:
             jumps  = [engine.enhance_jump(j, poses) for j in jumps]
             spins  = [engine.enhance_spin(s, poses) for s in spins]
             step_sequences = engine.detect_step_sequences(poses, jumps, spins)
+            errors += self._detect_ai_errors(jumps, spins)
         except Exception:
             pass
 
@@ -714,6 +715,7 @@ class SkatingVideoAnalyzer:
                     'fix_en': ['Pull arms in faster toward body', 'Strengthen takeoff edge push'],
                     'goe_impact': -1,
                     't_start': j.get('t_start', 0), 't_end': j.get('t_end', 0),
+                    'symptom_key': 'under_rotation',
                 })
 
         # 2) Posture analysis from MediaPipe poses (if available)
@@ -768,6 +770,7 @@ class SkatingVideoAnalyzer:
                     'fix_en': ['Strengthen lower back muscles', 'Imagine a string pulling your head up', 'Review recording with coach'],
                     'goe_impact': 0,
                     't_start': 0, 't_end': self.total_frames / self.fps,
+                    'symptom_key': 'axis_misalignment',
                 })
 
             if total_valid > 0 and arm_asymmetry_frames / total_valid > 0.25:
@@ -781,6 +784,46 @@ class SkatingVideoAnalyzer:
                     'fix_en': ['Mirror exercises for arm alignment', 'Awareness: film practice sessions'],
                     'goe_impact': 0,
                     't_start': 0, 't_end': self.total_frames / self.fps,
+                    'symptom_key': 'arm_shoulder_position',
+                })
+
+        return errors
+
+    # ── AI-derived errors (uses AIMovementEngine pose_score / axis_stability) ──
+    def _detect_ai_errors(self, jumps: List[Dict], spins: List[Dict]) -> List[Dict]:
+        errors: List[Dict] = []
+
+        for j in jumps:
+            score = j.get('pose_score')
+            if score is not None and score < 0.55:
+                corrections = j.get('pose_corrections_ar', [])
+                errors.append({
+                    'category': 'وضعية العنصر', 'severity': 'متوسط',
+                    'title_ar': f"جودة وضعية منخفضة — {j.get('type','')}",
+                    'title_en': f"Low Pose Quality — {j.get('type','')}",
+                    'desc_ar': f"تقييم الوضعية بالذكاء الاصطناعي: {int(score*100)}% في مرحلة {j.get('pose_phase','')}",
+                    'desc_en': f"AI pose score: {int(score*100)}% at {j.get('pose_phase','')} phase",
+                    'fix_ar': corrections[:3] if corrections else ['راجع محاذاة المحور والذراعين في هذه المرحلة'],
+                    'fix_en': ['Review axis and arm alignment at this phase'],
+                    'goe_impact': -1 if score < 0.4 else 0,
+                    't_start': j.get('t_start', 0), 't_end': j.get('t_end', 0),
+                    'symptom_key': 'checking_landing_control',
+                })
+
+        for s in spins:
+            stability = s.get('axis_stability')
+            if stability is not None and stability < 0.55:
+                errors.append({
+                    'category': 'دوران', 'severity': 'متوسط',
+                    'title_ar': f"استقرار محور منخفض — {s.get('type','')}",
+                    'title_en': f"Low Axis Stability — {s.get('type','')}",
+                    'desc_ar': f"استقرار المحور بالذكاء الاصطناعي: {int(stability*100)}%",
+                    'desc_en': f"AI axis stability: {int(stability*100)}%",
+                    'fix_ar': s.get('pose_corrections_ar', []) or ['اغرس قدم الدوران وثبّت الضغط على كرة القدم'],
+                    'fix_en': ['Plant the spin foot and hold ball-of-foot pressure'],
+                    'goe_impact': -1,
+                    't_start': s.get('t_start', 0), 't_end': s.get('t_end', 0),
+                    'symptom_key': 'off_axis_spin',
                 })
 
         return errors
@@ -1814,6 +1857,15 @@ def _tab_errors(ar: bool, lang: str):
     chosen = st.selectbox("فلتر:", ['الكل'] + all_sevs, label_visibility='collapsed')
     filtered = errors if chosen == 'الكل' else [e for e in errors if e.get('severity') == chosen]
 
+    try:
+        from src.analysis.coaching_knowledge import (
+            resolve_symptom_key, get_symptom_info, get_physical_prep,
+            CORRECTION_PROTOCOL_AR,
+        )
+        CK_OK = True
+    except Exception:
+        CK_OK = False
+
     for err in filtered:
         sev = err.get('severity', 'LOW')
         color = SEV_COLOR.get(sev, '#64748b')
@@ -1843,6 +1895,36 @@ def _tab_errors(ar: bool, lang: str):
             with st.expander(f"✏️ التصحيحات المقترحة ({len(fixes)})"):
                 for n, fix in enumerate(fixes, 1):
                     st.markdown(f"**{n}.** {fix}")
+
+        # ── Coaching knowledge base: root cause + cue library + physical prep ──
+        if CK_OK:
+            symptom_key = err.get('symptom_key') or resolve_symptom_key(err)
+            info = get_symptom_info(symptom_key) if symptom_key else None
+            if info:
+                with st.expander(f"🧠 التشخيص الفني الكامل — {info['title_ar']}"):
+                    st.markdown(
+                        f"<div style='background:#fff7ed;border-right:4px solid #f97316;"
+                        f"border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.88em'>"
+                        f"<b>🔬 السبب الجذري (قاعدة المرحلة السابقة):</b><br>{info['root_cause_ar']}"
+                        f"</div>", unsafe_allow_html=True
+                    )
+
+                    st.markdown("**🗣️ جمل تدريب فورية جاهزة:**")
+                    for cue in info.get('cues', []):
+                        st.markdown(f"- {cue['ar']}")
+
+                    drill = info.get('drill_ar')
+                    if drill:
+                        st.markdown(f"**🏋️ تمرين التصحيح المعزول:** {drill}")
+
+                    prep = get_physical_prep(symptom_key)
+                    if prep:
+                        st.markdown(f"**💪 تمرين بدني مكمّل:** {prep['ar']}")
+
+    if CK_OK and filtered:
+        with st.expander("📋 بروتوكول التصحيح ثلاثي الخطوات (عند فشل التلميح اللفظي)"):
+            for step_title, step_desc in CORRECTION_PROTOCOL_AR:
+                st.markdown(f"**{step_title}** — {step_desc}")
 
 
 # ============================================================================
