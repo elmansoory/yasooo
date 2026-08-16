@@ -9,20 +9,71 @@ echo "   ⛸️  نظام تحليل التزلج الفني - Figure Skating An
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 
-# التحقق من Python
+# التحقق من Python وتثبيته تلقائياً إن لم يكن موجوداً
 if ! command -v python3 &> /dev/null; then
-    echo "❌ خطأ: Python 3 غير مثبت"
-    echo "   الرجاء تثبيت Python 3.10 أو أحدث"
-    exit 1
+    echo "⚠️  Python 3 غير مثبت — جارٍ محاولة التثبيت التلقائي..."
+    echo ""
+
+    OS_TYPE="$(uname -s)"
+
+    if [ "$OS_TYPE" = "Linux" ]; then
+        if command -v apt-get &> /dev/null; then
+            echo "📥 تثبيت Python عبر apt-get (Debian/Ubuntu)..."
+            sudo apt-get update -y && sudo apt-get install -y python3 python3-pip python3-venv
+        elif command -v dnf &> /dev/null; then
+            echo "📥 تثبيت Python عبر dnf (Fedora)..."
+            sudo dnf install -y python3 python3-pip
+        elif command -v yum &> /dev/null; then
+            echo "📥 تثبيت Python عبر yum (CentOS/RHEL)..."
+            sudo yum install -y python3 python3-pip
+        elif command -v pacman &> /dev/null; then
+            echo "📥 تثبيت Python عبر pacman (Arch)..."
+            sudo pacman -Sy --noconfirm python python-pip
+        else
+            echo "❌ لم يتم التعرف على مدير الحزم. الرجاء تثبيت Python 3.10+ يدوياً من https://python.org"
+            exit 1
+        fi
+    elif [ "$OS_TYPE" = "Darwin" ]; then
+        if command -v brew &> /dev/null; then
+            echo "📥 تثبيت Python عبر Homebrew (macOS)..."
+            brew install python3
+        else
+            echo "❌ Homebrew غير مثبت. ثبّته أولاً من https://brew.sh ثم أعد المحاولة"
+            echo "   أو نزّل Python يدوياً من https://python.org"
+            exit 1
+        fi
+    else
+        echo "❌ نظام التشغيل غير مدعوم للتثبيت التلقائي ($OS_TYPE)"
+        echo "   الرجاء تثبيت Python 3.10 أو أحدث يدوياً من https://python.org"
+        exit 1
+    fi
+
+    if ! command -v python3 &> /dev/null; then
+        echo "❌ فشل تثبيت Python تلقائياً. الرجاء تثبيته يدوياً من https://python.org"
+        exit 1
+    fi
+
+    echo "✅ تم تثبيت Python بنجاح"
+    echo ""
 fi
 
 echo "✅ Python: $(python3 --version)"
 echo ""
 
+# التحقق من pip وتثبيته إن لزم
+if ! python3 -m pip --version &> /dev/null; then
+    echo "📥 تثبيت pip..."
+    python3 -m ensurepip --upgrade 2>/dev/null || {
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get install -y python3-pip
+        fi
+    }
+fi
+
 # التحقق من المتطلبات
 echo "📦 التحقق من المتطلبات..."
-if [ ! -f "skating_analysis.db" ]; then
-    echo "⚠️  قاعدة البيانات غير موجودة، سيتم إنشاؤها..."
+if [ ! -f "skating_database.db" ]; then
+    echo "⚠️  قاعدة البيانات غير موجودة، سيتم إنشاؤها تلقائياً عند أول تشغيل..."
 fi
 
 # تثبيت المتطلبات إذا لزم الأمر
@@ -48,4 +99,4 @@ echo "════════════════════════�
 echo ""
 
 # تشغيل التطبيق
-streamlit run app.py
+streamlit run final_app.py
