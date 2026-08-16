@@ -1,4 +1,5 @@
 @echo off
+setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
 title YASOOO - Figure Skating Analysis System
 color 0A
@@ -20,19 +21,52 @@ set "LOG=%APP_DIR%launch.log"
 echo [1/5] Checking Python 3.11...
 %PYTHON% --version >nul 2>&1
 if %errorlevel% neq 0 (
-    color 0C
+    echo Python 3.11 not found. Attempting automatic installation...
     echo.
-    echo ERROR: Python 3.11 is not installed.
-    echo.
-    echo Please download and install it from:
-    echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
-    echo.
-    echo Make sure to check "Add Python to PATH" during installation.
-    echo.
-    pause
-    exit /b 1
+
+    where winget >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo Installing Python 3.11 via winget ^(Windows Package Manager^)...
+        winget install --id Python.Python.3.11 -e --silent --accept-package-agreements --accept-source-agreements >> "%LOG%" 2>&1
+    ) else (
+        echo winget not available. Downloading the official installer instead...
+        set "PY_INSTALLER=!TEMP!\python-3.11.9-amd64.exe"
+        powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile '!PY_INSTALLER!'" >> "%LOG%" 2>&1
+        if exist "!PY_INSTALLER!" (
+            echo Running the Python installer silently ^(this may take a minute^)...
+            "!PY_INSTALLER!" /quiet InstallAllUsers=0 PrependPath=1 Include_test=0 >> "%LOG%" 2>&1
+        ) else (
+            echo.
+            echo ERROR: Could not download the Python installer automatically.
+            echo Please install it manually from:
+            echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
+            echo Make sure to check "Add Python to PATH" during installation.
+            echo.
+            pause
+            exit /b 1
+        )
+    )
+
+    REM Refresh PATH for this session so a newly installed Python/py launcher is found
+    for /f "tokens=2*" %%A in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
+    for /f "tokens=2*" %%A in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
+
+    %PYTHON% --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        color 0C
+        echo.
+        echo ERROR: Automatic installation did not complete successfully.
+        echo Please close this window, install Python 3.11 manually from:
+        echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
+        echo ^(check "Add Python to PATH"^), then run YASOOO.bat again.
+        echo.
+        pause
+        exit /b 1
+    )
+    echo [OK] Python 3.11 installed successfully.
+) else (
+    echo [OK] Python 3.11 found.
 )
-echo [OK] Python 3.11 found.
 
 echo.
 echo [2/5] Checking required libraries...
