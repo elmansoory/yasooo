@@ -194,16 +194,26 @@ class SkatingVideoAnalyzer:
         # ── Pose extraction ──────────────────────────────────────────────────
         self._skeleton_frames = []
         self._pose_samples = []
+        used_mediapipe = True
         try:
             if MP_OK:
                 poses, frame_scores = self._extract_poses_mediapipe(video_path, progress_cb)
             else:
+                used_mediapipe = False
                 poses, frame_scores = self._extract_motion_opencv(video_path, progress_cb)
         except Exception:
+            used_mediapipe = False
             poses, frame_scores = self._extract_motion_opencv(video_path, progress_cb)
 
         if not poses:
             return self._error_result("No person detected in video")
+
+        # Data-quality flag: the OpenCV contour fallback tracks a moving blob,
+        # not a real skeleton — jump/spin detection on it is much less
+        # reliable and more prone to false positives (shadows, other people,
+        # camera motion). Real MediaPipe keypoint coverage is also checked.
+        kp_coverage = (sum(1 for p in poses if p.get('kp')) / len(poses)) if poses else 0.0
+        low_confidence = (not used_mediapipe) or kp_coverage < 0.5
 
         # ── Element detection — spins FIRST, then exclude spin windows from jump detection ──
         spins = self._detect_spins(poses)
@@ -276,6 +286,9 @@ class SkatingVideoAnalyzer:
             'skeleton_frames': self._skeleton_frames,
             'pose_samples': self._pose_samples,
             'ai_status': ai_status,
+            'low_confidence': low_confidence,
+            'kp_coverage': round(kp_coverage, 2),
+            'used_mediapipe': used_mediapipe,
             'is_demo': False,
             'analyzed_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
         }
@@ -586,6 +599,8 @@ class SkatingVideoAnalyzer:
                 airtime = times[i] - times[jump_start_idx]
 
                 if 0.20 <= airtime <= 1.10:
+                    window = poses[jump_start_idx:i + 1]
+
                     # Lateral-travel check: real jumps move; spins stay put.
                     # If x-std in this window is < 0.03, it looks like a spin — skip.
                     seg_x = xs[jump_start_idx:i + 1]
@@ -594,8 +609,33 @@ class SkatingVideoAnalyzer:
                         in_jump = False
                         continue
 
+                    # Cross-validate with the per-frame airborne flag (ankle-hip gap).
+                    # A real jump must show the body actually airborne for a real
+                    # fraction of the candidate window — pure vertical-position
+                    # noise (camera pan, stride bounce) will fail this check.
+                    airborne_flags = [p.get('airborne') for p in window if 'airborne' in p]
+                    if airborne_flags:
+                        airborne_ratio = sum(1 for a in airborne_flags if a) / len(airborne_flags)
+                        if airborne_ratio < 0.30:
+                            in_jump = False
+                            continue
+
+                    # Require a minimum fraction of frames with real detected
+                    # keypoints in the window — reject windows dominated by
+                    # missing/low-confidence pose data (unreliable signal).
+                    valid_kp = sum(1 for p in window if p.get('kp'))
+                    if window and (valid_kp / len(window)) < 0.4:
+                        in_jump = False
+                        continue
+
                     height_above = baseline - min_y_in_jump
                     height_norm = height_above / max(std_y, 0.01)
+
+                    # Reject a shallow, borderline dip — real jumps clear the
+                    # threshold with margin, not just barely cross it.
+                    if height_norm < 1.3:
+                        in_jump = False
+                        continue
 
                     j = _classify_jump(airtime, min(1.0, height_norm * 0.3))
                     j['t_start'] = round(times[jump_start_idx], 2)
@@ -685,6 +725,15 @@ class SkatingVideoAnalyzer:
                     seg_detrended = seg_x - seg_x.mean()
                     crossings = np.where(np.diff(np.sign(seg_detrended)))[0]
                     cycles = len(crossings) / 2
+
+                    # A real spin must show actual rotational oscillation —
+                    # "not moving" alone (which is all lateral_ok/vertical_stable
+                    # verify) is also true of a skater simply standing still or
+                    # holding a pose. Reject segments with too few cycles/sec.
+                    if duration > 0 and (cycles / duration) < 0.5:
+                        in_spin = False
+                        continue
+
                     rpm = (cycles / duration * 60) if duration > 0 else 60
                     rpm = max(40, min(300, rpm * 3))  # scale up
 
@@ -1502,6 +1551,22 @@ def _tab_results(ar: bool, lang: str):
             st.success(f"🤖 الذكاء الاصطناعي نشط: {active_labels}")
         else:
             st.info("ℹ️ نماذج AI غير محملة — النتائج بالخوارزميات الأساسية فقط")
+
+    if results.get('low_confidence') and not results.get('is_demo'):
+        cov = int(results.get('kp_coverage', 0) * 100)
+        if not results.get('used_mediapipe', True):
+            st.warning(
+                "⚠️ تعذّر استخدام MediaPipe لهذا الفيديو — تم استخدام تتبع حركة "
+                "احتياطي (كشف الشكل بـ OpenCV) وهو أقل دقة بكثير. القفزات "
+                "والدورانات المكتشفة قد تكون **غير حقيقية** (ظلال، أشخاص آخرون، "
+                "حركة الكاميرا). يُنصح بإعادة رفع فيديو أوضح وأقرب للاعب."
+            )
+        else:
+            st.warning(
+                f"⚠️ نسبة اكتشاف الهيكل العظمي منخفضة ({cov}% من الإطارات فقط) — "
+                "قد يقل هذا من دقة كشف القفزات والدورانات. تأكد أن اللاعب واضح "
+                "بالكامل في الإطار وبإضاءة جيدة."
+            )
 
     vi = results.get('video_info', {})
     player_name = results.get('player_name', '')
