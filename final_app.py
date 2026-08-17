@@ -773,7 +773,7 @@ _nav_pages = [
     t('club_mgmt'),
     t('settings'),
 ]
-page = st.sidebar.radio("", _nav_pages)
+page = st.sidebar.radio("القائمة", _nav_pages, label_visibility='collapsed')
 
 # ============================================================================
 # HOME PAGE

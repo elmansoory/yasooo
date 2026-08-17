@@ -83,7 +83,18 @@ if %errorlevel% neq 0 (
 %PYTHON% -c "import mediapipe" >nul 2>&1
 if %errorlevel% neq 0 (
     echo Installing mediapipe for AI analysis...
-    %PIP% install --quiet "mediapipe==0.10.14" >> "%LOG%" 2>&1
+    %PIP% install --quiet "mediapipe==0.10.14" "protobuf>=3.20,<5" >> "%LOG%" 2>&1
+)
+
+REM protobuf 5.x removes MessageFactory.GetPrototype, which mediapipe's
+REM generated _pb2 files still call — this crashes the app on import with
+REM "'MessageFactory' object has no attribute 'GetPrototype'". Some other
+REM package may have upgraded protobuf past 5.0 even if mediapipe itself
+REM imported fine before, so re-check and pin it down every run.
+%PYTHON% -c "import google.protobuf as p; import sys; sys.exit(0 if int(p.__version__.split('.')[0]) < 5 else 1)" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Fixing protobuf version for MediaPipe compatibility...
+    %PIP% install --quiet "protobuf>=3.20,<5" >> "%LOG%" 2>&1
 )
 echo [OK] Libraries ready.
 

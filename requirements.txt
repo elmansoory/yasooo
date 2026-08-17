@@ -6,6 +6,10 @@ python-dotenv>=1.0.0
 tensorflow>=2.14.0
 keras>=2.14.0
 mediapipe>=0.10.8
+# protobuf must stay <5 — mediapipe's generated _pb2 files call the old
+# MessageFactory.GetPrototype API, which protobuf 5.x removed, causing
+# "'MessageFactory' object has no attribute 'GetPrototype'" at import time.
+protobuf>=3.20,<5
 torch>=2.1.0
 torchvision>=0.16.0
 

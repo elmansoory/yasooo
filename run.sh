@@ -85,6 +85,15 @@ else
     echo "✅ جميع المتطلبات مثبتة"
 fi
 
+# protobuf 5.x removes MessageFactory.GetPrototype, which mediapipe's
+# generated _pb2 files still call — crashes with "'MessageFactory' object
+# has no attribute 'GetPrototype'". Pin it down regardless of what else
+# may have pulled in a newer protobuf.
+if ! python3 -c "import google.protobuf as p, sys; sys.exit(0 if int(p.__version__.split('.')[0]) < 5 else 1)" &> /dev/null; then
+    echo "🔧 تصحيح إصدار protobuf للتوافق مع MediaPipe..."
+    pip install -q "protobuf>=3.20,<5"
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 echo "🚀 بدء التطبيق..."
