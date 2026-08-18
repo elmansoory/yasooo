@@ -118,38 +118,30 @@ if /i "%install_advanced%"=="y" (
 echo.
 
 REM ============================================================
-REM  الخطوة 5: استيراد البيانات
+REM  الخطوة 5: استيراد بيانات قديمة اختيارية (لا يحتاجها final_app.py)
 REM ============================================================
-echo [5/5] استيراد البيانات إلى قاعدة البيانات...
-echo [5/5] Importing data to database...
+echo [5/5] استيراد بيانات Excel قديمة (اختياري)...
+echo [5/5] Importing legacy Excel data (optional)...
+echo.
+echo ℹ️ ملاحظة: final_app.py ينشئ ويصلح قاعدة بياناته الخاصة تلقائياً
+echo ℹ️ Note: final_app.py creates/repairs its own database automatically
+echo    عند التشغيل، لذلك هذه الخطوة اختيارية فقط لاستيراد بيانات Excel قديمة.
+echo    on startup, so this step is only for importing old Excel data.
 echo.
 
-REM التحقق من وجود ملفات البيانات
+REM التحقق من وجود ملفات البيانات (اختياري — لا يوقف التثبيت إن كانت غائبة)
 if not exist "data\members.xlsx" (
-    echo ❌ [خطأ] ملف data\members.xlsx غير موجود
-    echo ❌ [ERROR] data\members.xlsx not found
+    echo ⏩ تم تخطي استيراد Excel — data\members.xlsx غير موجود
+    echo ⏩ Skipped Excel import — data\members.xlsx not found
     echo.
-    echo يرجى التأكد من وجود مجلد data مع ملفات Excel
-    echo Please ensure data folder exists with Excel files
-    echo.
-    pause
-    exit /b 1
-)
-
-python import_all_data.py
-if %errorlevel% neq 0 (
-    echo.
-    echo ❌ [خطأ] فشل استيراد البيانات
-    echo ❌ [ERROR] Failed to import data
-    echo.
-    echo الأسباب المحتملة:
-    echo Possible reasons:
-    echo 1. openpyxl غير مثبتة: pip install openpyxl
-    echo 2. ملفات Excel غير موجودة في مجلد data/
-    echo 3. ملفات Excel تالفة
-    echo.
-    pause
-    exit /b 1
+) else (
+    python import_all_data.py
+    if %errorlevel% neq 0 (
+        echo.
+        echo ⚠️ [تحذير] فشل استيراد بيانات Excel القديمة ^(سيتم المتابعة^)
+        echo ⚠️ [WARNING] Legacy Excel import failed ^(continuing anyway^)
+        echo.
+    )
 )
 
 echo.
@@ -164,12 +156,12 @@ echo.
 echo 🚀 لتشغيل البرنامج:
 echo 🚀 To run the application:
 echo.
-echo    1. اضغط مرتين على START.bat
-echo    1. Double-click START.bat
+echo    1. اضغط مرتين على YASOOO.bat
+echo    1. Double-click YASOOO.bat
 echo.
 echo    أو شغّل في Command Prompt:
 echo    Or run in Command Prompt:
-echo    python -m streamlit run app.py
+echo    python -m streamlit run final_app.py
 echo.
 echo ================================================================
 echo.

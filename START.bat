@@ -124,6 +124,6 @@ echo To stop: Press Ctrl+C
 echo.
 
 REM تشغيل التطبيق
-python -m streamlit run app.py
+python -m streamlit run final_app.py
 
 pause

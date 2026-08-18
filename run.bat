@@ -20,7 +20,7 @@ echo [OK] Python is installed
 echo.
 
 REM التحقق من قاعدة البيانات
-if not exist "skating_analysis.db" (
+if not exist "skating_database.db" (
     echo [WARNING] Database not found, will be created on first run...
 )
 
@@ -49,6 +49,6 @@ echo ===============================================================
 echo.
 
 REM تشغيل التطبيق
-streamlit run app.py
+streamlit run final_app.py
 
 pause
