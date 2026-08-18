@@ -26,9 +26,10 @@ except ImportError:
     PYDUB_AVAILABLE = False
     AudioSegment = None
 
+import numpy as np
+
 try:
     import librosa
-    import numpy as np
     LIBROSA_AVAILABLE = True
 except ImportError:
     LIBROSA_AVAILABLE = False
