@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
+import re
 import time
 import io
 import sqlite3
@@ -1381,6 +1382,12 @@ def _to_html_report(results: Dict, player_name: str) -> str:
 def show_video_analysis_page(lang: str = 'ar'):
     ar = lang == 'ar'
 
+    try:
+        from src.utils.ysoo_theme import inject_theme_css
+        st.markdown(inject_theme_css(), unsafe_allow_html=True)
+    except Exception:
+        pass
+
     # Header
     st.markdown("""
     <div style="text-align:center;padding:20px 0 10px">
@@ -1571,22 +1578,34 @@ def _tab_results(ar: bool, lang: str):
     vi = results.get('video_info', {})
     player_name = results.get('player_name', '')
 
-    # Top metrics
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
-    with col1:
-        st.metric("⏱️ المدة", f"{vi.get('duration', 0):.1f}s")
-    with col2:
-        st.metric("🏆 النقاط الكلية", f"{results.get('total_score', 0):.2f}")
-    with col3:
-        st.metric("⚡ TES", f"{results.get('tes', 0):.2f}")
-    with col4:
-        st.metric("🎭 PCS", f"{results.get('pcs', 0):.2f}")
-    with col5:
-        st.metric("🦘 قفزات", len(results.get('jumps', [])))
-    with col6:
-        st.metric("🌀 دورانات", len(results.get('spins', [])))
-    with col7:
-        st.metric("👣 خطوات", len(results.get('step_sequences', [])))
+    # Top metrics — KPI tiles
+    try:
+        from src.utils.ysoo_theme import kpi_row_html
+        st.markdown(kpi_row_html([
+            ('⏱️', 'المدة', f"{vi.get('duration', 0):.1f}s"),
+            ('🏆', 'النقاط الكلية', f"{results.get('total_score', 0):.2f}"),
+            ('⚡', 'TES', f"{results.get('tes', 0):.2f}"),
+            ('🎭', 'PCS', f"{results.get('pcs', 0):.2f}"),
+            ('🦘', 'قفزات', str(len(results.get('jumps', [])))),
+            ('🌀', 'دورانات', str(len(results.get('spins', [])))),
+            ('👣', 'خطوات', str(len(results.get('step_sequences', [])))),
+        ]), unsafe_allow_html=True)
+    except Exception:
+        col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+        with col1:
+            st.metric("⏱️ المدة", f"{vi.get('duration', 0):.1f}s")
+        with col2:
+            st.metric("🏆 النقاط الكلية", f"{results.get('total_score', 0):.2f}")
+        with col3:
+            st.metric("⚡ TES", f"{results.get('tes', 0):.2f}")
+        with col4:
+            st.metric("🎭 PCS", f"{results.get('pcs', 0):.2f}")
+        with col5:
+            st.metric("🦘 قفزات", len(results.get('jumps', [])))
+        with col6:
+            st.metric("🌀 دورانات", len(results.get('spins', [])))
+        with col7:
+            st.metric("👣 خطوات", len(results.get('step_sequences', [])))
 
     st.markdown("---")
 
@@ -1931,6 +1950,12 @@ def _tab_errors(ar: bool, lang: str):
     except Exception:
         CK_OK = False
 
+    try:
+        from src.utils.ysoo_theme import error_card_html, normalize_severity
+        THEME_OK = True
+    except Exception:
+        THEME_OK = False
+
     for err in filtered:
         sev = err.get('severity', 'LOW')
         color = SEV_COLOR.get(sev, '#64748b')
@@ -1941,25 +1966,42 @@ def _tab_errors(ar: bool, lang: str):
         goe_impact = err.get('goe_impact', 0)
         cat = err.get('category', '')
 
-        st.markdown(f"""
-        <div style="border-right:5px solid {color};background:#fafafa;
-                    border-radius:8px;padding:16px 20px;margin-bottom:14px;
-                    box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-            <span style="font-size:1.3em">{icon}</span>
-            <span style="font-weight:700;color:{color};font-size:1.05em">{title}</span>
-            <span style="margin-right:auto;font-size:0.78em;color:#94a3b8">
-              {cat} {'| GOE: ' + str(goe_impact) if goe_impact != 0 else ''}
-            </span>
-          </div>
-          <div style="color:#475569;font-size:0.9em">{desc}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        if THEME_OK:
+            tier = normalize_severity(sev)
+            conf = {'critical': 92, 'major': 82, 'minor': 70}[tier]
+            # Real AI-derived confidence, when the error carries one
+            m = re.search(r'(\d{1,3})%', desc)
+            if m:
+                conf = int(m.group(1))
+            correction_html = '<br>'.join(f"• {fx}" for fx in fixes) if fixes else None
+            extra_stats = f"GOE: {goe_impact:+d}" if goe_impact != 0 else None
+            st.markdown(
+                error_card_html(
+                    title=title, severity=sev, phase_label=cat, phase_key=None,
+                    confidence=conf, tech_details=desc, correction=correction_html,
+                    extra_stats=extra_stats,
+                ), unsafe_allow_html=True
+            )
+        else:
+            st.markdown(f"""
+            <div style="border-right:5px solid {color};background:#fafafa;
+                        border-radius:8px;padding:16px 20px;margin-bottom:14px;
+                        box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <span style="font-size:1.3em">{icon}</span>
+                <span style="font-weight:700;color:{color};font-size:1.05em">{title}</span>
+                <span style="margin-right:auto;font-size:0.78em;color:#94a3b8">
+                  {cat} {'| GOE: ' + str(goe_impact) if goe_impact != 0 else ''}
+                </span>
+              </div>
+              <div style="color:#475569;font-size:0.9em">{desc}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        if fixes:
-            with st.expander(f"✏️ التصحيحات المقترحة ({len(fixes)})"):
-                for n, fix in enumerate(fixes, 1):
-                    st.markdown(f"**{n}.** {fix}")
+            if fixes:
+                with st.expander(f"✏️ التصحيحات المقترحة ({len(fixes)})"):
+                    for n, fix in enumerate(fixes, 1):
+                        st.markdown(f"**{n}.** {fix}")
 
         # ── Coaching knowledge base: root cause + cue library + physical prep ──
         if CK_OK:
