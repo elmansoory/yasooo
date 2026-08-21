@@ -24,38 +24,45 @@ if %errorlevel% neq 0 (
     echo Python 3.11 not found. Attempting automatic installation...
     echo.
 
+    REM Attempt 1: winget (Windows Package Manager) — may be missing,
+    REM blocked by policy, or fail with a generic "path not specified"
+    REM error if App Installer isn't registered correctly. Treat any
+    REM failure here as non-fatal and fall through to the direct
+    REM download instead of giving up.
     where winget >nul 2>&1
-    if %errorlevel% equ 0 (
+    if !errorlevel! equ 0 (
         echo Installing Python 3.11 via winget ^(Windows Package Manager^)...
-        winget install --id Python.Python.3.11 -e --silent --accept-package-agreements --accept-source-agreements >> "%LOG%" 2>&1
+        winget install --id Python.Python.3.11 -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity >> "%LOG%" 2>&1
+        if !errorlevel! neq 0 (
+            echo winget install did not complete ^(see launch.log^) — will try the direct download next.
+        )
     ) else (
-        echo winget not available. Downloading the official installer instead...
+        echo winget not found on this system.
+    )
+
+    call :refresh_path
+    %PYTHON% --version >nul 2>&1
+    if !errorlevel! neq 0 (
+        REM Attempt 2: download the official installer directly and run it silently
+        echo Downloading the official Python installer instead...
         set "PY_INSTALLER=!TEMP!\python-3.11.9-amd64.exe"
-        powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile '!PY_INSTALLER!'" >> "%LOG%" 2>&1
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile '!PY_INSTALLER!'" >> "%LOG%" 2>&1
         if exist "!PY_INSTALLER!" (
             echo Running the Python installer silently ^(this may take a minute^)...
             "!PY_INSTALLER!" /quiet InstallAllUsers=0 PrependPath=1 Include_test=0 >> "%LOG%" 2>&1
+            call :refresh_path
         ) else (
-            echo.
             echo ERROR: Could not download the Python installer automatically.
-            echo Please install it manually from:
-            echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
-            echo Make sure to check "Add Python to PATH" during installation.
-            echo.
-            pause
-            exit /b 1
         )
     )
 
-    REM Refresh PATH for this session so a newly installed Python/py launcher is found
-    for /f "tokens=2*" %%A in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
-    for /f "tokens=2*" %%A in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
-
     %PYTHON% --version >nul 2>&1
-    if %errorlevel% neq 0 (
+    if !errorlevel! neq 0 (
         color 0C
         echo.
         echo ERROR: Automatic installation did not complete successfully.
+        echo Details were logged to: %LOG%
+        echo.
         echo Please close this window, install Python 3.11 manually from:
         echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
         echo ^(check "Add Python to PATH"^), then run YASOOO.bat again.
@@ -139,3 +146,14 @@ cd /d "%APP_DIR%"
 %STREAMLIT% run final_app.py --server.headless false --browser.gatherUsageStats false
 
 pause
+exit /b 0
+
+REM ============================================================
+REM  Refresh PATH in this session from the registry, so a
+REM  freshly-installed python/py launcher is picked up without
+REM  having to close and reopen the terminal.
+REM ============================================================
+:refresh_path
+for /f "tokens=2*" %%A in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
+for /f "tokens=2*" %%A in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
+goto :eof
