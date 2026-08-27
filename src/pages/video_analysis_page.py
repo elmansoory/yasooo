@@ -195,6 +195,7 @@ class SkatingVideoAnalyzer:
         # ── Pose extraction ──────────────────────────────────────────────────
         self._skeleton_frames = []
         self._pose_samples = []
+        self._skeleton_video_bytes = None
         used_mediapipe = True
         try:
             if MP_OK:
@@ -286,6 +287,7 @@ class SkatingVideoAnalyzer:
             'pose_count': len(poses),
             'skeleton_frames': self._skeleton_frames,
             'pose_samples': self._pose_samples,
+            'skeleton_video_bytes': getattr(self, '_skeleton_video_bytes', None),
             'ai_status': ai_status,
             'low_confidence': low_confidence,
             'kp_coverage': round(kp_coverage, 2),
@@ -299,6 +301,7 @@ class SkatingVideoAnalyzer:
         poses = []
         self._skeleton_frames = []   # base64-encoded JPEG frames with skeleton overlay
         self._pose_samples = []      # every 10th pose kp list for 3D playback
+        self._skeleton_video_bytes = None  # full overlay video — the moving skeleton on the body
 
         options = _PoseLandmarkerOptions(
             base_options=_MP_BaseOptions(model_asset_path=str(_MP_MODEL)),
@@ -312,6 +315,35 @@ class SkatingVideoAnalyzer:
         fi = 0
         SKIP = 2                   # process every 2nd frame
         SKEL_EVERY = max(1, int(self.fps))   # save skeleton frame every ~1s
+
+        # ── Full-video skeleton overlay writer ──────────────────────────────
+        # Downscale to keep the file small; hold the last known skeleton on
+        # skipped frames so the overlay reads as continuous motion, not a
+        # flicker every other frame.
+        WRITE_MAX_SEC = 120  # cap output duration to keep the file reasonable
+        out_w = min(640, self.width) if self.width else 480
+        out_scale = out_w / self.width if self.width else 1.0
+        out_w = max(2, int(out_w) - (int(out_w) % 2))
+        out_h = max(2, int(self.height * out_scale) - (int(self.height * out_scale) % 2)) if self.height else 360
+        skel_video_path = None
+        writer = None
+        if CV2_OK and self.fps > 0:
+            try:
+                skel_video_path = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False).name
+                for fourcc_code in ('avc1', 'H264', 'mp4v'):
+                    fourcc = cv2.VideoWriter_fourcc(*fourcc_code)
+                    writer = cv2.VideoWriter(skel_video_path, fourcc, self.fps, (out_w, out_h))
+                    if writer.isOpened():
+                        break
+                    writer.release()
+                    writer = None
+                if writer is None:
+                    skel_video_path = None
+            except Exception:
+                writer, skel_video_path = None, None
+
+        last_kp = None
+        write_frame_limit = int(WRITE_MAX_SEC * self.fps) if self.fps > 0 else 0
 
         with _PoseLandmarker.create_from_options(options) as lm_model:
             while cap.isOpened():
@@ -346,6 +378,7 @@ class SkatingVideoAnalyzer:
                             'sh_angle': sh_angle,
                         }
                         poses.append(pose_entry)
+                        last_kp = kp
 
                         # Save skeleton overlay frame (~1 per second, max 60 frames)
                         pose_idx = len(poses) - 1
@@ -366,9 +399,34 @@ class SkatingVideoAnalyzer:
 
                     if progress_cb and self.total_frames > 0:
                         progress_cb(fi / self.total_frames, fi)
+
+                # Write this frame to the full overlay video, holding the
+                # last detected skeleton across skipped/undetected frames.
+                if writer is not None and fi < write_frame_limit:
+                    ann_full = (
+                        _draw_skeleton_on_frame(frame, last_kp, self.width, self.height)
+                        if last_kp is not None else frame
+                    )
+                    small = cv2.resize(ann_full, (out_w, out_h), interpolation=cv2.INTER_AREA)
+                    writer.write(small)
+
                 fi += 1
 
         cap.release()
+        if writer is not None:
+            writer.release()
+            try:
+                if skel_video_path and os.path.getsize(skel_video_path) > 0:
+                    with open(skel_video_path, 'rb') as vf:
+                        self._skeleton_video_bytes = vf.read()
+            except Exception:
+                self._skeleton_video_bytes = None
+            finally:
+                try:
+                    os.unlink(skel_video_path)
+                except Exception:
+                    pass
+
         return poses, []
 
     # ── OpenCV Advanced Motion Analysis ─────────────────────────────────────
@@ -1393,10 +1451,11 @@ def show_video_analysis_page(lang: str = 'ar'):
     <div style="text-align:center;padding:20px 0 10px">
       <h1 style="font-size:2.2em;background:linear-gradient(135deg,#1e3a5f,#2d6a9f,#4a9fd4);
                  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:0">
-        🎥 تحليل الفيديو بالذكاء الاصطناعي
+        🧪 مختبر تحليل الفيديو
       </h1>
       <p style="color:#64748b;font-size:1.05em;margin-top:6px">
-        كشف القفزات · الدورانات · الأخطاء الفنية · نقاط ISU — تلقائياً بالكامل
+        ارفع الفيديو → شاهد الهيكل العظمي المتحرك فوق الجسم → اعرف الحركة المرجّحة
+        والأخطاء الفنية وخطوات الإصلاح — مبني على بيانات الحركة الفعلية مع نسب الثقة
       </p>
     </div>
     """, unsafe_allow_html=True)
@@ -1413,7 +1472,7 @@ def show_video_analysis_page(lang: str = 'ar'):
         "📊 النتائج",
         "🏅 القفزات والدورانات",
         "⚠️ الأخطاء والتصحيحات",
-        "🦴 الهيكل العظمي 3D",
+        "🦴 الهيكل العظمي المتحرك",
         "📈 الإحصائيات",
         "📄 التقارير"
     ])
@@ -1446,12 +1505,13 @@ def _tab_upload(ar: bool, lang: str):
     with col_info:
         st.markdown("""
         <div style="background:linear-gradient(135deg,#e0f2fe,#bfdbfe);border-radius:12px;padding:18px">
-          <b>كيف يعمل النظام:</b><br>
+          <b>كيف يعمل المختبر:</b><br>
           ① ارفع فيديو التزلج (MP4 · AVI · MOV · MKV)<br>
-          ② يستخرج النظام تلقائياً وضعيات الجسم (33 نقطة) بـ MediaPipe<br>
-          ③ يكتشف القفزات والدورانات والأخطاء التقنية<br>
-          ④ يحسب نقاط ISU الرسمية (GOE + Base Value)<br>
-          ⑤ يولّد تقريراً مفصلاً قابلاً للطباعة والتصدير
+          ② يستخرج النظام وضعيات الجسم (33 نقطة) بـ MediaPipe إطاراً بإطار<br>
+          ③ شاهد فيديو الهيكل العظمي المتحرك فوق الجسم + عرض 3D تفاعلي<br>
+          ④ يحدد الحركة المرجّحة والأخطاء الفنية مع نسبة الثقة وحدود اللقطة<br>
+          ⑤ يقترح خطوات إصلاح عملية ويحسب نقاط ISU الرسمية (GOE + Base Value)<br>
+          ⑥ يولّد تقريراً مفصلاً قابلاً للطباعة والتصدير
         </div>
         """, unsafe_allow_html=True)
 
@@ -1559,20 +1619,44 @@ def _tab_results(ar: bool, lang: str):
         else:
             st.info("ℹ️ نماذج AI غير محملة — النتائج بالخوارزميات الأساسية فقط")
 
-    if results.get('low_confidence') and not results.get('is_demo'):
+    # ── Confidence & shot-limitation panel — always shown, not just on low confidence ──
+    if not results.get('is_demo'):
         cov = int(results.get('kp_coverage', 0) * 100)
-        if not results.get('used_mediapipe', True):
-            st.warning(
-                "⚠️ تعذّر استخدام MediaPipe لهذا الفيديو — تم استخدام تتبع حركة "
-                "احتياطي (كشف الشكل بـ OpenCV) وهو أقل دقة بكثير. القفزات "
-                "والدورانات المكتشفة قد تكون **غير حقيقية** (ظلال، أشخاص آخرون، "
-                "حركة الكاميرا). يُنصح بإعادة رفع فيديو أوضح وأقرب للاعب."
-            )
-        else:
-            st.warning(
-                f"⚠️ نسبة اكتشاف الهيكل العظمي منخفضة ({cov}% من الإطارات فقط) — "
-                "قد يقل هذا من دقة كشف القفزات والدورانات. تأكد أن اللاعب واضح "
-                "بالكامل في الإطار وبإضاءة جيدة."
+        low_conf = results.get('low_confidence', False)
+        used_mp = results.get('used_mediapipe', True)
+        panel_icon = '⚠️' if low_conf else '✅'
+        with st.expander(f"{panel_icon} دقة التحليل وحدود اللقطة — تغطية الهيكل العظمي: {cov}%", expanded=low_conf):
+            pc1, pc2, pc3 = st.columns(3)
+            pc1.metric("🎯 تغطية النقاط المرجعية", f"{cov}%",
+                       help="نسبة الإطارات التي تم فيها استخراج هيكل عظمي فعلي بثقة كافية")
+            pc2.metric("🧍 إطارات محلَّلة", f"{results.get('pose_count', 0):,}")
+            pc3.metric("🔬 محرك الكشف", "MediaPipe" if used_mp else "احتياطي (تقريبي)")
+
+            if not used_mp:
+                st.warning(
+                    "⚠️ تعذّر استخدام MediaPipe لهذا الفيديو — تم استخدام تتبع حركة "
+                    "احتياطي (كشف الشكل بـ OpenCV)، وهو أقل دقة بكثير ولا يعتمد على "
+                    "هيكل عظمي حقيقي. أي قفزات أو دورانات معروضة هنا **تقديرية وغير "
+                    "مؤكدة** — قد تنتج عن ظلال أو أشخاص آخرين أو حركة الكاميرا."
+                )
+            elif low_conf:
+                st.warning(
+                    f"⚠️ نسبة اكتشاف الهيكل العظمي منخفضة ({cov}% فقط من الإطارات) — "
+                    "هذا يقلل من دقة كشف القفزات والدورانات والأخطاء. الأسباب "
+                    "الشائعة: اللاعب بعيد جداً أو خارج الإطار جزئياً، إضاءة ضعيفة، "
+                    "أو زاوية كاميرا غير مناسبة."
+                )
+            else:
+                st.success(
+                    "الهيكل العظمي مكتشف بثقة عالية في معظم إطارات الفيديو — "
+                    "النتائج أدناه مبنية على بيانات حركة فعلية مستخرجة من اللقطة."
+                )
+
+            st.caption(
+                "تذكير: كل نتيجة في هذا التقرير (نوع الحركة، الأخطاء، النقاط) هي "
+                "**استدلال مبني على بيانات الحركة المرصودة** ضمن حدود جودة هذه "
+                "اللقطة تحديداً — وليست حكماً قطعياً. راجع النسب المئوية للثقة "
+                "المعروضة مع كل عنصر."
             )
 
     vi = results.get('video_info', {})
@@ -1716,7 +1800,13 @@ def _tab_elements(ar: bool, lang: str):
     spins = results.get('spins', [])
 
     # ── JUMPS ────────────────────────────────────────────────────────────────
-    st.subheader(f"🦘 القفزات ({len(jumps)})")
+    st.subheader(f"🦘 القفزات المرجّحة ({len(jumps)})")
+    if jumps:
+        st.caption(
+            "التصنيف أدناه هو **أرجح نوع** بناءً على بيانات الحركة المستخرجة "
+            "(الدوران، وقت الطيران، الارتفاع) — وليس تعرّفاً قطعياً. راجع نسبة "
+            "الثقة على كل بطاقة."
+        )
 
     if jumps:
         for i, j in enumerate(jumps, 1):
@@ -1724,6 +1814,15 @@ def _tab_elements(ar: bool, lang: str):
             goe = j.get('goe', 0)
             goe_color = '#16a34a' if goe > 0 else ('#dc2626' if goe < 0 else '#64748b')
             border = '#22c55e' if clean else '#ef4444'
+            ai_conf = j.get('ai_confidence')
+            conf_badge = (
+                f"<span style='font-size:0.7em;background:#e0f2fe;color:#0369a1;"
+                f"border-radius:999px;padding:2px 9px;margin-right:6px'>"
+                f"ثقة {int(ai_conf*100)}%</span>"
+                if ai_conf is not None else
+                "<span style='font-size:0.7em;background:#f1f5f9;color:#64748b;"
+                "border-radius:999px;padding:2px 9px;margin-right:6px'>تقدير أولي</span>"
+            )
 
             with st.container():
                 st.markdown(f"""
@@ -1732,8 +1831,9 @@ def _tab_elements(ar: bool, lang: str):
                             background:{'#f0fdf4' if clean else '#fff1f2'}">
                   <div style="display:flex;justify-content:space-between;align-items:center">
                     <span style="font-size:1.25em;font-weight:700">
-                      {'✅' if clean else '⚠️'} {i}. {j.get('type','')}
+                      {'✅' if clean else '⚠️'} {i}. الحركة المرجّحة: {j.get('type','')}
                       <span style="font-size:0.75em;color:#94a3b8;margin-right:8px">({j.get('code','')})</span>
+                      {conf_badge}
                     </span>
                     <span style="font-size:1.5em;font-weight:800;color:{goe_color}">
                       {j.get('final_score',0):.2f} pts
@@ -1815,7 +1915,7 @@ def _tab_elements(ar: bool, lang: str):
     st.markdown("---")
 
     # ── SPINS ────────────────────────────────────────────────────────────────
-    st.subheader(f"🌀 الدورانات ({len(spins)})")
+    st.subheader(f"🌀 الدورانات المرجّحة ({len(spins)})")
 
     if spins:
         for i, s in enumerate(spins, 1):
@@ -2164,9 +2264,10 @@ def _tab_skeleton_3d(ar: bool, lang: str):
     st.markdown("""
     <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);
                 border-radius:14px;padding:20px 24px;margin-bottom:20px;color:white">
-      <h3 style="margin:0 0 6px;font-size:1.3em">🦴 الهيكل العظمي ثلاثي الأبعاد</h3>
+      <h3 style="margin:0 0 6px;font-size:1.3em">🦴 الحركة مع الهيكل العظمي المتحرك</h3>
       <p style="margin:0;opacity:.75;font-size:.9em">
-        تصوير تفاعلي ثلاثي الأبعاد لمفاصل الجسم المُستخرجة بـ MediaPipe (33 نقطة مرجعية)
+        شاهد فيديو التزلج مع هيكل عظمي متحرك فوق الجسم (33 نقطة مرجعية من MediaPipe)،
+        بالإضافة إلى عرض تفاعلي ثلاثي الأبعاد لأي لحظة تختارها
       </p>
     </div>
     """, unsafe_allow_html=True)
@@ -2176,6 +2277,25 @@ def _tab_skeleton_3d(ar: bool, lang: str):
         st.info("⚡ عرض تجريبي — ارفع فيديو حقيقي للحصول على هيكل عظمي مُحلَّل فعلياً")
         _show_demo_skeleton_3d()
         return
+
+    # ── SECTION 0: Full video with the moving skeleton overlay ──────────────
+    skel_video = results.get('skeleton_video_bytes')
+    if skel_video:
+        st.subheader("🎬 فيديو الحركة مع الهيكل العظمي")
+        st.video(skel_video)
+        st.caption(
+            "الهيكل العظمي مرسوم فوق الجسم لحظة بلحظة استناداً إلى نقاط الاستدلال "
+            "المُستخرجة فعلياً من الفيديو — وليس تخميناً. عند غياب نقطة موثوقة "
+            "لإطار معين، يُعرض آخر وضعية مؤكدة حتى يعود الاكتشاف."
+        )
+    else:
+        st.info(
+            "ℹ️ تعذّر توليد فيديو الهيكل العظمي المتحرك لهذا التحليل "
+            "(قد يكون بسبب عدم توفر مُرمِّز فيديو متوافق على الجهاز) — "
+            "استخدم العرض التفاعلي ثلاثي الأبعاد أدناه أو معرض الإطارات كبديل."
+        )
+
+    st.markdown("---")
 
     # ── SECTION 1: 3D Interactive Skeleton ───────────────────────────────────
     if pose_samples:
