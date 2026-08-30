@@ -102,22 +102,76 @@ ISI_FREESTYLE_4 = {
     ],
 }
 
+# ── Seed standard, extracted from the official ISI "Delta" reference video ────
+# Delta is a basic-skills level test (below Freestyle) — none of its elements
+# are rotation-based jumps/spins our engine classifies, so every element is
+# marked CATEGORY_POSITION (explicit manual review) rather than forced through
+# a detector that isn't built for them.
+ISI_DELTA = {
+    'key': 'isi_delta',
+    'name_ar': 'اختبار ISI دلتا (Delta)',
+    'name_en': 'ISI Delta',
+    'source_note': 'مستخرج من فيديو ISI الرسمي "Delta" (المرجع البصري المعتمد للاختبار)',
+    'elements': [
+        {
+            'key': 'forward_inside_three_turns', 'name_ar': 'Three Turns من حافة داخلية أمامية',
+            'name_en': 'Forward Inside Three Turns',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'القدم اليمنى واليسرى، مهارتان منفصلتان',
+                'حافة داخلية أمامية، ثم التفاف إلى حافة خارجية خلفية',
+                'الالتفاف على قدم واحدة، ويجب أن يساوي طول الخطوة طول اللاعب',
+            ],
+        },
+        {
+            'key': 'forward_edges', 'name_ar': 'حواف أمامية (Forward Edges)', 'name_en': 'Forward Edges',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'حافتان: خارجية وداخلية',
+                '4 أنصاف دوائر لكل حافة، بالتناوب بين القدمين',
+                'يجب أن تصطف على محور واحد',
+            ],
+        },
+        {
+            'key': 'shoot_the_duck_or_lunge', 'name_ar': 'Shoot the Duck أو Lunge (اختياري)',
+            'name_en': 'Choice of Shoot the Duck or Lunge',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'ورك التزلج يساوي أو أقل من الركبة',
+                'تُحفظ الوضعية لمسافة 4 أضعاف طول اللاعب',
+                'يجب أن ينهض اللاعب على قدم واحدة',
+            ],
+        },
+        {
+            'key': 'bunny_hop', 'name_ar': 'Bunny Hop', 'name_en': 'Bunny Hop',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'قفزة أمامية بسيطة (وثبة وليست قفزة دورانية)',
+                'الإقلاع: من مقدمة نصل قدم واحدة',
+                'الهبوط: على مقدمة نصل القدم الأخرى',
+            ],
+        },
+    ],
+}
+
+_SEED_STANDARDS = [ISI_FREESTYLE_4, ISI_DELTA]
+
 
 def ensure_seed_standards() -> None:
     conn = _conn()
-    cur = conn.execute("SELECT COUNT(*) FROM test_standards WHERE key=?", (ISI_FREESTYLE_4['key'],))
-    if cur.fetchone()[0] == 0:
-        conn.execute(
-            "INSERT INTO test_standards (key, name_ar, name_en, source_note, elements_json, created_at) "
-            "VALUES (?,?,?,?,?,?)",
-            (
-                ISI_FREESTYLE_4['key'], ISI_FREESTYLE_4['name_ar'], ISI_FREESTYLE_4['name_en'],
-                ISI_FREESTYLE_4['source_note'],
-                json.dumps(ISI_FREESTYLE_4['elements'], ensure_ascii=False),
-                datetime.now().strftime('%Y-%m-%d %H:%M'),
-            ),
-        )
-        conn.commit()
+    for std in _SEED_STANDARDS:
+        cur = conn.execute("SELECT COUNT(*) FROM test_standards WHERE key=?", (std['key'],))
+        if cur.fetchone()[0] == 0:
+            conn.execute(
+                "INSERT INTO test_standards (key, name_ar, name_en, source_note, elements_json, created_at) "
+                "VALUES (?,?,?,?,?,?)",
+                (
+                    std['key'], std['name_ar'], std['name_en'], std['source_note'],
+                    json.dumps(std['elements'], ensure_ascii=False),
+                    datetime.now().strftime('%Y-%m-%d %H:%M'),
+                ),
+            )
+    conn.commit()
     conn.close()
 
 
