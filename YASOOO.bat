@@ -60,14 +60,16 @@ if not defined PYTHON (
         echo ERROR: Automatic installation did not complete successfully.
         echo Details were logged to: !LOG!
         echo.
-        echo This can also happen if Python IS installed but this window's
-        echo PATH hasn't picked it up yet ^(a very common cause^). Try this
-        echo first before reinstalling anything:
-        echo   1. Close this window completely
-        echo   2. Open a NEW Command Prompt and run: py --version
-        echo   3. If that shows a version, just run YASOOO.bat again
+        echo This script already tried: the py launcher (3.11/3/any),
+        echo plain "python", refreshing PATH from the registry, and
+        echo searching the standard install folders directly for
+        echo python.exe — none of them found a working Python.
         echo.
-        echo If that still fails, install Python manually from:
+        echo Please open a Command Prompt and run: where python.exe
+        echo If that shows a path, Python is installed somewhere this
+        echo script didn't check — tell the developer that exact path.
+        echo.
+        echo Otherwise, install Python manually from:
         echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
         echo ^(check "Add Python to PATH"^), then run YASOOO.bat again.
         echo.
@@ -190,8 +192,26 @@ py -3 --version >nul 2>&1
 if !errorlevel! equ 0 ( set "PYTHON=py -3" & goto :eof )
 py --version >nul 2>&1
 if !errorlevel! equ 0 ( set "PYTHON=py" & goto :eof )
-REM Plain "python" is checked last — on a machine with no real Python,
+REM Plain "python" is checked next — on a machine with no real Python,
 REM Windows sometimes shadows this with a no-op Microsoft Store alias.
 python --version >nul 2>&1
 if !errorlevel! equ 0 ( set "PYTHON=python" & goto :eof )
+
+REM Last resort: none of the launcher commands worked — this usually
+REM means Python IS installed but this process's PATH is stale/wrong
+REM (a well-known Windows quirk where windows opened from Explorer can
+REM keep an outdated environment even after installers update PATH).
+REM Search the well-known install folders directly for python.exe and
+REM call it by its full path, completely bypassing PATH and the py
+REM launcher.
+for /f "delims=" %%F in ('dir /b /s /a-d "%LocalAppData%\Programs\Python\python.exe" 2^>nul') do (
+    if not defined PYTHON set "PYTHON="%%F""
+)
+if defined PYTHON ( "!PYTHON!" --version >nul 2>&1 & if !errorlevel! equ 0 goto :eof )
+set "PYTHON="
+for %%R in ("%ProgramFiles%\Python3*" "!ProgramFiles(x86)!\Python3*" "C:\Python3*") do (
+    if exist "%%~R\python.exe" if not defined PYTHON set "PYTHON="%%~R\python.exe""
+)
+if defined PYTHON ( "!PYTHON!" --version >nul 2>&1 & if !errorlevel! equ 0 goto :eof )
+set "PYTHON="
 goto :eof
