@@ -13,15 +13,12 @@ echo ================================================
 echo.
 
 set "APP_DIR=%~dp0"
-set "PYTHON=py -3.11"
-set "PIP=py -3.11 -m pip"
-set "STREAMLIT=py -3.11 -m streamlit"
 set "LOG=%APP_DIR%launch.log"
 
-echo [1/5] Checking Python 3.11...
-%PYTHON% --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Python 3.11 not found. Attempting automatic installation...
+echo [1/5] Checking Python...
+call :detect_python
+if not defined PYTHON (
+    echo No usable Python installation found. Attempting automatic installation...
     echo.
 
     REM Attempt 1: winget (Windows Package Manager) — may be missing,
@@ -41,8 +38,8 @@ if %errorlevel% neq 0 (
     )
 
     call :refresh_path
-    %PYTHON% --version >nul 2>&1
-    if !errorlevel! neq 0 (
+    call :detect_python
+    if not defined PYTHON (
         REM Attempt 2: download the official installer directly and run it silently
         echo Downloading the official Python installer instead...
         set "PY_INSTALLER=!TEMP!\python-3.11.9-amd64.exe"
@@ -51,29 +48,39 @@ if %errorlevel% neq 0 (
             echo Running the Python installer silently ^(this may take a minute^)...
             "!PY_INSTALLER!" /quiet InstallAllUsers=0 PrependPath=1 Include_test=0 >> "%LOG%" 2>&1
             call :refresh_path
+            call :detect_python
         ) else (
             echo ERROR: Could not download the Python installer automatically.
         )
     )
 
-    %PYTHON% --version >nul 2>&1
-    if !errorlevel! neq 0 (
+    if not defined PYTHON (
         color 0C
         echo.
         echo ERROR: Automatic installation did not complete successfully.
-        echo Details were logged to: %LOG%
+        echo Details were logged to: !LOG!
         echo.
-        echo Please close this window, install Python 3.11 manually from:
+        echo This can also happen if Python IS installed but this window's
+        echo PATH hasn't picked it up yet ^(a very common cause^). Try this
+        echo first before reinstalling anything:
+        echo   1. Close this window completely
+        echo   2. Open a NEW Command Prompt and run: py --version
+        echo   3. If that shows a version, just run YASOOO.bat again
+        echo.
+        echo If that still fails, install Python manually from:
         echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
         echo ^(check "Add Python to PATH"^), then run YASOOO.bat again.
         echo.
         pause
         exit /b 1
     )
-    echo [OK] Python 3.11 installed successfully.
+    echo [OK] Python installed successfully: !PYTHON!
 ) else (
-    echo [OK] Python 3.11 found.
+    echo [OK] Python found: !PYTHON!
 )
+
+set "PIP=%PYTHON% -m pip"
+set "STREAMLIT=%PYTHON% -m streamlit"
 
 echo.
 echo [2/5] Checking required libraries...
@@ -156,4 +163,27 @@ REM ============================================================
 :refresh_path
 for /f "tokens=2*" %%A in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
 for /f "tokens=2*" %%A in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
+goto :eof
+
+REM ============================================================
+REM  Detect a usable Python 3 install without forcing an exact
+REM  version. Sets PYTHON to whichever launcher command works,
+REM  or clears it if nothing usable was found. Prefers 3.11 (the
+REM  version this app is tested with) but happily falls back to
+REM  any other Python 3 already on the machine — most crashes
+REM  reported as "Python not found" actually have Python installed
+REM  under a different version/launcher than the one hardcoded here.
+REM ============================================================
+:detect_python
+set "PYTHON="
+py -3.11 --version >nul 2>&1
+if !errorlevel! equ 0 ( set "PYTHON=py -3.11" & goto :eof )
+py -3 --version >nul 2>&1
+if !errorlevel! equ 0 ( set "PYTHON=py -3" & goto :eof )
+py --version >nul 2>&1
+if !errorlevel! equ 0 ( set "PYTHON=py" & goto :eof )
+REM Plain "python" is checked last — on a machine with no real Python,
+REM Windows sometimes shadows this with a no-op Microsoft Store alias.
+python --version >nul 2>&1
+if !errorlevel! equ 0 ( set "PYTHON=python" & goto :eof )
 goto :eof
