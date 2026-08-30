@@ -111,6 +111,7 @@ TRANSLATIONS = {
         'jump_simulator': '🎿 محاكي القفزات 3D',
         'world_champions': '🏆 أبطال العالم',
         'fse_analysis': '📊 تحليل FSE المالي',
+        'test_standards': '🏆 معايير الاختبار',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -195,6 +196,7 @@ TRANSLATIONS = {
         'jump_simulator': '🎿 3D Jump Simulator',
         'world_champions': '🏆 World Champions',
         'fse_analysis': '📊 FSE Financial Analysis',
+        'test_standards': '🏆 Test Standards',
         'logout': 'Logout',
         'login': 'Login',
         'username': 'Username',
@@ -767,6 +769,7 @@ _nav_pages = [
     t('jump_simulator'),
     t('world_champions'),
     t('fse_analysis'),
+    t('test_standards'),
     t('ml_training'),
     t('referee'),
     t('stats'),
@@ -2578,6 +2581,14 @@ def show_fse_analysis():
         st.error(f"خطأ في تحميل تحليل FSE: {e}")
         st.exception(e)
 
+def show_test_standards():
+    try:
+        from src.pages.test_standards_page import show_test_standards_page
+        show_test_standards_page(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في تحميل مختبر معايير الاختبار: {e}")
+        st.exception(e)
+
 # ============================================================================
 # MAIN ROUTER
 # ============================================================================
@@ -2602,6 +2613,7 @@ _ROUTER = {
     t('jump_simulator'):    show_jump_simulator,
     t('world_champions'):   show_world_champions,
     t('fse_analysis'):      show_fse_analysis,
+    t('test_standards'):    show_test_standards,
     t('stats'):             show_stats,
     t('club_mgmt'):       show_club_management,
 }
