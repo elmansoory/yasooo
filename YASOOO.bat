@@ -156,13 +156,21 @@ pause
 exit /b 0
 
 REM ============================================================
-REM  Refresh PATH in this session from the registry, so a
-REM  freshly-installed python/py launcher is picked up without
-REM  having to close and reopen the terminal.
+REM  Refresh PATH in this session so a freshly-installed python/py
+REM  launcher is picked up without closing and reopening the
+REM  terminal. Uses PowerShell/.NET to read+expand both the Machine
+REM  and User PATH from the registry — a plain `reg query` returns
+REM  the raw unexpanded string (e.g. literal "%USERPROFILE%\..."),
+REM  which silently fails to resolve when appended to PATH as-is.
 REM ============================================================
 :refresh_path
-for /f "tokens=2*" %%A in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
-for /f "tokens=2*" %%A in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "PATH=%%B;%PATH%"
+for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "try { ([System.Environment]::GetEnvironmentVariable('Path','Machine')) + ';' + ([System.Environment]::GetEnvironmentVariable('Path','User')) } catch { '' }"`) do (
+    if not "%%P"=="" set "PATH=%%P;!PATH!"
+)
+REM Also probe the two most common per-user/per-machine Python
+REM install folders directly, in case PATH still didn't pick it up.
+for /d %%D in ("%LocalAppData%\Programs\Python\Python3*") do set "PATH=%%D;%%D\Scripts;%PATH%"
+for /d %%D in ("%ProgramFiles%\Python3*") do set "PATH=%%D;%%D\Scripts;%PATH%"
 goto :eof
 
 REM ============================================================
