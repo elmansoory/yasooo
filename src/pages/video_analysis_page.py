@@ -624,6 +624,15 @@ class SkatingVideoAnalyzer:
         # Jump threshold: lower y = higher in frame
         jump_thresh = baseline - max(0.09, std_y * 1.1)
 
+        # Adaptive lateral-travel floor for the jump-vs-spin discriminator below.
+        # A fixed absolute threshold (e.g. 0.025) assumes a close-up shot; from a
+        # wider/farther camera (common on open rinks) a real rotational jump's
+        # lateral hip travel in normalized coordinates can be much smaller even
+        # though the jump is genuine — duration (0.20–1.10s) already rules out
+        # true spins, so this only needs to catch near-zero-motion noise blips.
+        global_x_std = np.std(xs)
+        min_lateral_travel = min(0.025, max(0.006, global_x_std * 0.06))
+
         # Build spin-occupied mask to skip those frames
         spin_occupied = np.zeros(len(times), dtype=bool)
         for t_s, t_e in spin_windows:
@@ -660,11 +669,12 @@ class SkatingVideoAnalyzer:
                 if 0.20 <= airtime <= 1.10:
                     window = poses[jump_start_idx:i + 1]
 
-                    # Lateral-travel check: real jumps move; spins stay put.
-                    # If x-std in this window is < 0.03, it looks like a spin — skip.
+                    # Lateral-travel check: filters out near-zero-motion noise
+                    # blips (camera shake, tracking jitter) — true spins are
+                    # already excluded by duration/spin-window, not by this.
                     seg_x = xs[jump_start_idx:i + 1]
                     lateral_travel = np.std(seg_x)
-                    if lateral_travel < 0.025:
+                    if lateral_travel < min_lateral_travel:
                         in_jump = False
                         continue
 
