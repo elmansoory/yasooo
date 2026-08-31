@@ -114,6 +114,22 @@ if %errorlevel% neq 0 (
 )
 echo [OK] Libraries ready.
 
+REM The MediaPipe pose-detection model is not bundled with the repo (it's a
+REM ~6MB binary). Without it, real skeleton tracking silently falls back to
+REM a much less accurate motion-blob heuristic (still works, but jumps/spins
+REM detected that way are far less reliable) — download it once if missing.
+if not exist "%APP_DIR%data\models\pose_landmarker_lite.task" (
+    echo Downloading the pose-detection model ^(one-time, ~6MB^)...
+    if not exist "%APP_DIR%data\models" mkdir "%APP_DIR%data\models"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task' -OutFile '%APP_DIR%data\models\pose_landmarker_lite.task'" >> "%LOG%" 2>&1
+    if exist "%APP_DIR%data\models\pose_landmarker_lite.task" (
+        echo [OK] Pose-detection model downloaded.
+    ) else (
+        echo WARNING: Could not download the pose-detection model — video
+        echo analysis will use a less accurate fallback. Check launch.log.
+    )
+)
+
 echo.
 echo [3/5] Checking database...
 if not exist "%APP_DIR%skating_database.db" (

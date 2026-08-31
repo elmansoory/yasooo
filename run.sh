@@ -94,6 +94,18 @@ if ! python3 -c "import google.protobuf as p, sys; sys.exit(0 if int(p.__version
     pip install -q "protobuf>=3.20,<5"
 fi
 
+# نموذج كشف الهيكل العظمي (MediaPipe) ليس ضمن المستودع (~6MB) — بدونه
+# يتحول التحليل تلقائياً لطريقة احتياطية أقل دقة بكثير. نزّله مرة واحدة فقط.
+MODEL_PATH="data/models/pose_landmarker_lite.task"
+if [ ! -f "$MODEL_PATH" ]; then
+    echo "📥 تنزيل نموذج كشف الهيكل العظمي (مرة واحدة، ~6MB)..."
+    mkdir -p data/models
+    curl -sSL -o "$MODEL_PATH" \
+        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task" \
+        && echo "✅ تم تنزيل نموذج الهيكل العظمي" \
+        || echo "⚠️  تعذّر تنزيل النموذج — سيُستخدم أسلوب احتياطي أقل دقة"
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 echo "🚀 بدء التطبيق..."
