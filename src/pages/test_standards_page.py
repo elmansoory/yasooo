@@ -133,14 +133,70 @@ def _tab_upload_reference(federation: str):
 # TAB: EVALUATE A PLAYER
 # ============================================================================
 
+def _inline_player_upload(federation: str):
+    """رفع فيديو لاعب وتحليله بمحرك التحليل الحقيقي مباشرة من هذا التبويب —
+    بدون الحاجة للانتقال إلى صفحة مختبر تحليل الفيديو أولاً."""
+    uploaded = st.file_uploader(
+        "فيديو اللاعب", type=['mp4', 'avi', 'mov', 'mkv'], key=f"player_upload_{federation}",
+        help="الحجم الأقصى: 200MB | مدة مثالية: 10-120 ثانية"
+    )
+    if not uploaded:
+        return
+
+    player_name = st.text_input("👤 اسم اللاعب", placeholder="اختياري", key=f"player_name_upl_{federation}")
+
+    if st.button("🚀 حلّل هذا الفيديو الآن", type="primary", use_container_width=True,
+                 key=f"analyze_btn_{federation}"):
+        try:
+            from src.pages.video_analysis_page import SkatingVideoAnalyzer
+        except Exception as e:
+            st.error(f"تعذّر تحميل محرك التحليل: {e}")
+            return
+
+        import tempfile
+        from pathlib import Path
+
+        suffix = Path(uploaded.name).suffix or '.mp4'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(uploaded.read())
+            tmp_path = tmp.name
+
+        try:
+            prog_bar = st.progress(0, text="جارٍ تحليل الفيديو...")
+
+            def update_progress(frac: float, frame: int):
+                prog_bar.progress(min(frac, 1.0), text=f"تحليل الإطار {frame} ...")
+
+            analyzer = SkatingVideoAnalyzer()
+            results = analyzer.analyze(tmp_path, progress_cb=update_progress)
+            prog_bar.progress(1.0, text="✅ اكتمل التحليل")
+
+            if 'error' in results:
+                st.error(f"خطأ: {results['error']}")
+            else:
+                results['player_name'] = player_name
+                st.session_state['analysis_results'] = results
+                st.success("✅ اكتمل التحليل — اختر معياراً أدناه وقيّم الأداء")
+                st.rerun()
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+
+
 def _tab_evaluate(federation: str):
     results = st.session_state.get('analysis_results')
     if not results:
         st.info(
-            "لا يوجد تحليل فيديو محمَّل حالياً — اذهب لصفحة 🧪 مختبر تحليل الفيديو وارفع/حلّل "
-            "فيديو لاعب أولاً (أو استخدم العرض التجريبي)، ثم عد هنا للتقييم."
+            "ارفع فيديو اللاعب مباشرة هنا لتحليله ثم تقييمه، أو حلّله أولاً من صفحة "
+            "🧪 مختبر تحليل الفيديو وعُد لهذا التبويب."
         )
+        _inline_player_upload(federation)
         return
+
+    with st.expander("🔄 رفع فيديو لاعب آخر / إعادة التحليل"):
+        _inline_player_upload(federation)
 
     standards = list_standards(federation)
     if not standards:
