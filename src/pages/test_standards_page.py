@@ -164,7 +164,8 @@ def _tab_standards_library():
                 st.markdown(f"**{_CAT_LABELS.get(el['category'], '')} {el['name_ar']}**")
                 for note in el.get('criteria_notes_ar', []):
                     st.caption(f"  • {note}")
-            if s['key'] not in ('isi_freestyle_4', 'isi_delta'):  # keep seeded references protected
+            _SEEDED_KEYS = ('isi_pre_alpha', 'isi_alpha', 'isi_beta', 'isi_gamma', 'isi_delta', 'isi_freestyle_4')
+            if s['key'] not in _SEEDED_KEYS:  # keep seeded references protected
                 if st.button("🗑️ حذف هذا المعيار", key=f"del_{s['id']}"):
                     delete_standard(s['id'])
                     st.rerun()

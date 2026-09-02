@@ -154,7 +154,185 @@ ISI_DELTA = {
     ],
 }
 
-_SEED_STANDARDS = [ISI_FREESTYLE_4, ISI_DELTA]
+# ── Seed standard, extracted from the official ISI "Pre-Alpha" reference video ─
+# Pre-Alpha is the entry-level basic-skills test, below Alpha/Beta/Gamma/Delta.
+ISI_PRE_ALPHA = {
+    'key': 'isi_pre_alpha',
+    'name_ar': 'اختبار ISI بري-ألفا (Pre-Alpha)',
+    'name_en': 'ISI Pre-Alpha',
+    'source_note': 'مستخرج من فيديو ISI الرسمي "Pre-Alpha" (المرجع البصري المعتمد للاختبار)',
+    'elements': [
+        {
+            'key': 'two_foot_glide', 'name_ar': 'انزلاق بقدمين (Two-Foot Glide)',
+            'name_en': 'Two-Foot Glide',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'حد أقصى 3 خطوات للتحضير',
+                'تبقى القدمان على الجليد',
+                'تُحفظ لمسافة تساوي طول اللاعب على الأقل',
+            ],
+        },
+        {
+            'key': 'one_foot_glide', 'name_ar': 'انزلاق بقدم واحدة (One-Foot Glide)',
+            'name_en': 'One-Foot Glide',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'حد أقصى 3 خطوات للتحضير',
+                'يُؤدَّى على كل قدم منفصلة',
+                'تُحفظ لمسافة تساوي طول اللاعب على الأقل',
+            ],
+        },
+        {
+            'key': 'forward_swizzles', 'name_ar': 'Swizzles أمامية', 'name_en': 'Forward Swizzles',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'تُحفظ لمسافة تساوي طول اللاعب على الأقل',
+                '3 حركات دخول وخروج',
+                'انزلاق بقدمين بين كل حركة',
+            ],
+        },
+        {
+            'key': 'backward_wiggle', 'name_ar': 'Wiggle خلفية (Backward Wiggle)',
+            'name_en': 'Backward Wiggle',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'تُؤدَّى لمسافة تساوي طول اللاعب على الأقل',
+                '4 حركات متعرجة (zig-zag)',
+            ],
+        },
+        {
+            'key': 'backward_swizzles', 'name_ar': 'Swizzles خلفية', 'name_en': 'Backward Swizzles',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'تُحفظ لمسافة تساوي طول اللاعب على الأقل',
+                '3 حركات دخول وخروج للخلف',
+                'انزلاق بقدمين بين كل حركة',
+            ],
+        },
+    ],
+}
+
+# ── Seed standard, extracted from the official ISI "Alpha" reference video ────
+ISI_ALPHA = {
+    'key': 'isi_alpha',
+    'name_ar': 'اختبار ISI ألفا (Alpha)',
+    'name_en': 'ISI Alpha',
+    'source_note': 'مستخرج من فيديو ISI الرسمي "Alpha" (المرجع البصري المعتمد للاختبار)',
+    'elements': [
+        {
+            'key': 'forward_stroking', 'name_ar': 'دفع أمامي (Forward Stroking)',
+            'name_en': 'Forward Stroking',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'تبدأ الدفعة على النصل المسطّح أو الحافة الخارجية',
+                'كل دفعة تساوي طول اللاعب',
+                '6 دفعات متبادلة على الأقل',
+            ],
+        },
+        {
+            'key': 'forward_crossovers', 'name_ar': 'خطوات متقاطعة أمامية (Forward Crossovers)',
+            'name_en': 'Forward Crossovers',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'كلا الاتجاهين، مهارتان منفصلتان',
+                '10 دفعات متواصلة على الأقل',
+                'الذراع الخارجية للأمام، والداخلية للخلف',
+            ],
+        },
+        {
+            'key': 'one_foot_snowplow_stop', 'name_ar': 'إيقاف Snowplow بقدم واحدة',
+            'name_en': 'One Foot Snowplow Stop',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'يُؤدَّى في خط مستقيم',
+                'قدم الإيقاف على الحافة الداخلية، أي قدم',
+                'تُحفظ الوضعية 3 ثوانٍ بعد التوقف',
+            ],
+        },
+    ],
+}
+
+# ── Seed standard, extracted from the official ISI "Beta" reference video ─────
+ISI_BETA = {
+    'key': 'isi_beta',
+    'name_ar': 'اختبار ISI بيتا (Beta)',
+    'name_en': 'ISI Beta',
+    'source_note': 'مستخرج من فيديو ISI الرسمي "Beta" (المرجع البصري المعتمد للاختبار)',
+    'elements': [
+        {
+            'key': 'backward_stroking', 'name_ar': 'دفع خلفي (Backward Stroking)',
+            'name_en': 'Backward Stroking',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'الدفع بالحافة الداخلية، بدون مقدمة النصل',
+                'تبدأ الدفعة على الحافة الخارجية',
+                '6 دفعات، كل واحدة تساوي طول اللاعب',
+            ],
+        },
+        {
+            'key': 'backward_crossovers', 'name_ar': 'خطوات متقاطعة خلفية (Backward Crossovers)',
+            'name_en': 'Backward Crossovers',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'كلا الاتجاهين، مهارتان منفصلتان',
+                '10 دفعات متواصلة على الأقل',
+                'الذراع الخارجية للأمام، والداخلية للخلف',
+            ],
+        },
+        {
+            'key': 't_stops', 'name_ar': 'إيقاف T (T-Stops)', 'name_en': 'T-Stops',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'كلتا القدمين، مهارتان منفصلتان',
+                'توقف كامل، يُحفظ 3 ثوانٍ',
+                'قدم الإيقاف تستخدم الحافة الخارجية',
+            ],
+        },
+    ],
+}
+
+# ── Seed standard, extracted from the official ISI "Gamma" reference video ────
+ISI_GAMMA = {
+    'key': 'isi_gamma',
+    'name_ar': 'اختبار ISI جاما (Gamma)',
+    'name_en': 'ISI Gamma',
+    'source_note': 'مستخرج من فيديو ISI الرسمي "Gamma" (المرجع البصري المعتمد للاختبار)',
+    'elements': [
+        {
+            'key': 'forward_outside_three_turns', 'name_ar': 'Three Turns من حافة خارجية أمامية',
+            'name_en': 'Forward Outside Three Turns',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'القدم اليمنى واليسرى، مهارتان منفصلتان',
+                'حافة خارجية أمامية، ثم التفاف إلى حافة داخلية خلفية',
+                'الالتفاف على قدم واحدة، ويجب أن يساوي طول الخطوة طول اللاعب',
+            ],
+        },
+        {
+            'key': 'inside_open_mohawk_combinations', 'name_ar': 'تشكيلات Mohawk داخلية مفتوحة',
+            'name_en': 'Inside Open Mohawk Combinations',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'كلا الاتجاهين، مهارتان منفصلتان',
+                'مهاركان (mohawks)، 7 خطوات إجمالاً',
+                'نمط إلزامي محدد',
+            ],
+        },
+        {
+            'key': 'hockey_stop', 'name_ar': 'إيقاف الهوكي (Hockey Stop)', 'name_en': 'Hockey Stop',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'حافة داخلية لقدم، وخارجية للأخرى',
+                'يجب أن تبقى القدمان متوازيتين',
+                'يُحفظ 3 ثوانٍ بعد التوقف',
+            ],
+        },
+    ],
+}
+
+_SEED_STANDARDS = [
+    ISI_PRE_ALPHA, ISI_ALPHA, ISI_BETA, ISI_GAMMA, ISI_DELTA, ISI_FREESTYLE_4,
+]
 
 
 def ensure_seed_standards() -> None:
