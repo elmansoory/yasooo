@@ -111,7 +111,9 @@ TRANSLATIONS = {
         'jump_simulator': '🎿 محاكي القفزات 3D',
         'world_champions': '🏆 أبطال العالم',
         'fse_analysis': '📊 تحليل FSE المالي',
-        'test_standards': '🏆 معايير الاختبار',
+        'isi_exams': '🏅 امتحانات ISI',
+        'isu_exams': '🏅 امتحانات ISU',
+        'training_hub': '🤖 مركز تدريب النموذج',
     },
     'en': {
         'title': '⛸️ Figure Skating Analysis System',
@@ -196,7 +198,9 @@ TRANSLATIONS = {
         'jump_simulator': '🎿 3D Jump Simulator',
         'world_champions': '🏆 World Champions',
         'fse_analysis': '📊 FSE Financial Analysis',
-        'test_standards': '🏆 Test Standards',
+        'isi_exams': '🏅 ISI Exams',
+        'isu_exams': '🏅 ISU Exams',
+        'training_hub': '🤖 Training Data Hub',
         'logout': 'Logout',
         'login': 'Login',
         'username': 'Username',
@@ -769,7 +773,9 @@ _nav_pages = [
     t('jump_simulator'),
     t('world_champions'),
     t('fse_analysis'),
-    t('test_standards'),
+    t('isi_exams'),
+    t('isu_exams'),
+    t('training_hub'),
     t('ml_training'),
     t('referee'),
     t('stats'),
@@ -2581,12 +2587,28 @@ def show_fse_analysis():
         st.error(f"خطأ في تحميل تحليل FSE: {e}")
         st.exception(e)
 
-def show_test_standards():
+def show_isi_exams():
     try:
         from src.pages.test_standards_page import show_test_standards_page
         show_test_standards_page(lang=st.session_state.language)
     except Exception as e:
-        st.error(f"خطأ في تحميل مختبر معايير الاختبار: {e}")
+        st.error(f"خطأ في تحميل امتحانات ISI: {e}")
+        st.exception(e)
+
+def show_isu_exams():
+    try:
+        from src.pages.isu_exams_page import show_isu_exams_page
+        show_isu_exams_page(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في تحميل امتحانات ISU: {e}")
+        st.exception(e)
+
+def show_training_hub():
+    try:
+        from src.pages.training_data_hub_page import show_training_data_hub_page
+        show_training_data_hub_page(lang=st.session_state.language)
+    except Exception as e:
+        st.error(f"خطأ في تحميل مركز تدريب النموذج: {e}")
         st.exception(e)
 
 # ============================================================================
@@ -2613,7 +2635,9 @@ _ROUTER = {
     t('jump_simulator'):    show_jump_simulator,
     t('world_champions'):   show_world_champions,
     t('fse_analysis'):      show_fse_analysis,
-    t('test_standards'):    show_test_standards,
+    t('isi_exams'):       show_isi_exams,
+    t('isu_exams'):       show_isu_exams,
+    t('training_hub'):    show_training_hub,
     t('stats'):             show_stats,
     t('club_mgmt'):       show_club_management,
 }

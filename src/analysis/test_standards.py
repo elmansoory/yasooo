@@ -16,6 +16,9 @@ CATEGORY_SPIN = 'spin'
 CATEGORY_POSITION = 'position'   # e.g. arabesque/spiral — no automatic detector yet
 CATEGORY_SEQUENCE = 'sequence'   # step sequence — partial automatic detector (duration only)
 
+FEDERATION_ISI = 'ISI'
+FEDERATION_ISU = 'ISU'
+
 
 def _conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
@@ -26,6 +29,38 @@ def _conn() -> sqlite3.Connection:
             name_ar TEXT, name_en TEXT,
             source_note TEXT,
             elements_json TEXT,
+            federation TEXT DEFAULT 'ISI',
+            created_at TEXT
+        )
+    """)
+    # Older DBs created before the federation column existed
+    try:
+        conn.execute("ALTER TABLE test_standards ADD COLUMN federation TEXT DEFAULT 'ISI'")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS reference_video_uploads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            federation TEXT,
+            level_name TEXT,
+            note TEXT,
+            file_path TEXT,
+            linked_standard_key TEXT,
+            uploaded_at TEXT
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS standard_evaluations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            federation TEXT,
+            standard_key TEXT,
+            standard_name TEXT,
+            player_name TEXT,
+            video_note TEXT,
+            passed INTEGER,
+            report_json TEXT,
             created_at TEXT
         )
     """)
@@ -330,22 +365,72 @@ ISI_GAMMA = {
     ],
 }
 
+# ── Seed standard, grounded in Module 3 "Jump & Spin Technique Library" —
+# the ISU-side technical breakdown (entry/takeoff/landing + root-cause
+# correction) we already extracted for these three jumps. Unlike the ISI
+# basic-skills levels above, these ARE rotation-based jumps our engine
+# classifies, so they carry real match_codes/min_rotations for automatic
+# evaluation, not just manual review.
+ISU_JUMP_BASICS = {
+    'key': 'isu_jump_basics',
+    'name_ar': 'معايير عناصر ISU الأساسية — القفزات',
+    'name_en': 'ISU Basic Jump Elements',
+    'source_note': 'مستخرج من Module 3 (Jump & Spin Technique Library) — Figure Skating Coach Ready™',
+    'federation': FEDERATION_ISU,
+    'elements': [
+        {
+            'key': 'waltz_jump', 'name_ar': 'قفزة Waltz', 'name_en': 'Waltz Jump',
+            'category': CATEGORY_JUMP, 'match_codes': ['1A', 'waltz', 'axel'],
+            'min_rotations': 0.5,
+            'criteria_notes_ar': [
+                'الدخول: حافة خارجية أمامية، قوس حقيقي وليس خطاً مستقيماً',
+                'الإقلاع: الركبة تنثني ثم تمتد الساق مع تأرجح الساق الحرة للأمام وللأعلى',
+                'الهبوط: حافة خارجية خلفية للقدم المقابلة، الركبة منثنية لامتصاص الصدمة',
+            ],
+        },
+        {
+            'key': 'toe_loop', 'name_ar': 'قفزة Toe Loop', 'name_en': 'Toe Loop',
+            'category': CATEGORY_JUMP, 'match_codes': ['1T', '2T', '3T', 'toe loop', 'toeloop'],
+            'min_rotations': 1.0,
+            'criteria_notes_ar': [
+                'الدخول: حافة خارجية خلفية بقوس حقيقي',
+                'وضع المقدمة خلف الجسم مباشرة، بزاوية 45 درجة تقريباً',
+                'تأرجح الساق الحرة اليمنى للأمام وعبر الجسم يولّد الزخم الدوراني',
+                'الهبوط: نفس الحافة الخارجية الخلفية التي بدأت منها القفزة',
+            ],
+        },
+        {
+            'key': 'salchow', 'name_ar': 'قفزة Salchow', 'name_en': 'Salchow',
+            'category': CATEGORY_JUMP, 'match_codes': ['1S', '2S', '3S', 'salchow'],
+            'min_rotations': 1.0,
+            'criteria_notes_ar': [
+                'الدخول: حافة داخلية خلفية، بدون مساعدة مقدمة النصل',
+                'انثناء عميق للركبة ثم امتداد كامل للساق يدفع الجسم للأعلى',
+                'الساق الحرة تتأرجح من خلف الجسم إلى أمامه وعبره',
+                'الخروج: من الحافة الداخلية لنصل القدم اليسرى',
+            ],
+        },
+    ],
+}
+
 _SEED_STANDARDS = [
-    ISI_PRE_ALPHA, ISI_ALPHA, ISI_BETA, ISI_GAMMA, ISI_DELTA, ISI_FREESTYLE_4,
+    (ISI_PRE_ALPHA, FEDERATION_ISI), (ISI_ALPHA, FEDERATION_ISI), (ISI_BETA, FEDERATION_ISI),
+    (ISI_GAMMA, FEDERATION_ISI), (ISI_DELTA, FEDERATION_ISI), (ISI_FREESTYLE_4, FEDERATION_ISI),
+    (ISU_JUMP_BASICS, FEDERATION_ISU),
 ]
 
 
 def ensure_seed_standards() -> None:
     conn = _conn()
-    for std in _SEED_STANDARDS:
+    for std, federation in _SEED_STANDARDS:
         cur = conn.execute("SELECT COUNT(*) FROM test_standards WHERE key=?", (std['key'],))
         if cur.fetchone()[0] == 0:
             conn.execute(
-                "INSERT INTO test_standards (key, name_ar, name_en, source_note, elements_json, created_at) "
-                "VALUES (?,?,?,?,?,?)",
+                "INSERT INTO test_standards (key, name_ar, name_en, source_note, elements_json, federation, created_at) "
+                "VALUES (?,?,?,?,?,?,?)",
                 (
                     std['key'], std['name_ar'], std['name_en'], std['source_note'],
-                    json.dumps(std['elements'], ensure_ascii=False),
+                    json.dumps(std['elements'], ensure_ascii=False), federation,
                     datetime.now().strftime('%Y-%m-%d %H:%M'),
                 ),
             )
@@ -353,19 +438,26 @@ def ensure_seed_standards() -> None:
     conn.close()
 
 
-def list_standards() -> List[Dict]:
+def list_standards(federation: Optional[str] = None) -> List[Dict]:
     ensure_seed_standards()
     conn = _conn()
-    rows = conn.execute(
-        "SELECT id, key, name_ar, name_en, source_note, elements_json, created_at "
-        "FROM test_standards ORDER BY id"
-    ).fetchall()
+    if federation:
+        rows = conn.execute(
+            "SELECT id, key, name_ar, name_en, source_note, elements_json, federation, created_at "
+            "FROM test_standards WHERE federation=? ORDER BY id", (federation,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, key, name_ar, name_en, source_note, elements_json, federation, created_at "
+            "FROM test_standards ORDER BY id"
+        ).fetchall()
     conn.close()
     out = []
     for r in rows:
         out.append({
             'id': r[0], 'key': r[1], 'name_ar': r[2], 'name_en': r[3],
-            'source_note': r[4], 'elements': json.loads(r[5]), 'created_at': r[6],
+            'source_note': r[4], 'elements': json.loads(r[5]),
+            'federation': r[6] or FEDERATION_ISI, 'created_at': r[7],
         })
     return out
 
@@ -377,13 +469,14 @@ def get_standard(std_id: int) -> Optional[Dict]:
     return None
 
 
-def save_standard(name_ar: str, name_en: str, source_note: str, elements: List[Dict], key: Optional[str] = None) -> None:
+def save_standard(name_ar: str, name_en: str, source_note: str, elements: List[Dict],
+                   key: Optional[str] = None, federation: str = FEDERATION_ISI) -> None:
     key = key or f"custom_{int(datetime.now().timestamp())}"
     conn = _conn()
     conn.execute(
-        "INSERT INTO test_standards (key, name_ar, name_en, source_note, elements_json, created_at) "
-        "VALUES (?,?,?,?,?,?)",
-        (key, name_ar, name_en, source_note, json.dumps(elements, ensure_ascii=False),
+        "INSERT INTO test_standards (key, name_ar, name_en, source_note, elements_json, federation, created_at) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (key, name_ar, name_en, source_note, json.dumps(elements, ensure_ascii=False), federation,
          datetime.now().strftime('%Y-%m-%d %H:%M')),
     )
     conn.commit()
@@ -395,6 +488,89 @@ def delete_standard(std_id: int) -> None:
     conn.execute("DELETE FROM test_standards WHERE id=?", (std_id,))
     conn.commit()
     conn.close()
+
+
+# ── Reference-video uploads (the "biggest possible library" upload flow) ───────
+
+def save_reference_upload(federation: str, level_name: str, note: str, file_path: str,
+                           linked_standard_key: Optional[str] = None) -> None:
+    conn = _conn()
+    conn.execute(
+        "INSERT INTO reference_video_uploads (federation, level_name, note, file_path, "
+        "linked_standard_key, uploaded_at) VALUES (?,?,?,?,?,?)",
+        (federation, level_name, note, file_path, linked_standard_key,
+         datetime.now().strftime('%Y-%m-%d %H:%M')),
+    )
+    conn.commit()
+    conn.close()
+
+
+def list_reference_uploads(federation: Optional[str] = None) -> List[Dict]:
+    conn = _conn()
+    if federation:
+        rows = conn.execute(
+            "SELECT id, federation, level_name, note, file_path, linked_standard_key, uploaded_at "
+            "FROM reference_video_uploads WHERE federation=? ORDER BY id DESC", (federation,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, federation, level_name, note, file_path, linked_standard_key, uploaded_at "
+            "FROM reference_video_uploads ORDER BY id DESC"
+        ).fetchall()
+    conn.close()
+    return [
+        {'id': r[0], 'federation': r[1], 'level_name': r[2], 'note': r[3],
+         'file_path': r[4], 'linked_standard_key': r[5], 'uploaded_at': r[6]}
+        for r in rows
+    ]
+
+
+# ── Evaluation history (feeds the model-training data hub) ─────────────────────
+
+def save_evaluation(federation: str, standard: Dict, report: Dict,
+                     player_name: str = '', video_note: str = '') -> None:
+    conn = _conn()
+    conn.execute(
+        "INSERT INTO standard_evaluations (federation, standard_key, standard_name, player_name, "
+        "video_note, passed, report_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
+        (federation, standard.get('key', ''), standard.get('name_ar', ''), player_name, video_note,
+         1 if report.get('passed') else 0, json.dumps(report, ensure_ascii=False),
+         datetime.now().strftime('%Y-%m-%d %H:%M')),
+    )
+    conn.commit()
+    conn.close()
+
+
+def list_evaluations(federation: Optional[str] = None) -> List[Dict]:
+    conn = _conn()
+    if federation:
+        rows = conn.execute(
+            "SELECT id, federation, standard_key, standard_name, player_name, video_note, "
+            "passed, report_json, created_at FROM standard_evaluations WHERE federation=? "
+            "ORDER BY id DESC", (federation,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, federation, standard_key, standard_name, player_name, video_note, "
+            "passed, report_json, created_at FROM standard_evaluations ORDER BY id DESC"
+        ).fetchall()
+    conn.close()
+    return [
+        {'id': r[0], 'federation': r[1], 'standard_key': r[2], 'standard_name': r[3],
+         'player_name': r[4], 'video_note': r[5], 'passed': bool(r[6]),
+         'report': json.loads(r[7]), 'created_at': r[8]}
+        for r in rows
+    ]
+
+
+def export_training_dataset() -> Dict:
+    """يجمع كل المعايير والتقييمات المحفوظة في حزمة واحدة — أساس أي تدريب مستقبلي للنموذج."""
+    return {
+        'exported_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
+        'standards': list_standards(),
+        'evaluations': list_evaluations(),
+        'reference_uploads': list_reference_uploads(),
+    }
 
 
 # ── Evaluation ──────────────────────────────────────────────────────────────
