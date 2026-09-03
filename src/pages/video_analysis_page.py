@@ -928,18 +928,23 @@ class SkatingVideoAnalyzer:
         errors: List[Dict] = []
 
         for j in jumps:
+            # pose_score is on a 0-100 scale (PoseComparator._score_from_deviations
+            # returns [0,100]) — comparing it against 0.55 here meant this check
+            # could practically never fire (confirmed on real footage: a genuine
+            # "Fair ⭐⭐" jump scored pose_score=57.6, which is >> 0.55, so no error
+            # was ever raised despite the AI rating the pose as mediocre).
             score = j.get('pose_score')
-            if score is not None and score < 0.55:
+            if score is not None and score < 55:
                 corrections = j.get('pose_corrections_ar', [])
                 errors.append({
                     'category': 'وضعية العنصر', 'severity': 'متوسط',
                     'title_ar': f"جودة وضعية منخفضة — {j.get('type','')}",
                     'title_en': f"Low Pose Quality — {j.get('type','')}",
-                    'desc_ar': f"تقييم الوضعية بالذكاء الاصطناعي: {int(score*100)}% في مرحلة {j.get('pose_phase','')}",
-                    'desc_en': f"AI pose score: {int(score*100)}% at {j.get('pose_phase','')} phase",
+                    'desc_ar': f"تقييم الوضعية بالذكاء الاصطناعي: {int(round(score))}% في مرحلة {j.get('pose_phase','')}",
+                    'desc_en': f"AI pose score: {int(round(score))}% at {j.get('pose_phase','')} phase",
                     'fix_ar': corrections[:3] if corrections else ['راجع محاذاة المحور والذراعين في هذه المرحلة'],
                     'fix_en': ['Review axis and arm alignment at this phase'],
-                    'goe_impact': -1 if score < 0.4 else 0,
+                    'goe_impact': -1 if score < 40 else 0,
                     't_start': j.get('t_start', 0), 't_end': j.get('t_end', 0),
                     'symptom_key': 'checking_landing_control',
                 })
@@ -1911,8 +1916,10 @@ def _tab_elements(ar: bool, lang: str):
                                 'axel_landing': 'الهبوط',
                             }
                             phase_label = phase_map.get(j.get('pose_phase',''), j.get('pose_phase',''))
+                            # pose_score is on a 0-100 scale (PoseComparator._score_from_deviations),
+                            # not 0-1 — don't multiply by 100 again.
                             st.markdown(f"**🦴 جودة الوضعية ({phase_label}):** "
-                                        f"`{int(pose_score*100)}%` {rating}")
+                                        f"`{int(round(pose_score))}%` {rating}")
                             corrections = j.get('pose_corrections_ar', [])
                             if corrections:
                                 for corr in corrections[:3]:
@@ -1987,7 +1994,8 @@ def _tab_elements(ar: bool, lang: str):
 
                         pose_score_s = s.get('pose_score')
                         if pose_score_s is not None:
-                            st.markdown(f"**🦴 جودة الوضعية:** `{int(pose_score_s*100)}%` "
+                            # pose_score is already 0-100 (see note above) — don't rescale.
+                            st.markdown(f"**🦴 جودة الوضعية:** `{int(round(pose_score_s))}%` "
                                         f"{s.get('pose_rating','')}")
                             corrs_s = s.get('pose_corrections_ar', [])
                             for corr in corrs_s[:3]:
