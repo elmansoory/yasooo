@@ -721,24 +721,33 @@ class SkatingVideoAnalyzer:
     # ── Spin detection ───────────────────────────────────────────────────────
     def _detect_spins(self, poses: List) -> List[Dict]:
         """
-        Detect spins by finding periods of low lateral DRIFT + rapid oscillation.
+        Detect spins in two passes:
 
-        A spin:
-        - Stays in approximately the same x-position (low drift over 1s window)
-        - Body oscillates back-and-forth faster than a normal skating stride
-        - Lasts at least 1.5 seconds
+        1. Candidate windows: short (~1.2s) sliding windows with low lateral/
+           vertical drift AND a high x-oscillation rate. A static "doesn't move
+           much" test alone (the old approach) is satisfied by almost an entire
+           video filmed from a distance — verified on real footage where it
+           marked 1388/1389 frames as "spin-like", merging the whole clip into
+           one giant segment whose diluted average oscillation rate then failed
+           the frequency gate, hiding a real 8+ rotation spin inside it.
 
-        Threshold is 0.07 (relaxed from 0.04) because real-world camera noise
-        and bounding-box jitter during a spin can exceed 0.04.
+        2. Real-rotation confirmation: for each merged candidate segment,
+           measure actual accumulated body rotation via the unwrapped
+           shoulder-line angle (same technique as jump rotation tracking) and
+           require a minimum number of full rotations. This is what actually
+           separates a spin from a turn/crossover or a sway-in-place, which
+           can locally oscillate in x at a similar frequency without the body
+           ever completing multiple real rotations — confirmed on real
+           footage: a kneeling-to-standing sway measured 0.0 net rotations,
+           three-turn/crossover moments measured ~1.5-2.4, and the one
+           genuine spin in that clip measured 8.8 rotations over 7.1s.
         """
         if len(poses) < 10:
             return []
 
         spins = []
-        WIN = int(self.fps)  # 1-second windows
 
-        xs = []
-        ys = []
+        xs, ys = [], []
         for p in poses:
             if p.get('kp'):
                 x_vals = [p['kp'][i]['x'] for i in [11, 12, 23, 24]
@@ -755,66 +764,73 @@ class SkatingVideoAnalyzer:
         ys = np.array(ys)
         times = np.array([p['t'] for p in poses])
 
-        # Global travel baseline: how much does x move during normal skating
         global_x_std = np.std(xs)
+        MIN_LATERAL = max(0.03, global_x_std * 0.15)
+
+        WIN = max(4, int(self.fps * 1.2))
+        STEP = max(1, WIN // 4)
 
         spin_mask = np.zeros(len(xs), dtype=bool)
-        for i in range(len(xs) - WIN):
+        for i in range(0, len(xs) - WIN, STEP):
             seg_x = xs[i:i + WIN]
             seg_y = ys[i:i + WIN]
+            seg_t = times[i:i + WIN]
+
             lateral_drift = np.std(seg_x)
             vertical_drift = np.std(seg_y)
 
-            # Spin: stays in place laterally (relative to overall movement)
-            # AND does not show a single clean vertical peak (which would be a jump)
-            lateral_ok = lateral_drift < max(0.07, global_x_std * 0.4)
+            seg_detrended = seg_x - seg_x.mean()
+            crossings = np.where(np.diff(np.sign(seg_detrended)))[0]
+            dur = seg_t[-1] - seg_t[0]
+            cycles_per_sec = (len(crossings) / 2) / dur if dur > 0 else 0
 
-            # During a jump, vertical std is high (goes up then comes down)
-            # During a spin, vertical is relatively stable
-            vertical_stable = vertical_drift < 0.08
+            lateral_ok = lateral_drift < MIN_LATERAL
+            vertical_ok = vertical_drift < 0.08
+            oscillating = cycles_per_sec >= 0.8
 
-            if lateral_ok and vertical_stable:
+            if lateral_ok and vertical_ok and oscillating:
                 spin_mask[i:i + WIN] = True
 
-        # Extract spin segments
+        # Merge into contiguous candidate segments
         in_spin = False
         sp_start_idx = 0
-
         for i, is_sp in enumerate(spin_mask):
             if is_sp and not in_spin:
                 in_spin = True
                 sp_start_idx = i
             elif not is_sp and in_spin:
                 sp_end_idx = i - 1
-                duration = times[sp_end_idx] - times[sp_start_idx]
-                if duration >= 1.5:
-                    # Estimate RPM from x-oscillation frequency
-                    seg_x = xs[sp_start_idx:sp_end_idx + 1]
-                    # Count zero-crossings of detrended signal
-                    seg_detrended = seg_x - seg_x.mean()
-                    crossings = np.where(np.diff(np.sign(seg_detrended)))[0]
-                    cycles = len(crossings) / 2
-
-                    # A real spin must show actual rotational oscillation —
-                    # "not moving" alone (which is all lateral_ok/vertical_stable
-                    # verify) is also true of a skater simply standing still or
-                    # holding a pose. Reject segments with too few cycles/sec.
-                    if duration > 0 and (cycles / duration) < 0.5:
-                        in_spin = False
-                        continue
-
-                    rpm = (cycles / duration * 60) if duration > 0 else 60
-                    rpm = max(40, min(300, rpm * 3))  # scale up
-
-                    sp = _classify_spin(duration, rpm)
-                    sp['t_start'] = round(times[sp_start_idx], 2)
-                    sp['t_end'] = round(times[sp_end_idx], 2)
-                    sp['frame_start'] = int(times[sp_start_idx] * self.fps)
-                    sp['frame_end'] = int(times[sp_end_idx] * self.fps)
-                    spins.append(sp)
+                self._confirm_and_add_spin(poses, times, sp_start_idx, sp_end_idx, spins)
                 in_spin = False
+        if in_spin:
+            self._confirm_and_add_spin(poses, times, sp_start_idx, len(spin_mask) - 1, spins)
 
         return spins
+
+    def _confirm_and_add_spin(self, poses, times, sp_start_idx, sp_end_idx, spins):
+        """Verify a candidate spin segment via real accumulated rotation
+        (unwrapped shoulder angle) before accepting it — see _detect_spins."""
+        duration = times[sp_end_idx] - times[sp_start_idx]
+        if duration < 1.5:
+            return
+
+        seg_kp = [p['kp'] for p in poses
+                  if times[sp_start_idx] <= p['t'] <= times[sp_end_idx] and p.get('kp')]
+        real_rotations = _compute_rotation_from_kp(seg_kp)
+
+        MIN_ROTATIONS = 2.5  # below this, treat as a turn/sway rather than a spin
+        if real_rotations is None or real_rotations < MIN_ROTATIONS:
+            return
+
+        rpm = real_rotations / duration * 60
+        sp = _classify_spin(duration, rpm)
+        sp['rotations'] = round(real_rotations, 1)
+        sp['rotation_method'] = 'shoulder_tracking'
+        sp['t_start'] = round(times[sp_start_idx], 2)
+        sp['t_end'] = round(times[sp_end_idx], 2)
+        sp['frame_start'] = int(times[sp_start_idx] * self.fps)
+        sp['frame_end'] = int(times[sp_end_idx] * self.fps)
+        spins.append(sp)
 
     # ── Error detection ──────────────────────────────────────────────────────
     def _detect_errors(self, poses: List, jumps: List) -> List[Dict]:
