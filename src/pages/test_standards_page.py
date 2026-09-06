@@ -9,7 +9,7 @@ import tempfile
 import streamlit as st
 
 from src.analysis.test_standards import (
-    list_standards, save_standard, delete_standard, evaluate,
+    list_standards, save_standard, delete_standard, evaluate, suggest_standard,
     save_reference_upload, list_reference_uploads,
     save_evaluation, list_evaluations,
     CATEGORY_JUMP, CATEGORY_SPIN, CATEGORY_POSITION, CATEGORY_SEQUENCE,
@@ -203,10 +203,38 @@ def _tab_evaluate(federation: str):
         st.warning("لا توجد معايير مرجعية لهذا الاتحاد بعد — أضف واحداً من تبويب «➕ إضافة معيار يدوياً».")
         return
 
+    n_jumps, n_spins = len(results.get('jumps', [])), len(results.get('spins', []))
+    recommended = suggest_standard(results, standards)
+
     names = {f"{s['name_ar']} ({len(s['elements'])} عناصر)": s for s in standards}
-    chosen_label = st.selectbox("اختر المعيار المرجعي للمقارنة:", list(names.keys()))
+    labels = list(names.keys())
+    rec_label = next((lbl for lbl, s in names.items() if recommended and s['key'] == recommended['key']), labels[0])
+    default_idx = labels.index(rec_label)
+
+    if recommended:
+        st.info(
+            f"💡 بناءً على ما اكتُشف فعلياً في الفيديو ({n_jumps} قفزة، {n_spins} دوران) — "
+            f"المعيار الأقرب لهذا المستوى هو **{recommended['name_ar']}** (مُختار افتراضياً أدناه)."
+        )
+
+    chosen_label = st.selectbox("اختر المعيار المرجعي للمقارنة:", labels, index=default_idx)
     standard = names[chosen_label]
     player_name = st.text_input("اسم اللاعب (اختياري، لتسجيله في سجل التقييمات)", key=f"pname_{federation}")
+
+    std_needs_rotation = any(el['category'] in (CATEGORY_JUMP, CATEGORY_SPIN) for el in standard['elements'])
+    has_rotation = n_jumps > 0 or n_spins > 0
+    if std_needs_rotation and not has_rotation:
+        st.warning(
+            "⚠️ لم يتم اكتشاف أي قفزات أو دورانات في هذا الفيديو، لكن المعيار المختار "
+            f"«{standard['name_ar']}» يتطلبها — على الأرجح هذا الفيديو لمستوى مهارات أساسية "
+            "(مثل Pre-Alpha إلى Delta) وليس Freestyle. اختر معياراً من فئة المهارات الأساسية بدلاً منه."
+        )
+    elif not std_needs_rotation and has_rotation:
+        st.warning(
+            f"⚠️ تم اكتشاف {n_jumps} قفزة و{n_spins} دوران في الفيديو، لكن المعيار المختار "
+            f"«{standard['name_ar']}» لا يحتوي على عناصر قفز/دوران — قد يكون هذا الفيديو لمستوى "
+            "Freestyle أعلى. راجع الاقتراح أعلاه."
+        )
 
     st.caption(f"📎 المصدر: {standard.get('source_note', '—')}")
 

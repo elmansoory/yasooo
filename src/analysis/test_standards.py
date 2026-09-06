@@ -596,6 +596,41 @@ def _match_spin(el: Dict, spins: List[Dict]) -> Optional[Dict]:
     return None
 
 
+def suggest_standard(results: Dict, standards: List[Dict]) -> Optional[Dict]:
+    """يقترح أنسب معيار مرجعي لنتائج فيديو مُحلَّل، بمقارنة العناصر المكتشفة فعلياً
+    (قفزات/دورانات) بفئات عناصر كل معيار — لمنع اختيار معيار غير مناسب (كمقارنة
+    فيديو مستوى أساسي بلا قفزات مقابل معيار Freestyle الذي يتطلبها)."""
+    if not standards:
+        return None
+
+    n_jumps = len(results.get('jumps', []))
+    n_spins = len(results.get('spins', []))
+    has_rotational_elements = n_jumps > 0 or n_spins > 0
+
+    def score(std: Dict) -> float:
+        cats = [el['category'] for el in std['elements']]
+        n_jump_els = cats.count(CATEGORY_JUMP)
+        n_spin_els = cats.count(CATEGORY_SPIN)
+        n_position_els = cats.count(CATEGORY_POSITION)
+        std_needs_rotation = (n_jump_els + n_spin_els) > 0
+
+        if has_rotational_elements and std_needs_rotation:
+            # More matched jump/spin elements against what this standard needs = better fit.
+            matched_jumps = sum(1 for el in std['elements'] if el['category'] == CATEGORY_JUMP
+                                 and _match_jump(el, results.get('jumps', [])))
+            matched_spins = sum(1 for el in std['elements'] if el['category'] == CATEGORY_SPIN
+                                 and _match_spin(el, results.get('spins', [])))
+            return 10 + matched_jumps * 2 + matched_spins * 2
+        if not has_rotational_elements and not std_needs_rotation:
+            # No rotation detected in the video, and this standard is pure basic-skills (glides/edges/turns).
+            return 10 + n_position_els * 0.1
+        # Mismatch: video has jumps/spins but standard doesn't need them, or vice versa.
+        return 0.0
+
+    best = max(standards, key=score)
+    return best if score(best) > 0 else standards[0]
+
+
 def evaluate(results: Dict, standard: Dict, manual_overrides: Optional[Dict[str, bool]] = None) -> Dict:
     """قارن نتائج تحليل فيديو بمعيار اختبار محدد، وأرجع تقريراً عنصراً بعنصر."""
     manual_overrides = manual_overrides or {}
