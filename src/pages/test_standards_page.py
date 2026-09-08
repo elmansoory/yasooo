@@ -28,7 +28,9 @@ _STATUS_STYLE = {
 }
 
 _SEEDED_KEYS = (
-    'isi_pre_alpha', 'isi_alpha', 'isi_beta', 'isi_gamma', 'isi_delta', 'isi_freestyle_4',
+    'isi_pre_alpha', 'isi_alpha', 'isi_beta', 'isi_gamma', 'isi_delta',
+    'isi_freestyle_1', 'isi_freestyle_2', 'isi_freestyle_3', 'isi_freestyle_4', 'isi_freestyle_5',
+    'isi_freestyle_6', 'isi_freestyle_7', 'isi_freestyle_8', 'isi_freestyle_9', 'isi_freestyle_10',
     'isu_jump_basics',
 )
 
