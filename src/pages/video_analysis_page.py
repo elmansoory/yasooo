@@ -28,6 +28,12 @@ except ImportError:
     CV2_OK = False
 
 # ── MediaPipe (Tasks API — needs OpenGL, optional) ───────────────────────────
+# MP_UNAVAILABLE_REASON records exactly why real skeleton tracking is off, so
+# the UI can tell the coach the actual cause (missing/corrupt model file,
+# import failure, ...) instead of silently downgrading to the motion-blob
+# fallback with no explanation — that silence is what made this bug so hard
+# to diagnose from a bug report alone.
+MP_UNAVAILABLE_REASON = None
 try:
     import mediapipe as mp
     from mediapipe.tasks.python import vision as _mp_vision, BaseOptions as _MP_BaseOptions
@@ -37,9 +43,23 @@ try:
         PoseLandmarker as _PoseLandmarker,
     )
     _MP_MODEL = Path('data/models/pose_landmarker_lite.task')
-    MP_OK = _MP_MODEL.exists()
-except Exception:
+    if not _MP_MODEL.exists():
+        MP_OK = False
+        MP_UNAVAILABLE_REASON = f"ملف نموذج MediaPipe غير موجود ({_MP_MODEL})"
+    elif _MP_MODEL.stat().st_size < 1_000_000:
+        # A failed/partial download can still leave a file that "exists" (e.g.
+        # an HTML error page saved by a proxy) — check size, not just presence.
+        # The real model is ~5.5MB; anything under 1MB is not a valid model.
+        MP_OK = False
+        MP_UNAVAILABLE_REASON = (
+            f"ملف نموذج MediaPipe تالف أو غير مكتمل "
+            f"({_MP_MODEL.stat().st_size} bytes — يجب أن يكون ~5.5MB). احذفه وأعد التشغيل لإعادة تنزيله."
+        )
+    else:
+        MP_OK = True
+except Exception as _mp_import_err:
     MP_OK = False
+    MP_UNAVAILABLE_REASON = f"تعذّر استيراد مكتبة MediaPipe: {_mp_import_err}"
 
 DB_PATH = "skating_database.db"
 
@@ -197,14 +217,20 @@ class SkatingVideoAnalyzer:
         self._pose_samples = []
         self._skeleton_video_bytes = None
         used_mediapipe = True
+        mediapipe_unavailable_reason = None if MP_OK else MP_UNAVAILABLE_REASON
         try:
             if MP_OK:
                 poses, frame_scores = self._extract_poses_mediapipe(video_path, progress_cb)
             else:
                 used_mediapipe = False
                 poses, frame_scores = self._extract_motion_opencv(video_path, progress_cb)
-        except Exception:
+        except Exception as mp_exc:
             used_mediapipe = False
+            # Surface the real reason MediaPipe failed at runtime (a valid-looking
+            # model file that MediaPipe still rejects, an OpenGL/driver issue, a
+            # corrupt video frame, ...) instead of silently downgrading — this is
+            # exactly the class of bug that's invisible without the actual message.
+            mediapipe_unavailable_reason = f"{type(mp_exc).__name__}: {mp_exc}"
             poses, frame_scores = self._extract_motion_opencv(video_path, progress_cb)
 
         if not poses:
@@ -292,6 +318,7 @@ class SkatingVideoAnalyzer:
             'low_confidence': low_confidence,
             'kp_coverage': round(kp_coverage, 2),
             'used_mediapipe': used_mediapipe,
+            'mediapipe_unavailable_reason': mediapipe_unavailable_reason,
             'is_demo': False,
             'analyzed_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
         }
@@ -1690,12 +1717,22 @@ def _tab_results(ar: bool, lang: str):
             pc3.metric("🔬 محرك الكشف", "MediaPipe" if used_mp else "احتياطي (تقريبي)")
 
             if not used_mp:
+                reason = results.get('mediapipe_unavailable_reason')
                 st.warning(
                     "⚠️ تعذّر استخدام MediaPipe لهذا الفيديو — تم استخدام تتبع حركة "
                     "احتياطي (كشف الشكل بـ OpenCV)، وهو أقل دقة بكثير ولا يعتمد على "
-                    "هيكل عظمي حقيقي. أي قفزات أو دورانات معروضة هنا **تقديرية وغير "
-                    "مؤكدة** — قد تنتج عن ظلال أو أشخاص آخرين أو حركة الكاميرا."
+                    "هيكل عظمي حقيقي (لا يظهر فيديو الهيكل العظمي المتحرك في هذه الحالة). "
+                    "أي قفزات أو دورانات معروضة هنا **تقديرية وغير مؤكدة** — قد تنتج عن "
+                    "ظلال أو أشخاص آخرين أو حركة الكاميرا."
+                    + (f"\n\n**السبب الفعلي:** `{reason}`" if reason else "")
                 )
+                if reason and 'نموذج' in reason:
+                    st.info(
+                        "💡 لإصلاح هذا: أعد تشغيل `YASOOO.bat` — سيحاول تنزيل ملف النموذج "
+                        "تلقائياً مرة أخرى. إن استمرت المشكلة، احذف يدوياً الملف "
+                        "`data/models/pose_landmarker_lite.task` إن وُجد بحجم أصغر من 5MB، "
+                        "ثم أعد التشغيل."
+                    )
             elif low_conf:
                 st.warning(
                     f"⚠️ نسبة اكتشاف الهيكل العظمي منخفضة ({cov}% فقط من الإطارات) — "

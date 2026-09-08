@@ -96,14 +96,29 @@ fi
 
 # نموذج كشف الهيكل العظمي (MediaPipe) ليس ضمن المستودع (~6MB) — بدونه
 # يتحول التحليل تلقائياً لطريقة احتياطية أقل دقة بكثير. نزّله مرة واحدة فقط.
+# قد يترك اتصال غير مستقر ملفاً "موجوداً" لكنه صفحة خطأ HTML أو تنزيل جزئي،
+# لذا نتحقق من الحجم أيضاً لا من الوجود فقط، ونعيد المحاولة إن لزم.
 MODEL_PATH="data/models/pose_landmarker_lite.task"
-if [ ! -f "$MODEL_PATH" ]; then
-    echo "📥 تنزيل نموذج كشف الهيكل العظمي (مرة واحدة، ~6MB)..."
+MODEL_URL="https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+model_size() { [ -f "$MODEL_PATH" ] && stat -c%s "$MODEL_PATH" 2>/dev/null || stat -f%z "$MODEL_PATH" 2>/dev/null || echo 0; }
+if [ ! -f "$MODEL_PATH" ] || [ "$(model_size)" -lt 1000000 ]; then
+    rm -f "$MODEL_PATH"
     mkdir -p data/models
-    curl -sSL -o "$MODEL_PATH" \
-        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task" \
-        && echo "✅ تم تنزيل نموذج الهيكل العظمي" \
-        || echo "⚠️  تعذّر تنزيل النموذج — سيُستخدم أسلوب احتياطي أقل دقة"
+    echo "📥 تنزيل نموذج كشف الهيكل العظمي (مرة واحدة، ~6MB)..."
+    curl -sSL -o "$MODEL_PATH" "$MODEL_URL"
+    if [ ! -f "$MODEL_PATH" ] || [ "$(model_size)" -lt 1000000 ]; then
+        echo "🔁 المحاولة الأولى فشلت أو أنتجت ملفاً تالفاً — إعادة المحاولة..."
+        rm -f "$MODEL_PATH"
+        curl -sSL --retry 2 -o "$MODEL_PATH" "$MODEL_URL"
+    fi
+    if [ -f "$MODEL_PATH" ] && [ "$(model_size)" -ge 1000000 ]; then
+        echo "✅ تم تنزيل نموذج الهيكل العظمي"
+    else
+        rm -f "$MODEL_PATH"
+        echo "⚠️  تعذّر تنزيل النموذج بعد محاولتين — سيُستخدم أسلوب احتياطي أقل دقة بدون هيكل عظمي."
+        echo "    يمكنك تنزيله يدوياً من: $MODEL_URL"
+        echo "    واحفظه في: $MODEL_PATH"
+    fi
 fi
 
 echo ""

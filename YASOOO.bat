@@ -118,15 +118,46 @@ REM The MediaPipe pose-detection model is not bundled with the repo (it's a
 REM ~6MB binary). Without it, real skeleton tracking silently falls back to
 REM a much less accurate motion-blob heuristic (still works, but jumps/spins
 REM detected that way are far less reliable) — download it once if missing.
-if not exist "%APP_DIR%data\models\pose_landmarker_lite.task" (
-    echo Downloading the pose-detection model ^(one-time, ~6MB^)...
+REM A file can "exist" but be an HTML error page or a partial download saved
+REM by a flaky connection, so also check its size, not just presence — and
+REM retry once with a different method if it's too small.
+set "MODEL_PATH=%APP_DIR%data\models\pose_landmarker_lite.task"
+set "MODEL_URL=https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+set "MODEL_NEEDED=0"
+if not exist "%MODEL_PATH%" set "MODEL_NEEDED=1"
+if exist "%MODEL_PATH%" (
+    for %%F in ("%MODEL_PATH%") do if %%~zF LSS 1000000 set "MODEL_NEEDED=1"
+)
+if "!MODEL_NEEDED!"=="1" (
     if not exist "%APP_DIR%data\models" mkdir "%APP_DIR%data\models"
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task' -OutFile '%APP_DIR%data\models\pose_landmarker_lite.task'" >> "%LOG%" 2>&1
-    if exist "%APP_DIR%data\models\pose_landmarker_lite.task" (
+    if exist "%MODEL_PATH%" del /f /q "%MODEL_PATH%" >nul 2>&1
+
+    echo Downloading the pose-detection model ^(one-time, ~6MB^)...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%MODEL_URL%' -OutFile '%MODEL_PATH%'" >> "%LOG%" 2>&1
+
+    set "MODEL_OK=0"
+    if exist "%MODEL_PATH%" (
+        for %%F in ("%MODEL_PATH%") do if %%~zF GEQ 1000000 set "MODEL_OK=1"
+    )
+
+    if "!MODEL_OK!"=="0" (
+        echo First attempt failed or produced a corrupt file — retrying with WebClient...
+        if exist "%MODEL_PATH%" del /f /q "%MODEL_PATH%" >nul 2>&1
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('%MODEL_URL%', '%MODEL_PATH%')" >> "%LOG%" 2>&1
+        if exist "%MODEL_PATH%" (
+            for %%F in ("%MODEL_PATH%") do if %%~zF GEQ 1000000 set "MODEL_OK=1"
+        )
+    )
+
+    if "!MODEL_OK!"=="1" (
         echo [OK] Pose-detection model downloaded.
     ) else (
-        echo WARNING: Could not download the pose-detection model — video
-        echo analysis will use a less accurate fallback. Check launch.log.
+        if exist "%MODEL_PATH%" del /f /q "%MODEL_PATH%" >nul 2>&1
+        echo WARNING: Could not download the pose-detection model after 2 attempts —
+        echo video analysis will use a less accurate fallback with no skeleton
+        echo overlay. Check launch.log, or download it manually from:
+        echo   %MODEL_URL%
+        echo and save it as: %MODEL_PATH%
     )
 )
 
