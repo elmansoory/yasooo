@@ -810,6 +810,16 @@ def list_reference_uploads(federation: Optional[str] = None) -> List[Dict]:
 
 # ── Evaluation history (feeds the model-training data hub) ─────────────────────
 
+def _json_default(o):
+    """Fallback for json.dumps: report/results dicts here are built from video
+    analysis output, which can carry numpy scalar types (numpy.bool_,
+    numpy.float64, ...) that json can't serialize natively — coerce them to
+    plain Python types instead of crashing the whole page over a stray type."""
+    if hasattr(o, 'item'):  # numpy scalar (bool_, float64, int64, ...)
+        return o.item()
+    return str(o)
+
+
 def save_evaluation(federation: str, standard: Dict, report: Dict,
                      player_name: str = '', video_note: str = '') -> None:
     conn = _conn()
@@ -817,7 +827,7 @@ def save_evaluation(federation: str, standard: Dict, report: Dict,
         "INSERT INTO standard_evaluations (federation, standard_key, standard_name, player_name, "
         "video_note, passed, report_json, created_at) VALUES (?,?,?,?,?,?,?,?)",
         (federation, standard.get('key', ''), standard.get('name_ar', ''), player_name, video_note,
-         1 if report.get('passed') else 0, json.dumps(report, ensure_ascii=False),
+         1 if report.get('passed') else 0, json.dumps(report, ensure_ascii=False, default=_json_default),
          datetime.now().strftime('%Y-%m-%d %H:%M')),
     )
     conn.commit()
@@ -938,9 +948,12 @@ def evaluate(results: Dict, standard: Dict, manual_overrides: Optional[Dict[str,
             if matched:
                 min_rot = el.get('min_rotations', 0)
                 rot = matched.get('rotations', 0)
-                ok_rot = rot >= min_rot * 0.85  # small tolerance for measurement noise
-                checks.append({'label_ar': f'الدوران ({rot:.1f} من {min_rot} مطلوبة)', 'ok': ok_rot})
-                clean = matched.get('is_clean', True)
+                # bool(...) matters here: rot/clean can come from numpy comparisons
+                # upstream (numpy.bool_, numpy.float64, ...), which json.dumps can't
+                # serialize — coerce to native Python types before they reach the DB.
+                ok_rot = bool(rot >= min_rot * 0.85)  # small tolerance for measurement noise
+                checks.append({'label_ar': f'الدوران ({float(rot):.1f} من {min_rot} مطلوبة)', 'ok': ok_rot})
+                clean = bool(matched.get('is_clean', True))
                 checks.append({'label_ar': 'هبوط نظيف (بدون هبوط على قدمين)', 'ok': clean})
                 status = 'pass' if (ok_rot and clean) else 'warn'
             else:
@@ -952,11 +965,11 @@ def evaluate(results: Dict, standard: Dict, manual_overrides: Optional[Dict[str,
             if matched:
                 min_rev = el.get('min_revolutions', 0)
                 rev = matched.get('rotations', 0)
-                ok_rev = rev >= min_rev * 0.85
-                checks.append({'label_ar': f'عدد الدورات ({rev:.1f} من {min_rev} مطلوبة)', 'ok': ok_rev})
+                ok_rev = bool(rev >= min_rev * 0.85)
+                checks.append({'label_ar': f'عدد الدورات ({float(rev):.1f} من {min_rev} مطلوبة)', 'ok': ok_rev})
                 if el.get('position'):
                     detected_pos = str(matched.get('ai_position', '—'))
-                    pos_ok = detected_pos.lower() == el['position']
+                    pos_ok = bool(detected_pos.lower() == el['position'])
                     checks.append({'label_ar': f'الوضعية المكتشفة: {detected_pos}', 'ok': pos_ok})
                     status = 'pass' if (ok_rev and pos_ok) else 'warn'
                 else:
@@ -970,8 +983,8 @@ def evaluate(results: Dict, standard: Dict, manual_overrides: Optional[Dict[str,
                 matched = step_seqs[0]
                 dur = matched.get('duration', 0)
                 min_dur = el.get('min_duration', 0)
-                ok_dur = dur >= min_dur
-                checks.append({'label_ar': f'مدة التسلسل المكتشف ({dur:.1f}ث)', 'ok': ok_dur})
+                ok_dur = bool(dur >= min_dur)
+                checks.append({'label_ar': f'مدة التسلسل المكتشف ({float(dur):.1f}ث)', 'ok': ok_dur})
                 checks.append({'label_ar': 'العدّ الدقيق للـ three-turns يتطلب مراجعة يدوية من المدرب', 'ok': None})
                 status = 'warn'
             else:
