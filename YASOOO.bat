@@ -21,7 +21,7 @@ if not defined PYTHON (
     echo No usable Python installation found. Attempting automatic installation...
     echo.
 
-    REM Attempt 1: winget (Windows Package Manager) — may be missing,
+    REM Attempt 1: winget, the Windows Package Manager — may be missing,
     REM blocked by policy, or fail with a generic "path not specified"
     REM error if App Installer isn't registered correctly. Treat any
     REM failure here as non-fatal and fall through to the direct
@@ -60,7 +60,7 @@ if not defined PYTHON (
         echo ERROR: Automatic installation did not complete successfully.
         echo Details were logged to: !LOG!
         echo.
-        echo This script already tried: the py launcher (3.11/3/any),
+        echo This script already tried: the py launcher ^(3.11/3/any^),
         echo plain "python", refreshing PATH from the registry, and
         echo searching the standard install folders directly for
         echo python.exe — none of them found a working Python.
@@ -88,7 +88,7 @@ echo.
 echo [2/5] Checking required libraries...
 %PYTHON% -c "import streamlit, plotly, pandas, numpy, cv2" >nul 2>&1
 if %errorlevel% neq 0 (
-    echo Installing missing libraries... (this may take a few minutes)
+    echo Installing missing libraries... ^(this may take a few minutes^)
     %PIP% install --quiet --upgrade pip >> "%LOG%" 2>&1
     %PIP% install --quiet streamlit plotly pandas numpy opencv-python openpyxl sqlalchemy >> "%LOG%" 2>&1
     if %errorlevel% neq 0 (
@@ -143,7 +143,7 @@ if "!MODEL_NEEDED!"=="1" (
     if "!MODEL_OK!"=="0" (
         echo First attempt failed or produced a corrupt file — retrying with WebClient...
         if exist "%MODEL_PATH%" del /f /q "%MODEL_PATH%" >nul 2>&1
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('%MODEL_URL%', '%MODEL_PATH%')" >> "%LOG%" 2>&1
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $wc = New-Object Net.WebClient; $wc.DownloadFile('%MODEL_URL%', '%MODEL_PATH%')" >> "%LOG%" 2>&1
         if exist "%MODEL_PATH%" (
             for %%F in ("%MODEL_PATH%") do if %%~zF GEQ 1000000 set "MODEL_OK=1"
         )
