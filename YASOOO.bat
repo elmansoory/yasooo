@@ -8,7 +8,6 @@ cls
 echo.
 echo ================================================
 echo   YASOOO - Figure Skating Analysis System
-echo   نظام تحليل التزلج الفني
 echo ================================================
 echo.
 
@@ -21,7 +20,7 @@ if not defined PYTHON (
     echo No usable Python installation found. Attempting automatic installation...
     echo.
 
-    REM Attempt 1: winget, the Windows Package Manager — may be missing,
+    REM Attempt 1: winget, the Windows Package Manager - may be missing,
     REM blocked by policy, or fail with a generic "path not specified"
     REM error if App Installer isn't registered correctly. Treat any
     REM failure here as non-fatal and fall through to the direct
@@ -31,7 +30,7 @@ if not defined PYTHON (
         echo Installing Python 3.11 via winget ^(Windows Package Manager^)...
         winget install --id Python.Python.3.11 -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity >> "%LOG%" 2>&1
         if !errorlevel! neq 0 (
-            echo winget install did not complete ^(see launch.log^) — will try the direct download next.
+            echo winget install did not complete ^(see launch.log^) - will try the direct download next.
         )
     ) else (
         echo winget not found on this system.
@@ -63,11 +62,11 @@ if not defined PYTHON (
         echo This script already tried: the py launcher ^(3.11/3/any^),
         echo plain "python", refreshing PATH from the registry, and
         echo searching the standard install folders directly for
-        echo python.exe — none of them found a working Python.
+        echo python.exe - none of them found a working Python.
         echo.
         echo Please open a Command Prompt and run: where python.exe
         echo If that shows a path, Python is installed somewhere this
-        echo script didn't check — tell the developer that exact path.
+        echo script didn't check - tell the developer that exact path.
         echo.
         echo Otherwise, install Python manually from:
         echo https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
@@ -103,7 +102,7 @@ if %errorlevel% neq 0 (
 )
 
 REM protobuf 5.x removes MessageFactory.GetPrototype, which mediapipe's
-REM generated _pb2 files still call — this crashes the app on import with
+REM generated _pb2 files still call - this crashes the app on import with
 REM "'MessageFactory' object has no attribute 'GetPrototype'". Some other
 REM package may have upgraded protobuf past 5.0 even if mediapipe itself
 REM imported fine before, so re-check and pin it down every run.
@@ -117,9 +116,9 @@ echo [OK] Libraries ready.
 REM The MediaPipe pose-detection model is not bundled with the repo (it's a
 REM ~6MB binary). Without it, real skeleton tracking silently falls back to
 REM a much less accurate motion-blob heuristic (still works, but jumps/spins
-REM detected that way are far less reliable) — download it once if missing.
+REM detected that way are far less reliable) - download it once if missing.
 REM A file can "exist" but be an HTML error page or a partial download saved
-REM by a flaky connection, so also check its size, not just presence — and
+REM by a flaky connection, so also check its size, not just presence - and
 REM retry once with a different method if it's too small.
 set "MODEL_PATH=%APP_DIR%data\models\pose_landmarker_lite.task"
 set "MODEL_URL=https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
@@ -141,7 +140,7 @@ if "!MODEL_NEEDED!"=="1" (
     )
 
     if "!MODEL_OK!"=="0" (
-        echo First attempt failed or produced a corrupt file — retrying with WebClient...
+        echo First attempt failed or produced a corrupt file - retrying with WebClient...
         if exist "%MODEL_PATH%" del /f /q "%MODEL_PATH%" >nul 2>&1
         powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $wc = New-Object Net.WebClient; $wc.DownloadFile('%MODEL_URL%', '%MODEL_PATH%')" >> "%LOG%" 2>&1
         if exist "%MODEL_PATH%" (
@@ -153,7 +152,7 @@ if "!MODEL_NEEDED!"=="1" (
         echo [OK] Pose-detection model downloaded.
     ) else (
         if exist "%MODEL_PATH%" del /f /q "%MODEL_PATH%" >nul 2>&1
-        echo WARNING: Could not download the pose-detection model after 2 attempts —
+        echo WARNING: Could not download the pose-detection model after 2 attempts -
         echo video analysis will use a less accurate fallback with no skeleton
         echo overlay. Check launch.log, or download it manually from:
         echo   %MODEL_URL%
@@ -208,7 +207,7 @@ REM ============================================================
 REM  Refresh PATH in this session so a freshly-installed python/py
 REM  launcher is picked up without closing and reopening the
 REM  terminal. Uses PowerShell/.NET to read+expand both the Machine
-REM  and User PATH from the registry — a plain `reg query` returns
+REM  and User PATH from the registry - a plain `reg query` returns
 REM  the raw unexpanded string (e.g. literal "%USERPROFILE%\..."),
 REM  which silently fails to resolve when appended to PATH as-is.
 REM ============================================================
@@ -227,7 +226,7 @@ REM  Detect a usable Python 3 install without forcing an exact
 REM  version. Sets PYTHON to whichever launcher command works,
 REM  or clears it if nothing usable was found. Prefers 3.11 (the
 REM  version this app is tested with) but happily falls back to
-REM  any other Python 3 already on the machine — most crashes
+REM  any other Python 3 already on the machine - most crashes
 REM  reported as "Python not found" actually have Python installed
 REM  under a different version/launcher than the one hardcoded here.
 REM ============================================================
@@ -239,12 +238,12 @@ py -3 --version >nul 2>&1
 if !errorlevel! equ 0 ( set "PYTHON=py -3" & goto :eof )
 py --version >nul 2>&1
 if !errorlevel! equ 0 ( set "PYTHON=py" & goto :eof )
-REM Plain "python" is checked next — on a machine with no real Python,
+REM Plain "python" is checked next - on a machine with no real Python,
 REM Windows sometimes shadows this with a no-op Microsoft Store alias.
 python --version >nul 2>&1
 if !errorlevel! equ 0 ( set "PYTHON=python" & goto :eof )
 
-REM Last resort: none of the launcher commands worked — this usually
+REM Last resort: none of the launcher commands worked - this usually
 REM means Python IS installed but this process's PATH is stale/wrong
 REM (a well-known Windows quirk where windows opened from Explorer can
 REM keep an outdated environment even after installers update PATH).
