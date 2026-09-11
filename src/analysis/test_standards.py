@@ -632,20 +632,22 @@ ISI_FREESTYLE_10 = {
 
 # ── Seed standard, grounded in Module 3 "Jump & Spin Technique Library" —
 # the ISU-side technical breakdown (entry/takeoff/landing + root-cause
-# correction) we already extracted for these three jumps. Unlike the ISI
-# basic-skills levels above, these ARE rotation-based jumps our engine
-# classifies, so they carry real match_codes/min_rotations for automatic
-# evaluation, not just manual review.
+# correction) extracted from that source. Unlike the ISI basic-skills levels
+# above, these ARE rotation-based jumps our engine classifies, so they carry
+# real match_codes/min_rotations for automatic evaluation, not just manual
+# review.
+_MODULE3_SRC = 'مستخرج من Module 3 (Jump & Spin Technique Library) — Figure Skating Coach Ready™, صفحة {}'
+
 ISU_JUMP_BASICS = {
     'key': 'isu_jump_basics',
     'name_ar': 'معايير عناصر ISU الأساسية — القفزات',
     'name_en': 'ISU Basic Jump Elements',
-    'source_note': 'مستخرج من Module 3 (Jump & Spin Technique Library) — Figure Skating Coach Ready™',
+    'source_note': _MODULE3_SRC.format('11-33'),
     'federation': FEDERATION_ISU,
     'elements': [
         {
             'key': 'waltz_jump', 'name_ar': 'قفزة Waltz', 'name_en': 'Waltz Jump',
-            'category': CATEGORY_JUMP, 'match_codes': ['1A', 'waltz', 'axel'],
+            'category': CATEGORY_JUMP, 'match_codes': ['waltz'],
             'min_rotations': 0.5,
             'criteria_notes_ar': [
                 'الدخول: حافة خارجية أمامية، قوس حقيقي وليس خطاً مستقيماً',
@@ -675,6 +677,131 @@ ISU_JUMP_BASICS = {
                 'الخروج: من الحافة الداخلية لنصل القدم اليسرى',
             ],
         },
+        {
+            'key': 'loop_jump', 'name_ar': 'قفزة Loop', 'name_en': 'Loop Jump',
+            'category': CATEGORY_JUMP, 'match_codes': ['1Lo', '2Lo', '3Lo', 'loop'],
+            'min_rotations': 1.0,
+            'criteria_notes_ar': [
+                'القفزة الوحيدة التي تُقلع وتهبط على نفس القدم ونفس الحافة (خارجية خلفية)',
+                'الساق الحرة تُعبَر أمام الساق المتزلجة قبل الإقلاع (وليس عنده) — يخلق شداً في الورك يغذّي الدوران',
+                'الإقلاع بالكامل من انثناء وامتداد الركبة، بدون أرجحة كبيرة للساق الحرة',
+                'وضعية الهواء مضغوطة (الساقان متقاطعتان عند الكاحل) — الانفتاح المبكر يعني دوراناً ناقصاً',
+            ],
+        },
+        {
+            'key': 'flip_jump', 'name_ar': 'قفزة Flip', 'name_en': 'Flip Jump',
+            'category': CATEGORY_JUMP, 'match_codes': ['1F', '2F', '3F', 'flip'],
+            'min_rotations': 1.0,
+            'criteria_notes_ar': [
+                'الدخول: حافة داخلية خلفية يجب أن تبقى نظيفة حتى لحظة غرز مقدمة النصل — أي انزلاق للحافة الخارجية يحوّلها لخطأ "Lip"',
+                'مقدمة النصل تُغرز خلف الجسم مباشرة بزاوية 45 درجة تقريباً',
+                'الذراع اليسرى هي الموجّه الدوراني الرئيسي — تتحرك بعد غرز المقدمة وليس قبله',
+                'الهبوط: حافة خارجية خلفية للقدم المقابلة',
+            ],
+        },
+        {
+            'key': 'lutz_jump', 'name_ar': 'قفزة Lutz', 'name_en': 'Lutz Jump',
+            'category': CATEGORY_JUMP, 'match_codes': ['1Lz', '2Lz', '3Lz', 'lutz'],
+            'min_rotations': 1.0,
+            'criteria_notes_ar': [
+                'الدخول: حافة خارجية خلفية مستدامة (طول خطوتين إلى ثلاثة أطوال نصل على الأقل) قبل غرز المقدمة — هذا ما يميزها عن Flip',
+                'الكتف الأيسر يبقى للأمام طوال الدخول؛ انخفاضه المبكر ينذر بخطأ "Flutz" (الحافة الخاطئة)',
+                'الدوران يبدأ من المقدمة وليس من الكتفين — إقلاع Lutz الصحيح شبه صامت (بدون صوت احتكاك)',
+                'الهبوط: حافة خارجية خلفية للقدم المقابلة',
+            ],
+        },
+        {
+            'key': 'axel_jump', 'name_ar': 'قفزة Axel', 'name_en': 'Axel Jump',
+            'category': CATEGORY_JUMP, 'match_codes': ['1A', '2A', '3A', 'axel'],
+            'min_rotations': 1.5,
+            'criteria_notes_ar': [
+                'القفزة الوحيدة التي تُقلع من حافة أمامية (خارجية أمامية) — تتطلب نصف دورة إضافية (1.5 لفة للمفردة)',
+                'الإقلاع يجب أن يكون عمودياً للأعلى، وليس للأمام — أرجحة الساق الحرة للأمام وللأعلى هي المولّد الرئيسي للزخم الدوراني',
+                'الذراعان تنغلقان بعد مغادرة مقدمة النصل للجليد وليس قبلها — الانغلاق المبكر يسبب "دوران على الجليد" وقفزة منخفضة',
+                'الهبوط: حافة خارجية خلفية، مع مبدأ "الانتظار" (wait) — الانفتاح المبكر في الهواء أكثر أخطاء Axel شيوعاً',
+            ],
+        },
+    ],
+}
+
+# ── Seed standard, grounded in the same Module 3 source — the spin
+# technique library (entry/position/exit + root-cause correction). Basic
+# single-position spins carry match_codes/position/min_revolutions for
+# automatic evaluation. Combination and change-of-foot spins involve
+# multi-position transitions our detector cannot verify (it classifies one
+# spin segment by its dominant rpm, not a sequence of distinct positions),
+# so those are marked for manual coach review rather than faking detection.
+ISU_SPIN_BASICS = {
+    'key': 'isu_spin_basics',
+    'name_ar': 'معايير عناصر ISU الأساسية — الدورانات',
+    'name_en': 'ISU Basic Spin Elements',
+    'source_note': _MODULE3_SRC.format('34-44'),
+    'federation': FEDERATION_ISU,
+    'elements': [
+        {
+            'key': 'upright_scratch_spin', 'name_ar': 'دوران منتصب / Scratch Spin',
+            'name_en': 'Upright / Scratch Spin',
+            'category': CATEGORY_SPIN, 'match_codes': ['usp', 'scratch spin', 'upright spin'],
+            'min_revolutions': 3, 'position': 'upright',
+            'criteria_notes_ar': [
+                'الدخول من حافة خارجية أمامية، والانتقال لحافة داخلية خلفية عند التمركز (centering)',
+                'Scratch Spin: الذراعان والساق الحرة تُسحَبان للداخل في نفس اللحظة — سحب متزامن وليس متتابعاً — لتوليد التسارع',
+                'الدوران المتنقّل (traveling) سببه مركز ثقل خارج نقطة الدوران — انحناء أمامي أو وزن خلفي زائد',
+            ],
+        },
+        {
+            'key': 'sit_spin_isu', 'name_ar': 'دوران الجلوس Sit Spin',
+            'name_en': 'Sit Spin',
+            'category': CATEGORY_SPIN, 'match_codes': ['ssp', 'sit spin'],
+            'min_revolutions': 3, 'position': 'sit',
+            'criteria_notes_ar': [
+                'فخذ الساق المتزلجة موازٍ للجليد أو أدنى — العمق غير الكافي (فخذ أعلى من الموازاة) لا يُحتسب "جلوساً" في نظام IJS',
+                'الساق الحرة عند مستوى ركبة الساق المتزلجة أو أعلى، ممدودة للأمام — ليست متدلية للأسفل',
+                'الذراعان تُسحَبان للداخل بالتزامن مع انثناء الركبة — ليس بعده',
+            ],
+        },
+        {
+            'key': 'camel_spin_isu', 'name_ar': 'دوران Camel',
+            'name_en': 'Camel Spin',
+            'category': CATEGORY_SPIN, 'match_codes': ['csp', 'camel spin'],
+            'min_revolutions': 3, 'position': 'camel',
+            'criteria_notes_ar': [
+                'وضعية Arabesque: الساق الحرة عند مستوى ورك الدوران أو أعلى، الجسم العلوي مائل للأمام لتكوين خط أفقي من القدم الممدودة حتى الرأس',
+                'الرأس مرفوع (غير منحنٍ للأسفل) — انحناء الرأس يكسر الخط الأفقي المطلوب',
+                'الوركان يجب أن يبقيا متساويين — ورك حر أعلى أو أدنى من ورك الدوران يسبب انتقال الدوران (traveling)',
+            ],
+        },
+        {
+            'key': 'layback_spin_isu', 'name_ar': 'دوران Layback',
+            'name_en': 'Layback Spin',
+            'category': CATEGORY_SPIN, 'match_codes': ['layback', 'lsp'],
+            'min_revolutions': 3, 'position': 'layback',
+            'criteria_notes_ar': [
+                'يُبنى فوق دوران منتصب مُمركَز بالفعل — لا تُفترض وضعية Layback قبل استقرار الدوران (10 دورات نظيفة على الأقل كقاعدة تدريبية)',
+                'انحناء الظهر العلوي للخلف مع إمالة الحوض للأمام كتعويض — بدون إمالة الحوض تكون الوضعية "مسطّحة" غير مكتملة',
+                'العودة للوضع المستقيم عند الخروج يجب أن تكون تدريجية بعضلات الجذع، وليس انتفاضة مفاجئة',
+            ],
+        },
+        {
+            'key': 'combination_spin_isu', 'name_ar': 'دوران مركّب (Combination Spin)',
+            'name_en': 'Combination Spin',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'دوران واحد يمر بوضعيتين مختلفتين على الأقل (مثال: Camel إلى Sit)؛ المُطوَّر بالكامل يشمل 3 وضعيات مميزة',
+                'كل وضعية يجب أن تُحفظ لعدد أدنى من الدورات قبل الانتقال — انتقال متسرّع أو "ضبابي" يقلل درجة المستوى',
+                'الانتقال الصحيح يحدث عند أقصى سرعة للدوران، وليس عند تباطؤه',
+            ],
+        },
+        {
+            'key': 'change_of_foot_spin_isu', 'name_ar': 'دوران بتغيير القدم',
+            'name_en': 'Change-of-Foot Spin',
+            'category': CATEGORY_POSITION, 'match_codes': [],
+            'criteria_notes_ar': [
+                'يبدأ على قدم ثم ينتقل للأخرى دون توقف الدوران أو فقدان ملحوظ للسرعة، عادة بعد 3-5 دورات على القدم الأولى',
+                'تغيير القدم يجب أن يحدث عند أقصى سرعة للدوران — توقف الدوران عند التغيير يعني عدم "تحميل" الدوران مسبقاً على القدم الجديدة',
+                'القدم الجديدة يجب أن تكون على الحافة الداخلية الخلفية فوراً — غير ذلك يسبب انتقال الدوران بعد التغيير',
+            ],
+        },
     ],
 }
 
@@ -685,7 +812,7 @@ _SEED_STANDARDS = [
     (ISI_FREESTYLE_4, FEDERATION_ISI), (ISI_FREESTYLE_5, FEDERATION_ISI), (ISI_FREESTYLE_6, FEDERATION_ISI),
     (ISI_FREESTYLE_7, FEDERATION_ISI), (ISI_FREESTYLE_8, FEDERATION_ISI), (ISI_FREESTYLE_9, FEDERATION_ISI),
     (ISI_FREESTYLE_10, FEDERATION_ISI),
-    (ISU_JUMP_BASICS, FEDERATION_ISU),
+    (ISU_JUMP_BASICS, FEDERATION_ISU), (ISU_SPIN_BASICS, FEDERATION_ISU),
 ]
 
 
