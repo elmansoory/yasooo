@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import List, Dict, Optional
 import streamlit as st
 
+from src.utils.json_safe import json_numpy_default
 
 DB_PATH = 'skating_database.db'
 
@@ -82,10 +83,10 @@ def save_analysis(results: Dict, member_id: Optional[int] = None) -> int:
         total_score,
         round(avg_goe, 2),
         clean_jumps,
-        json.dumps(errors, ensure_ascii=False),
-        json.dumps(jumps, ensure_ascii=False),
-        json.dumps(spins, ensure_ascii=False),
-        json.dumps(report, ensure_ascii=False),
+        json.dumps(errors, ensure_ascii=False, default=json_numpy_default),
+        json.dumps(jumps, ensure_ascii=False, default=json_numpy_default),
+        json.dumps(spins, ensure_ascii=False, default=json_numpy_default),
+        json.dumps(report, ensure_ascii=False, default=json_numpy_default),
     ))
     session_id = c.lastrowid
     conn.commit()

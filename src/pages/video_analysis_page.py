@@ -18,6 +18,8 @@ from typing import List, Dict, Optional, Tuple
 
 import plotly.express as px
 import plotly.graph_objects as go
+
+from src.utils.json_safe import json_numpy_default
 from plotly.subplots import make_subplots
 
 # ── OpenCV ──────────────────────────────────────────────────────────────────
@@ -734,8 +736,10 @@ class SkatingVideoAnalyzer:
                         continue
 
                     j = _classify_jump(airtime, min(1.0, height_norm * 0.3))
-                    j['t_start'] = round(times[jump_start_idx], 2)
-                    j['t_end'] = round(times[i], 2)
+                    # float(...): times[] is a numpy array — round() on a
+                    # numpy scalar returns numpy.float64, not native float.
+                    j['t_start'] = round(float(times[jump_start_idx]), 2)
+                    j['t_end'] = round(float(times[i]), 2)
                     j['frame_start'] = int(times[jump_start_idx] * self.fps)
                     j['frame_end'] = int(times[i] * self.fps)
                     jumps.append(j)
@@ -853,8 +857,8 @@ class SkatingVideoAnalyzer:
         sp = _classify_spin(duration, rpm)
         sp['rotations'] = round(real_rotations, 1)
         sp['rotation_method'] = 'shoulder_tracking'
-        sp['t_start'] = round(times[sp_start_idx], 2)
-        sp['t_end'] = round(times[sp_end_idx], 2)
+        sp['t_start'] = round(float(times[sp_start_idx]), 2)
+        sp['t_end'] = round(float(times[sp_end_idx]), 2)
         sp['frame_start'] = int(times[sp_start_idx] * self.fps)
         sp['frame_end'] = int(times[sp_end_idx] * self.fps)
         spins.append(sp)
@@ -1336,7 +1340,11 @@ def _compute_rotation_from_kp(kp_segment: list) -> Optional[float]:
         return None
     unwrapped = np.unwrap(np.array(angles))
     total = abs(unwrapped[-1] - unwrapped[0]) / (2 * np.pi)
-    return max(0.3, total)
+    # float(...) matters: numpy scalars (numpy.float64 here) propagate into
+    # every jump/spin dict's 'rotations' field downstream, through
+    # json.dumps() calls that can't serialize them — see the evaluate()
+    # fix in test_standards.py for the crash this caused.
+    return float(max(0.3, total))
 
 
 def _save_to_db(results: Dict, player_name: str, session_note: str):
@@ -1376,8 +1384,8 @@ def _save_to_db(results: Dict, player_name: str, session_note: str):
             len(results.get('jumps', [])),
             len(results.get('spins', [])),
             len(results.get('errors', [])),
-            json.dumps(results.get('jumps', []), ensure_ascii=False),
-            json.dumps(results.get('spins', []), ensure_ascii=False),
+            json.dumps(results.get('jumps', []), ensure_ascii=False, default=json_numpy_default),
+            json.dumps(results.get('spins', []), ensure_ascii=False, default=json_numpy_default),
         ))
         conn.commit()
         conn.close()

@@ -210,7 +210,10 @@ class PoseComparator:
             penalty = min(d / 40.0, 1.0) * (100.0 / len(deviations))
             total_penalty += penalty
 
-        return max(0.0, 100.0 - total_penalty)
+        # float(...): deviations can originate from numpy angle math upstream,
+        # which would otherwise leak numpy.float64 into pose_score and break
+        # json.dumps() wherever a jump/spin dict carrying it gets saved.
+        return float(max(0.0, 100.0 - total_penalty))
 
     # -----------------------------------------------------------------------
     # Angle extraction per element

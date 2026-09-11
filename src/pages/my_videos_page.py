@@ -10,6 +10,7 @@ from typing import List, Dict
 import streamlit as st
 import pandas as pd
 
+from src.utils.json_safe import json_numpy_default
 
 DB_PATH   = "skating_database.db"
 JSON_PATH = "data/scanned_videos/all_videos.json"
@@ -332,8 +333,8 @@ def _analyze_video(filepath: str, ar: bool):
                  results.get('video_info', {}).get('duration', 0),
                  score, tes, pcs, len(jumps), len(spins),
                  len(results.get('errors', [])),
-                 json.dumps(jumps, ensure_ascii=False),
-                 json.dumps(spins, ensure_ascii=False))
+                 json.dumps(jumps, ensure_ascii=False, default=json_numpy_default),
+                 json.dumps(spins, ensure_ascii=False, default=json_numpy_default))
             )
             conn.commit()
             conn.close()

@@ -208,7 +208,11 @@ class AIMovementEngine:
                 in_seq = True
                 seg_start = i
             elif not a and in_seq:
-                duration = times[i - 1] - times[seg_start]
+                # float(...): times[] is a numpy array, so this subtraction
+                # stays numpy.float64 unless cast — that leaks into the
+                # step-sequence dict's 'duration' field and breaks json.dumps
+                # downstream (see the evaluate() fix in test_standards.py).
+                duration = float(times[i - 1] - times[seg_start])
                 if duration >= 3.0:
                     seg_poses = poses[seg_start:i]
                     complexity = _footwork_complexity(seg_poses)
