@@ -592,6 +592,7 @@ class SkatingVideoAnalyzer:
         la = g(27); ra = g(28)
         lh = g(23); rh = g(24)
         lk = g(25); rk = g(26)
+        ls = g(11); rs = g(12)
 
         if la is None and ra is None:
             return False
@@ -602,6 +603,26 @@ class SkatingVideoAnalyzer:
             return False
         hip_y = np.mean(hip_ys)
         gap = ankle_y - hip_y
+
+        # Normalize by torso length (shoulder-hip distance) instead of using
+        # a fixed absolute gap — confirmed on real ISI reference footage
+        # (dance step sequences, no jumps) that a fixed 0.20 threshold is
+        # camera-distance-dependent: a skater smaller in frame produces a
+        # smaller raw gap for the exact same anatomical leg bend, which
+        # false-flagged 95% of frames as "airborne" on one clip and silently
+        # starved the step-sequence detector of any continuous segment.
+        # ankle-hip ≈ 1.3-1.5x torso length when standing/skating normally;
+        # a real jump tuck pulls this down toward ~0.
+        sh_ys = [p['y'] for p in [ls, rs] if p]
+        if sh_ys:
+            torso = abs(hip_y - np.mean(sh_ys))
+            if torso > 0.01:
+                ratio = gap / torso
+                knee_ys = [p['y'] for p in [lk, rk] if p]
+                knee_near_hip = bool(knee_ys) and (np.mean(knee_ys) - hip_y) / torso < 0.3
+                return ratio < 0.5 or (ratio < 0.7 and knee_near_hip)
+
+        # Fallback when shoulders aren't visible: old absolute thresholds.
         knee_ys = [p['y'] for p in [lk, rk] if p]
         knee_near_hip = bool(knee_ys) and np.mean(knee_ys) < hip_y + 0.05
         return gap < 0.20 or (gap < 0.28 and knee_near_hip)
