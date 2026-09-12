@@ -102,6 +102,31 @@ ISU_BASE = {
 # CORE ANALYSIS ENGINE (OpenCV + MediaPipe)
 # ============================================================================
 
+def _despike(arr: np.ndarray, window: int = 5, thresh: float = 0.10) -> np.ndarray:
+    """Reject single-/few-frame outliers in a pose-derived signal before smoothing.
+
+    Confirmed on real ISI reference footage (Gamma level, no jumps in the
+    official standard): MediaPipe briefly lost hip tracking for ~3 frames
+    (0.13s), producing a physically impossible hip_y spike (0.25 -> 0.011 ->
+    0.25) that a plain moving-average filter still partially absorbed —
+    enough to register as a false "Single Axel" detection. A short burst like
+    this looks nothing like a real jump's smooth parabolic trajectory, but
+    the smoothing alone didn't reject it. Replace any point that deviates
+    from its local median by more than `thresh` with that local median.
+    """
+    n = len(arr)
+    if n < window:
+        return arr
+    out = arr.copy()
+    half = window // 2
+    for i in range(n):
+        lo, hi = max(0, i - half), min(n, i + half + 1)
+        local_median = np.median(arr[lo:hi])
+        if abs(arr[i] - local_median) > thresh:
+            out[i] = local_median
+    return out
+
+
 def _airtime_to_rotations(airtime: float) -> float:
     """Convert air time to estimated rotations."""
     # Elite skaters rotate ~3 rev/s while in the air
@@ -659,7 +684,7 @@ class SkatingVideoAnalyzer:
                 ys.append(p.get('norm_y', 0.5))
                 xs.append(p.get('norm_x', 0.5))
 
-        ys = np.array(ys)
+        ys = _despike(np.array(ys))
         xs = np.array(xs)
 
         # Smooth vertical signal
