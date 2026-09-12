@@ -671,21 +671,45 @@ class SkatingVideoAnalyzer:
 
         # Build vertical + horizontal position arrays
         times = np.array([p['t'] for p in poses])
-        ys, xs = [], []
+        ys, xs, torsos = [], [], []
         for p in poses:
-            if p.get('kp'):
-                hip_y = [p['kp'][i]['y'] for i in [23, 24]
-                         if i < len(p['kp']) and p['kp'][i]['v'] > 0.3]
-                hip_x = [p['kp'][i]['x'] for i in [23, 24]
-                         if i < len(p['kp']) and p['kp'][i]['v'] > 0.3]
-                ys.append(np.mean(hip_y) if hip_y else p.get('norm_y', 0.5))
+            kp = p.get('kp')
+            if kp:
+                hip_y = [kp[i]['y'] for i in [23, 24] if i < len(kp) and kp[i]['v'] > 0.3]
+                hip_x = [kp[i]['x'] for i in [23, 24] if i < len(kp) and kp[i]['v'] > 0.3]
+                sh_y = [kp[i]['y'] for i in [11, 12] if i < len(kp) and kp[i]['v'] > 0.3]
+                y_val = np.mean(hip_y) if hip_y else p.get('norm_y', 0.5)
+                ys.append(y_val)
                 xs.append(np.mean(hip_x) if hip_x else p.get('norm_x', 0.5))
+                torsos.append(abs(y_val - np.mean(sh_y)) if (hip_y and sh_y) else np.nan)
             else:
                 ys.append(p.get('norm_y', 0.5))
                 xs.append(p.get('norm_x', 0.5))
+                torsos.append(np.nan)
 
-        ys = _despike(np.array(ys))
-        xs = np.array(xs)
+        # Reject frames where the whole pose estimate is geometrically
+        # implausible (shoulders and hips collapsed together — torso length
+        # far below the video's own median) rather than just a single-point
+        # outlier _despike() catches. Confirmed on real ISI Gamma-level
+        # footage: MediaPipe held a corrupted pose (torso ~0.01-0.05 vs a
+        # median of ~0.16) for ~0.7s — long enough that even after removing
+        # the single most extreme frame, the surviving "hip rose" signal
+        # still crossed the jump threshold. Hold the last plausible ys/xs
+        # value through any such stretch instead of trusting it.
+        torsos = np.array(torsos)
+        valid_torsos = torsos[~np.isnan(torsos)]
+        ys_arr, xs_arr = np.array(ys), np.array(xs)
+        if len(valid_torsos) > 10:
+            median_torso = np.median(valid_torsos)
+            last_good_y, last_good_x = ys_arr[0], xs_arr[0]
+            for i in range(len(ys_arr)):
+                if not np.isnan(torsos[i]) and torsos[i] < 0.4 * median_torso:
+                    ys_arr[i], xs_arr[i] = last_good_y, last_good_x
+                else:
+                    last_good_y, last_good_x = ys_arr[i], xs_arr[i]
+
+        ys = _despike(ys_arr)
+        xs = xs_arr
 
         # Smooth vertical signal
         win = min(7, len(ys) // 4)
