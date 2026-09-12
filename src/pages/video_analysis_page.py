@@ -714,7 +714,9 @@ class SkatingVideoAnalyzer:
                 min_y_in_jump = min(min_y_in_jump, ys_smooth[i])
 
             elif not above_thresh and in_jump:
-                airtime = times[i] - times[jump_start_idx]
+                # float(...): times[] is a numpy array — this stays
+                # numpy.float64 otherwise and leaks into j['airtime'].
+                airtime = float(times[i] - times[jump_start_idx])
 
                 if 0.20 <= airtime <= 1.10:
                     window = poses[jump_start_idx:i + 1]
@@ -862,7 +864,9 @@ class SkatingVideoAnalyzer:
     def _confirm_and_add_spin(self, poses, times, sp_start_idx, sp_end_idx, spins):
         """Verify a candidate spin segment via real accumulated rotation
         (unwrapped shoulder angle) before accepting it — see _detect_spins."""
-        duration = times[sp_end_idx] - times[sp_start_idx]
+        # float(...): times[] is a numpy array — stays numpy.float64
+        # otherwise and leaks into sp['duration'] via _classify_spin.
+        duration = float(times[sp_end_idx] - times[sp_start_idx])
         if duration < 1.5:
             return
 

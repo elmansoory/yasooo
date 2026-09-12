@@ -145,7 +145,9 @@ class AIMovementEngine:
 
         # Axis stability
         xs = [_hip_x(p) for p in seg if _hip_x(p) is not None]
-        out['axis_stability'] = round(max(0.0, 1.0 - np.std(xs) * 20), 2) if xs else 0.5
+        # float(...): np.std() returns numpy.float64, which stays numpy-typed
+        # through round()/max() and leaks into json.dumps() downstream.
+        out['axis_stability'] = round(float(max(0.0, 1.0 - np.std(xs) * 20)), 2) if xs else 0.5
 
         # MovementClassifier
         if self._mc and self._MF:
