@@ -102,7 +102,7 @@ ISU_BASE = {
 # CORE ANALYSIS ENGINE (OpenCV + MediaPipe)
 # ============================================================================
 
-def _despike(arr: np.ndarray, window: int = 5, thresh: float = 0.10) -> np.ndarray:
+def _despike(arr: np.ndarray, window: int = 9, thresh: float = 0.10) -> np.ndarray:
     """Reject single-/few-frame outliers in a pose-derived signal before smoothing.
 
     Confirmed on real ISI reference footage (Gamma level, no jumps in the
