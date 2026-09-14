@@ -356,6 +356,7 @@ class SkatingVideoAnalyzer:
         self._skeleton_frames = []   # base64-encoded JPEG frames with skeleton overlay
         self._pose_samples = []      # every 10th pose kp list for 3D playback
         self._skeleton_video_bytes = None  # full overlay video — the moving skeleton on the body
+        last_progress_t = 0.0
 
         options = _PoseLandmarkerOptions(
             base_options=_MP_BaseOptions(model_asset_path=str(_MP_MODEL)),
@@ -452,7 +453,16 @@ class SkatingVideoAnalyzer:
                             })
 
                     if progress_cb and self.total_frames > 0:
-                        progress_cb(fi / self.total_frames, fi)
+                        # Throttle to ~6 updates/sec — calling a Streamlit widget
+                        # (st.progress) on every single frame was the actual
+                        # bottleneck behind the UI taking ~500s on an 11,500-frame
+                        # video vs. ~90s for the same analysis with no progress_cb
+                        # at all: each call is a websocket round-trip, and this
+                        # loop was doing thousands of them with zero throttling.
+                        now = time.time()
+                        if now - last_progress_t >= 0.15 or fi >= self.total_frames - 1:
+                            progress_cb(fi / self.total_frames, fi)
+                            last_progress_t = now
 
                 # Write this frame to the full overlay video, holding the
                 # last detected skeleton across skipped/undetected frames.
@@ -490,6 +500,7 @@ class SkatingVideoAnalyzer:
         Builds pseudo-keypoints from bounding box geometry for downstream analysis.
         """
         poses = []
+        last_progress_t = 0.0
         bg_sub = cv2.createBackgroundSubtractorMOG2(
             history=50, varThreshold=35, detectShadows=False
         )
@@ -568,7 +579,10 @@ class SkatingVideoAnalyzer:
                     })
 
             if progress_cb and self.total_frames > 0:
-                progress_cb(fi / self.total_frames, fi)
+                now = time.time()
+                if now - last_progress_t >= 0.15 or fi >= self.total_frames - 1:
+                    progress_cb(fi / self.total_frames, fi)
+                    last_progress_t = now
             fi += 1
 
         cap.release()
