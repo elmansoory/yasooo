@@ -201,10 +201,22 @@ class LSTMClassifier:
         save_path: str = "data/models/lstm_model.pkl",
         epochs: int = 50,
         batch_size: int = 32,
+        class_weight: Optional[Dict[int, float]] = None,
+        scaler_mean: Optional[np.ndarray] = None,
+        scaler_std: Optional[np.ndarray] = None,
     ) -> "LSTMClassifier":
         """
         Train with Keras for best accuracy, export weights to this class.
         Falls back to sklearn RF if TensorFlow is not available.
+
+        class_weight: per-class loss weighting (e.g. from
+            sklearn.utils.class_weight.compute_class_weight) — without this,
+            common elements dominate the loss and rare ones are never learned.
+        scaler_mean/scaler_std: normalization stats computed on X_train,
+            stored on the returned object so _normalise() actually normalizes
+            at both train and inference time (previously declared on
+            __init__ but never populated by this method — inference always
+            silently skipped normalization).
         """
         try:
             import tensorflow as tf
@@ -239,6 +251,7 @@ class LSTMClassifier:
                 validation_data=(X_val, y_val),
                 epochs=epochs,
                 batch_size=batch_size,
+                class_weight=class_weight,
                 callbacks=cb,
                 verbose=1,
             )
@@ -246,6 +259,8 @@ class LSTMClassifier:
             obj = cls()
             obj._keras_model = model
             obj._use_keras   = True
+            obj.scaler_mean  = scaler_mean
+            obj.scaler_std   = scaler_std
             obj.save(save_path)
             print(f"Keras model saved → {save_path}")
             return obj
@@ -253,6 +268,8 @@ class LSTMClassifier:
         except ImportError:
             print("TensorFlow not available — falling back to sklearn RF.")
             obj = cls()
+            obj.scaler_mean = scaler_mean
+            obj.scaler_std  = scaler_std
             obj.fit_sklearn_fallback(X_train, y_train)
             obj.save(save_path)
             return obj

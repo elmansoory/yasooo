@@ -133,6 +133,7 @@ def create_tables(conn):
         label TEXT,
         element_id INTEGER,
         rotations INTEGER,
+        athlete_id TEXT,
         duration REAL,
         width INTEGER,
         height INTEGER,

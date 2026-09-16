@@ -10,18 +10,31 @@ Usage:
 
 The script:
   1. Scans data/labeled/ for annotated video segments (JSON sidecar files)
-  2. Extracts pose sequences with MediaPipe
-  3. Trains LSTM classifier (Keras if available, else sklearn RF)
-  4. Saves model to data/models/lstm_model.pkl
-  5. Prints accuracy report
+  2. Extracts pose sequences with MediaPipe (cached under data/landmarks/ so
+     re-running this script after adding a few new clips doesn't re-extract
+     everything from scratch)
+  3. Splits train/val by athlete group (not by sample) so augmented copies
+     of the same clip, or multiple clips from the same skater, never leak
+     across the split
+  4. Trains LSTM classifier (Keras if available, else sklearn RF), with
+     class weighting so common elements don't drown out rare ones
+  5. Saves model + normalization stats to data/models/lstm_model.pkl
+  6. Prints accuracy report
 
 Directory layout expected:
     data/labeled/
         axel_triple_001.mp4     ← video clip (2-4 seconds)
-        axel_triple_001.json    ← sidecar: {"label": "Axel_3", "rotations": 3}
+        axel_triple_001.json    ← sidecar: {"label": "Axel_3", "rotations": 3,
+                                              "athlete_id": "athlete_7"}
         sit_spin_002.mp4
         sit_spin_002.json       ← {"label": "Sit"}
         ...
+
+    "athlete_id" is optional and anonymous (an internal id, never a real
+    name) — when present, it groups clips from the same skater so they
+    can't end up split across train and validation. When absent (older
+    sidecars), each clip is its own group — narrower, but still prevents
+    augmented copies of one clip from leaking across the split.
 """
 
 import argparse
@@ -39,6 +52,8 @@ from src.models.lstm_classifier import (
     LSTMClassifier, LABEL2IDX, ALL_LABELS,
     poses_to_sequence, augment_sequence, SEQUENCE_LEN,
 )
+
+LANDMARK_DIR = ROOT / "data/landmarks"
 
 
 def extract_pose_sequence(video_path: str) -> np.ndarray:
@@ -86,11 +101,38 @@ def extract_pose_sequence(video_path: str) -> np.ndarray:
         return np.zeros((SEQUENCE_LEN, 99), dtype=np.float32)
 
 
-def load_dataset(data_dir: Path):
-    """Scan data_dir for (video, json) pairs and build X, y arrays."""
+def extract_pose_sequence_cached(video_path: Path, clip_id: str) -> np.ndarray:
+    """Extract (or load a cached copy of) the pose sequence for one clip.
+
+    MediaPipe extraction is the expensive part of this whole pipeline —
+    caching it means adding a handful of new labeled clips and re-running
+    this script doesn't re-process every clip collected so far. The cache
+    is invalidated if the source video's mtime changes (re-labeled/re-cut).
+    """
+    LANDMARK_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = LANDMARK_DIR / f"{clip_id}.npz"
+    video_mtime = video_path.stat().st_mtime
+
+    if cache_path.exists():
+        try:
+            cached = np.load(cache_path)
+            if float(cached['video_mtime']) == video_mtime:
+                return cached['sequence']
+        except Exception:
+            pass  # corrupt cache entry — fall through and re-extract
+
+    seq = extract_pose_sequence(str(video_path))
+    np.savez_compressed(cache_path, sequence=seq, video_mtime=video_mtime)
+    return seq
+
+
+def load_clips(data_dir: Path) -> list:
+    """Scan data_dir for (video, json) pairs. Returns one entry per RAW clip
+    (no augmentation yet — that happens per-split in main(), so augmented
+    copies of a clip can't end up split across train and validation)."""
     videos = sorted(data_dir.glob("*.mp4")) + sorted(data_dir.glob("*.mov"))
 
-    X_list, y_list, skipped = [], [], 0
+    items, skipped = [], 0
 
     for vp in videos:
         jp = vp.with_suffix(".json")
@@ -107,31 +149,76 @@ def load_dataset(data_dir: Path):
             skipped += 1
             continue
 
-        print(f"  Processing {vp.name}  →  {label}")
-        seq = extract_pose_sequence(str(vp))
+        clip_id = vp.stem
+        # Anonymous internal id, optional. Falls back to the clip's own id
+        # for sidecars written before this field existed — narrower
+        # grouping, but still keeps augmented copies of one clip together.
+        group_id = meta.get("athlete_id") or clip_id
 
-        # Augment: generate 4× more samples from each video
-        for aug_seq in augment_sequence(seq, n=4):
-            X_list.append(aug_seq)
-            y_list.append(LABEL2IDX[label])
+        print(f"  Processing {vp.name}  →  {label}  (group={group_id})")
+        seq = extract_pose_sequence_cached(vp, clip_id)
 
-    print(f"\n  Total samples: {len(X_list)}  (skipped {skipped} files)")
+        items.append({
+            'clip_id': clip_id, 'group_id': group_id,
+            'label_idx': LABEL2IDX[label], 'sequence': seq,
+        })
+
+    print(f"\n  Total clips: {len(items)}  (skipped {skipped} files)")
+    return items
+
+
+def group_split(items: list, val_ratio: float = 0.2, seed: int = 42):
+    """Split by group_id (athlete), not by sample — so no group has clips
+    on both sides of the split. Plain random per-sample splitting would let
+    augmented copies of the same clip, or a skater's other clips, leak
+    between train and validation and inflate the reported accuracy."""
+    groups = sorted({it['group_id'] for it in items})
+    rng = np.random.RandomState(seed)
+    rng.shuffle(groups)
+
+    n_val_groups = max(1, round(len(groups) * val_ratio)) if len(groups) > 1 else 0
+    val_groups = set(groups[:n_val_groups])
+
+    train_items = [it for it in items if it['group_id'] not in val_groups]
+    val_items = [it for it in items if it['group_id'] in val_groups]
+    return train_items, val_items
+
+
+def build_arrays(items: list, augment: bool):
+    """Turn a list of clip items into (X, y) arrays. Only the training
+    split should be augmented — validation must reflect real, unmodified
+    clips or the reported accuracy is measuring the augmentation, not the
+    model."""
+    X_list, y_list = [], []
+    for it in items:
+        if augment:
+            for aug_seq in augment_sequence(it['sequence'], n=4):
+                X_list.append(aug_seq)
+                y_list.append(it['label_idx'])
+        else:
+            X_list.append(it['sequence'])
+            y_list.append(it['label_idx'])
     return np.array(X_list, dtype=np.float32), np.array(y_list, dtype=np.int32)
 
 
-def print_class_distribution(y: np.ndarray):
+def print_class_distribution(y: np.ndarray, title: str = "Class distribution"):
     unique, counts = np.unique(y, return_counts=True)
-    print("\nClass distribution:")
+    print(f"\n{title}:")
     for idx, cnt in zip(unique, counts):
         print(f"  {ALL_LABELS[idx]:<20} {cnt:>4} samples")
 
 
-def split_dataset(X, y, val_ratio=0.2, seed=42):
-    rng = np.random.RandomState(seed)
-    idx = rng.permutation(len(X))
-    n_val = int(len(X) * val_ratio)
-    return (X[idx[n_val:]], y[idx[n_val:]],
-            X[idx[:n_val]],  y[idx[:n_val]])
+def compute_class_weights(y: np.ndarray) -> dict:
+    """Inverse-frequency class weights so rare elements (e.g. a triple jump
+    with only a handful of clips) aren't drowned out by common ones (e.g.
+    'None') in the loss."""
+    classes, counts = np.unique(y, return_counts=True)
+    total = len(y)
+    n_classes = len(classes)
+    return {
+        int(c): float(total / (n_classes * count))
+        for c, count in zip(classes, counts)
+    }
 
 
 def evaluate(model: LSTMClassifier, X_val: np.ndarray, y_val: np.ndarray):
@@ -185,15 +272,44 @@ def main():
         sys.exit(1)
 
     print(f"Loading dataset from {data_dir} ...")
-    X, y = load_dataset(data_dir)
+    items = load_clips(data_dir)
 
-    if len(X) == 0:
+    if len(items) == 0:
         print("No valid samples found. Add .mp4 videos with .json sidecar files.")
         sys.exit(1)
 
-    print_class_distribution(y)
-    X_tr, y_tr, X_val, y_val = split_dataset(X, y, args.val_ratio)
+    n_groups = len({it['group_id'] for it in items})
+    print(f"  {len(items)} clips across {n_groups} athlete group(s)")
+
+    train_items, val_items = group_split(items, args.val_ratio)
+    X_tr, y_tr = build_arrays(train_items, augment=True)
+    X_val, y_val = build_arrays(val_items, augment=False)
+
+    if len(X_val) == 0:
+        print("\nWARNING: only one athlete group in the dataset — validation set "
+              "is empty. Add clips from at least 2 different athlete_id groups "
+              "(or leave athlete_id unset to group per-clip) to get a real "
+              "held-out accuracy number.")
+
+    print_class_distribution(y_tr, "Train class distribution (post-augmentation)")
+    if len(y_val):
+        print_class_distribution(y_val, "Validation class distribution")
     print(f"\nTrain: {len(X_tr)}  Val: {len(X_val)}")
+
+    class_weight = compute_class_weights(y_tr) if len(y_tr) else None
+
+    # Normalize using train-set statistics only, and store them on the model
+    # so inference (predict_keras / predict) applies the exact same
+    # normalization — training on raw coordinates while normalizing only at
+    # inference time is a silent train/serve mismatch. Shape (99,), not
+    # keepdims — must broadcast against both a training batch (N, T, 99)
+    # and a single inference sequence (T, 99).
+    scaler_mean = X_tr.mean(axis=(0, 1)) if len(X_tr) else None
+    scaler_std = X_tr.std(axis=(0, 1)) + 1e-6 if len(X_tr) else None
+    if scaler_mean is not None:
+        X_tr = (X_tr - scaler_mean) / scaler_std
+        if len(X_val):
+            X_val = (X_val - scaler_mean) / scaler_std
 
     print("\nTraining model ...")
     model = LSTMClassifier.train_with_keras(
@@ -201,9 +317,13 @@ def main():
         save_path=args.out,
         epochs=args.epochs,
         batch_size=args.batch,
+        class_weight=class_weight,
+        scaler_mean=scaler_mean,
+        scaler_std=scaler_std,
     )
 
-    evaluate(model, X_val, y_val)
+    if len(X_val):
+        evaluate(model, X_val, y_val)
     print(f"\nModel saved → {args.out}")
 
 

@@ -53,6 +53,12 @@ YOUTUBE_SEARCH_TERMS = {
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    # Older DBs created before this column existed.
+    try:
+        conn.execute("ALTER TABLE training_videos ADD COLUMN athlete_id TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # column already exists (or table doesn't exist yet)
     return conn
 
 
@@ -76,7 +82,7 @@ def get_training_videos() -> List[Dict]:
     try:
         conn = get_db()
         rows = conn.execute("""
-            SELECT id, filepath, filename, source, label, youtube_url,
+            SELECT id, filepath, filename, source, label, youtube_url, athlete_id,
                    duration, width, height, fps, size_mb, used_in_training
             FROM training_videos
             ORDER BY created_at DESC
@@ -103,17 +109,24 @@ def get_discovered_videos_labeled() -> List[Dict]:
 
 
 def add_training_video(filepath: str, label: str, source: str = 'local',
-                       youtube_url: str = None, duration: float = None,
+                       youtube_url: str = None, athlete_id: str = None,
+                       duration: float = None,
                        width: int = None, height: int = None,
                        fps: float = None, size_mb: float = None):
+    """athlete_id: optional, anonymous internal identifier (never a real
+    name) grouping clips from the same skater — used at training time to
+    keep one athlete's clips entirely on one side of the train/val split,
+    so validation accuracy isn't inflated by near-duplicate clips leaking
+    across the split. Leave unset for scraped/YouTube clips with no
+    specific athlete."""
     try:
         conn = get_db()
         conn.execute("""
             INSERT OR IGNORE INTO training_videos
-              (filepath, filename, source, label, youtube_url,
+              (filepath, filename, source, label, youtube_url, athlete_id,
                duration, width, height, fps, size_mb)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
-        """, (filepath, Path(filepath).name, source, label, youtube_url,
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        """, (filepath, Path(filepath).name, source, label, youtube_url, athlete_id,
               duration, width, height, fps, size_mb))
         conn.commit()
         conn.close()
@@ -218,8 +231,11 @@ def prepare_labeled_dir(videos: List[Dict]) -> int:
                 continue
         sidecar = dest.with_suffix('.json')
         if not sidecar.exists():
+            meta = {'label': v['label']}
+            if v.get('athlete_id'):
+                meta['athlete_id'] = v['athlete_id']
             sidecar.write_text(
-                json.dumps({'label': v['label']}, ensure_ascii=False),
+                json.dumps(meta, ensure_ascii=False),
                 encoding='utf-8'
             )
         copied += 1
@@ -418,13 +434,28 @@ def show_model_training_page(lang: str = 'ar'):
         if uploaded:
             upload_label = st.selectbox("تسمية الفيديو" if ar else "Video label",
                                         LABELS, key="upload_lbl")
+            upload_athlete_id = st.text_input(
+                "معرّف اللاعب الداخلي (اختياري، مجهول)" if ar else
+                "Internal athlete ID (optional, anonymous)",
+                key="upload_athlete_id",
+                help=(
+                    "لا تكتب اسماً حقيقياً — أي رمز داخلي يميّز هذا اللاعب عن غيره "
+                    "(مثال: athlete_7) يكفي لمنع تسرّب بيانات نفس اللاعب بين "
+                    "التدريب والاختبار عند تدريب النموذج."
+                    if ar else
+                    "Don't enter a real name — any internal code that identifies "
+                    "this skater (e.g. athlete_7) is enough to keep one skater's "
+                    "clips from leaking across train/validation during training."
+                ),
+            )
             if st.button("💾 حفظ" if ar else "💾 Save"):
                 save_dir = ROOT / "data/training_uploads"
                 save_dir.mkdir(parents=True, exist_ok=True)
                 dest = save_dir / uploaded.name
                 dest.write_bytes(uploaded.read())
                 meta = get_video_meta(str(dest))
-                add_training_video(str(dest), upload_label, 'uploaded', **meta)
+                add_training_video(str(dest), upload_label, 'uploaded',
+                                   athlete_id=upload_athlete_id.strip() or None, **meta)
                 st.success(f"✅ {uploaded.name}")
 
     # ──────────────────────────────────────────────────────────────────────
