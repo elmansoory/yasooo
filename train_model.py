@@ -217,14 +217,24 @@ def print_class_distribution(y: np.ndarray, title: str = "Class distribution"):
 def compute_class_weights(y: np.ndarray) -> dict:
     """Inverse-frequency class weights so rare elements (e.g. a triple jump
     with only a handful of clips) aren't drowned out by common ones (e.g.
-    'None') in the loss."""
+    'None') in the loss.
+
+    Keras' model.fit(class_weight=...) requires a dict covering every class
+    index in the full label vocabulary (0 .. len(ALL_LABELS)-1), not just
+    the ones present in this particular training run — a dataset this small
+    only ever has a handful of the ~30 possible labels, and Keras raises
+    a ValueError if any index in that range is missing. Classes absent from
+    this training run get weight 1.0 (they contribute nothing to the loss
+    either way, so the exact value is moot — it just has to exist).
+    """
     classes, counts = np.unique(y, return_counts=True)
     total = len(y)
-    n_classes = len(classes)
-    return {
-        int(c): float(total / (n_classes * count))
+    n_present = len(classes)
+    weights = {
+        int(c): float(total / (n_present * count))
         for c, count in zip(classes, counts)
     }
+    return {i: weights.get(i, 1.0) for i in range(len(ALL_LABELS))}
 
 
 def evaluate(model: LSTMClassifier, X_val: np.ndarray, y_val: np.ndarray):
