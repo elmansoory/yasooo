@@ -43,6 +43,10 @@ data/cache/*
 !data/cache/.gitkeep
 data/exports/*
 !data/exports/.gitkeep
+data/labeled/*
+!data/labeled/.gitkeep
+data/landmarks/*
+!data/landmarks/.gitkeep
 *.h5
 *.pkl
 *.pth
