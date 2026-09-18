@@ -156,7 +156,13 @@ def load_clips(data_dir: Path) -> list:
         group_id = meta.get("athlete_id") or clip_id
 
         print(f"  Processing {vp.name}  →  {label}  (group={group_id})")
-        seq = extract_pose_sequence_cached(vp, clip_id)
+        # poses_to_sequence() (and the cache) preserve each clip's real
+        # length, which varies per clip — pad/trim to the model's fixed
+        # window here so every item is a uniform (SEQUENCE_LEN, 99) array.
+        # Skipping this made np.array(X_list) crash on any real dataset
+        # with more than one clip length — never caught before because
+        # data/labeled/ had no real clips to trigger it until now.
+        seq = LSTMClassifier._pad_or_trim(extract_pose_sequence_cached(vp, clip_id), SEQUENCE_LEN)
 
         items.append({
             'clip_id': clip_id, 'group_id': group_id,

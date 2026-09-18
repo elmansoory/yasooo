@@ -156,6 +156,7 @@ class LSTMClassifier:
         y: np.ndarray,   # (N,) int labels
         epochs: int = 20,
         lr: float = 0.001,
+        class_weight: Optional[Dict[int, float]] = None,
     ):
         """
         Very simple SGD training loop (no backprop through time — uses
@@ -170,7 +171,9 @@ class LSTMClassifier:
         sc = StandardScaler()
         embeddings = sc.fit_transform(embeddings)
 
-        rf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+        rf = RandomForestClassifier(
+            n_estimators=200, random_state=42, n_jobs=-1, class_weight=class_weight,
+        )
         rf.fit(embeddings, y)
 
         self._rf_fallback  = rf
@@ -270,7 +273,7 @@ class LSTMClassifier:
             obj = cls()
             obj.scaler_mean = scaler_mean
             obj.scaler_std  = scaler_std
-            obj.fit_sklearn_fallback(X_train, y_train)
+            obj.fit_sklearn_fallback(X_train, y_train, class_weight=class_weight)
             obj.save(save_path)
             return obj
 
