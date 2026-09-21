@@ -53,12 +53,38 @@ YOUTUBE_SEARCH_TERMS = {
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    # This page assumed merge_all_data.py had already created
+    # training_videos — on a database where it hadn't run yet, every save
+    # here failed with "no such table: training_videos" while the uploaded
+    # video file itself was still written to disk, silently. Self-heal
+    # instead of depending on run order: same schema as merge_all_data.py.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS training_videos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filepath TEXT UNIQUE,
+            filename TEXT,
+            source TEXT DEFAULT 'local',
+            youtube_url TEXT,
+            label TEXT,
+            element_id INTEGER,
+            rotations INTEGER,
+            athlete_id TEXT,
+            duration REAL,
+            width INTEGER,
+            height INTEGER,
+            fps REAL,
+            size_mb REAL,
+            used_in_training INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
     # Older DBs created before this column existed.
     try:
         conn.execute("ALTER TABLE training_videos ADD COLUMN athlete_id TEXT")
         conn.commit()
     except sqlite3.OperationalError:
-        pass  # column already exists (or table doesn't exist yet)
+        pass  # column already exists
+    conn.commit()
     return conn
 
 
