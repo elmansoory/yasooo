@@ -19,16 +19,28 @@ VIDEO_EXTS = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.m4v', '.flv', '.webm', '
 
 # ── Data loading ────────────────────────────────────────────────────────────
 
+def _ensure_athlete_id_column():
+    """Older DBs (or a scan run before this column existed) won't have it."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("ALTER TABLE discovered_videos ADD COLUMN athlete_id TEXT")
+        conn.commit()
+        conn.close()
+    except sqlite3.OperationalError:
+        pass  # column already exists (or table doesn't exist yet)
+
+
 def _load_from_db() -> List[Dict]:
     try:
+        _ensure_athlete_id_column()
         conn = sqlite3.connect(DB_PATH)
         rows = conn.execute(
             "SELECT filepath, filename, size_mb, duration, width, height, fps, "
-            "label, analyzed, scan_date FROM discovered_videos ORDER BY filename"
+            "label, athlete_id, analyzed, scan_date FROM discovered_videos ORDER BY filename"
         ).fetchall()
         conn.close()
         cols = ['filepath', 'filename', 'size_mb', 'duration',
-                'width', 'height', 'fps', 'label', 'analyzed', 'scan_date']
+                'width', 'height', 'fps', 'label', 'athlete_id', 'analyzed', 'scan_date']
         return [dict(zip(cols, r)) for r in rows]
     except Exception:
         return []
@@ -56,6 +68,22 @@ def _update_label(filepath: str, label: str):
         conn.execute(
             "UPDATE discovered_videos SET label=? WHERE filepath=?",
             (label, filepath)
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def _update_athlete_id(filepath: str, athlete_id: str):
+    """athlete_id: optional, anonymous internal identifier (never a real
+    name) — groups clips from the same skater so training can keep one
+    athlete's clips entirely on one side of the train/val split."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            "UPDATE discovered_videos SET athlete_id=? WHERE filepath=?",
+            (athlete_id or None, filepath)
         )
         conn.commit()
         conn.close()
@@ -216,6 +244,24 @@ def show_my_videos(lang: str = 'ar'):
                     _update_label(fp, new_lbl)
                     st.success("✓")
 
+                # Athlete ID (optional, anonymous) — groups clips from the
+                # same skater so training keeps one athlete's clips on one
+                # side of the train/val split.
+                cur_athlete = v.get('athlete_id') or ''
+                new_athlete = st.text_input(
+                    "معرّف اللاعب الداخلي (اختياري، مجهول)" if ar
+                    else "Internal athlete ID (optional, anonymous)",
+                    value=cur_athlete,
+                    key=f"athlete_{fp}",
+                    help=(
+                        "استخدم رمزاً داخلياً مجهولاً فقط — لا تُدخل اسماً حقيقياً."
+                        if ar else
+                        "Use an anonymous internal code only — never a real name."
+                    )
+                )
+                if new_athlete != cur_athlete:
+                    _update_athlete_id(fp, new_athlete.strip() or None)
+
                 # Analyze button
                 if Path(fp).exists():
                     if st.button(
@@ -371,8 +417,11 @@ def _train_model(videos: List[Dict], ar: bool):
         # Write sidecar JSON
         sidecar = dest.with_suffix('.json')
         if not sidecar.exists():
+            meta = {'label': v['label']}
+            if v.get('athlete_id'):
+                meta['athlete_id'] = v['athlete_id']
             sidecar.write_text(
-                json.dumps({'label': v['label']}, ensure_ascii=False),
+                json.dumps(meta, ensure_ascii=False),
                 encoding='utf-8'
             )
         copied += 1

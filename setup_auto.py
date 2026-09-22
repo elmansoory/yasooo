@@ -140,6 +140,7 @@ def save_to_db(videos_info: list, db_path: str):
             height      INTEGER,
             fps         REAL,
             label       TEXT DEFAULT NULL,
+            athlete_id  TEXT DEFAULT NULL,
             analyzed    INTEGER DEFAULT 0,
             scan_date   TEXT
         )
