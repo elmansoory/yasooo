@@ -2237,6 +2237,7 @@ def _tab_errors(ar: bool, lang: str):
     try:
         from src.analysis.coaching_knowledge import (
             resolve_symptom_key, get_symptom_info, get_physical_prep,
+            resolve_ballet_alignment_key, get_ballet_alignment_info,
             CORRECTION_PROTOCOL_AR,
         )
         CK_OK = True
@@ -2300,6 +2301,24 @@ def _tab_errors(ar: bool, lang: str):
         if CK_OK:
             symptom_key = err.get('symptom_key') or resolve_symptom_key(err)
             info = get_symptom_info(symptom_key) if symptom_key else None
+            ballet_info = None
+            if not info:
+                ballet_key = resolve_ballet_alignment_key(err)
+                ballet_info = get_ballet_alignment_info(ballet_key) if ballet_key else None
+            if ballet_info:
+                with st.expander(f"🩰 تصحيح الاصطفاف (باليه) — {ballet_info['title_ar']}"):
+                    st.markdown(
+                        f"<div style='background:#fdf2f8;border-right:4px solid #db2777;"
+                        f"border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.88em'>"
+                        f"<b>🔬 السبب الجذري:</b><br>{ballet_info['root_cause_ar']}"
+                        f"</div>", unsafe_allow_html=True
+                    )
+                    st.markdown("**🗣️ جمل تدريب فورية جاهزة:**")
+                    for cue in ballet_info.get('cues', []):
+                        st.markdown(f"- {cue['ar']}")
+                    drill = ballet_info.get('drill_ar')
+                    if drill:
+                        st.markdown(f"**🏋️ تمرين التصحيح المعزول:** {drill}")
             if info:
                 with st.expander(f"🧠 التشخيص الفني الكامل — {info['title_ar']}"):
                     st.markdown(

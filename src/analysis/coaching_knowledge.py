@@ -345,3 +345,101 @@ def get_symptom_info(symptom_key: str) -> Optional[Dict]:
 
 def get_physical_prep(symptom_key: str) -> Optional[Dict[str, str]]:
     return PHYSICAL_PREP_MAP.get(symptom_key)
+
+
+# ── Ballet-informed alignment library ───────────────────────────────────────
+# Original coaching cues written in our own words, informed by general
+# classical-ballet pedagogy concepts (placement, turnout, port de bras) that
+# a coach would apply to figure skating. NOT a reproduction of any specific
+# book's text — no passages are copied. For further reading on this topic,
+# see: "Ballet for Figure Skaters Manual for Coaches" by Annette T. Thomas
+# (own a copy before consulting it — its content is not reproduced here).
+
+BALLET_ALIGNMENT_LIBRARY: Dict[str, Dict] = {
+
+    'weak_placement': {
+        'title_ar': 'ضعف التمركز (Placement)', 'title_en': 'Weak Placement',
+        'root_cause_ar': (
+            'الجسم يميل أو "يسقط" عن العمود الفقري المستقيم بدلاً من الارتكاز '
+            'فوق القدم الداعمة — غالباً بسبب غياب الشد المركزي (core) قبل الحركة، '
+            'وليس ضعفاً في التوازن نفسه.'
+        ),
+        'root_cause_en': (
+            'The body leans off a straight spinal column instead of stacking '
+            'over the supporting foot — usually missing core tension BEFORE '
+            'the movement starts, not a balance problem itself.'
+        ),
+        'cues': [
+            {'ar': '"استطل من التاج" — تخيل خيطاً يسحب قمة الرأس للأعلى قبل أي حركة.',
+             'en': '"Lengthen from the crown" — imagine a thread pulling the top of the head up before any movement.'},
+            {'ar': '"ثبّت المركز أولاً، ثم حرّك الأطراف" — الجذع يبقى ساكناً والذراعان/الساقان تتحركان حوله.',
+             'en': '"Stabilize the center first, then move the limbs" — the torso stays quiet while arms/legs move around it.'},
+            {'ar': '"زن فوق منتصف القدم" — ليس الكعب وليس المقدمة، بل منتصف قوس القدم الداعمة.',
+             'en': '"Weight over the middle of the foot" — not the heel, not the toes."'},
+        ],
+        'drill_ar': 'تمرين حاجز الباليه (barre) بدون إمساك — يد واحدة فقط للتصحيح، ثم بلا يدين إطلاقاً.',
+        'drill_en': 'Ballet barre work with minimal hand support, progressing to no hands — forces true core placement.',
+    },
+
+    'weak_turnout': {
+        'title_ar': 'دوران خارجي ضعيف من القدم لا من الورك', 'title_en': 'Turnout From the Foot, Not the Hip',
+        'root_cause_ar': (
+            'الانفتاح الظاهر عند القدم يُخفي أن الدوران الخارجي الحقيقي يجب أن '
+            'يبدأ من مفصل الورك (hip external rotation) — دوران القدم وحدها '
+            'يُحمّل الركبة ضغطاً جانبياً خاطئاً.'
+        ),
+        'root_cause_en': (
+            'Visible turnout at the foot hides that true external rotation must '
+            'originate at the hip joint — rotating from the foot alone loads '
+            'the knee with incorrect lateral stress.'
+        ),
+        'cues': [
+            {'ar': '"دُر من أعلى الفخذ" — تخيل عظم الفخذ يدور داخل مفصل الورك، والقدم تتبع فقط.',
+             'en': '"Rotate from the top of the thigh" — the femur turns inside the hip socket; the foot only follows.'},
+            {'ar': '"الركبة تنظر إلى نفس اتجاه أصابع القدم دائماً" — لو انحرفتا عن بعضهما فالدوران من القدم فقط.',
+             'en': '"Knee tracks over the toes, always" — if they diverge, the rotation is coming from the foot alone.'},
+        ],
+        'drill_ar': 'تمارين الورك المعزولة (clam shells / hip external rotation) خارج الجليد قبل تطبيقها على حافة.',
+        'drill_en': 'Off-ice isolated hip external-rotation drills (clam shells) before applying the pattern on an edge.',
+    },
+
+    'flat_port_de_bras': {
+        'title_ar': 'حركة ذراعين ميكانيكية بلا تدرج (Port de Bras)', 'title_en': 'Flat / Mechanical Port de Bras',
+        'root_cause_ar': (
+            'الذراعان تتحركان كوحدة واحدة صلبة بدلاً من تتابع مرن يبدأ من لوح '
+            'الكتف ثم العضد ثم الساعد وأخيراً الأصابع — هذا التتابع هو ما يعطي '
+            'الحركة إحساساً بالانسيابية بدلاً من التصلب.'
+        ),
+        'root_cause_en': (
+            'Arms move as one rigid unit instead of a soft sequence starting '
+            'at the shoulder blade, then upper arm, forearm, and fingers last — '
+            'that sequencing is what reads as flowing rather than robotic.'
+        ),
+        'cues': [
+            {'ar': '"ابدأ من الكتف، أنهِ بالأصابع" — كل حركة ذراع لها بداية ونهاية واضحتان.',
+             'en': '"Lead from the shoulder, finish at the fingers" — every arm movement has a clear start and end.'},
+            {'ar': '"لا تجمّد المرفق" — اترك انحناءة طفيفة دائمة، المرفق المقفل يبدو آلياً.',
+             'en': '"Never lock the elbow" — keep a soft, permanent bend; a locked elbow reads as mechanical.'},
+        ],
+        'drill_ar': 'تمارين port de bras الأساسية (١ إلى ٥) خارج الجليد أمام مرآة، بتركيز بطيء على التتابع لا السرعة.',
+        'drill_en': 'Basic port de bras positions (1-5) off-ice in front of a mirror, slow and sequenced, not fast.',
+    },
+}
+
+
+def get_ballet_alignment_info(key: str) -> Optional[Dict]:
+    return BALLET_ALIGNMENT_LIBRARY.get(key)
+
+
+def resolve_ballet_alignment_key(error: Dict) -> Optional[str]:
+    """Map a detected posture/artistry error to a BALLET_ALIGNMENT_LIBRARY key."""
+    cat = (error.get('category') or '').strip()
+    title = (error.get('title_ar') or '') + ' ' + (error.get('title_en') or '')
+
+    if 'تمركز' in title or 'Placement' in title or cat in ('وضعية الجسم', 'Posture'):
+        return 'weak_placement'
+    if 'دوران خارجي' in title or 'Turnout' in title:
+        return 'weak_turnout'
+    if 'ذراع' in title or 'Port de Bras' in title or 'Arm' in title:
+        return 'flat_port_de_bras'
+    return None
