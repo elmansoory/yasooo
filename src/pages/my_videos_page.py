@@ -30,17 +30,31 @@ def _ensure_athlete_id_column():
         pass  # column already exists (or table doesn't exist yet)
 
 
+def _ensure_label_source_column():
+    """'auto' (from auto_suggest_labels.py, unreviewed) vs 'manual' (coach-confirmed)."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("ALTER TABLE discovered_videos ADD COLUMN label_source TEXT")
+        conn.commit()
+        conn.close()
+    except sqlite3.OperationalError:
+        pass  # column already exists (or table doesn't exist yet)
+
+
 def _load_from_db() -> List[Dict]:
     try:
         _ensure_athlete_id_column()
+        _ensure_label_source_column()
         conn = sqlite3.connect(DB_PATH)
         rows = conn.execute(
             "SELECT filepath, filename, size_mb, duration, width, height, fps, "
-            "label, athlete_id, analyzed, scan_date FROM discovered_videos ORDER BY filename"
+            "label, athlete_id, analyzed, scan_date, label_source "
+            "FROM discovered_videos ORDER BY filename"
         ).fetchall()
         conn.close()
         cols = ['filepath', 'filename', 'size_mb', 'duration',
-                'width', 'height', 'fps', 'label', 'athlete_id', 'analyzed', 'scan_date']
+                'width', 'height', 'fps', 'label', 'athlete_id', 'analyzed',
+                'scan_date', 'label_source']
         return [dict(zip(cols, r)) for r in rows]
     except Exception:
         return []
@@ -63,10 +77,12 @@ def _load_videos() -> List[Dict]:
 
 
 def _update_label(filepath: str, label: str):
+    """Called when the coach picks a label in the UI — always 'manual',
+    overriding any earlier auto-suggestion (confirms or corrects it)."""
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.execute(
-            "UPDATE discovered_videos SET label=? WHERE filepath=?",
+            "UPDATE discovered_videos SET label=?, label_source='manual' WHERE filepath=?",
             (label, filepath)
         )
         conn.commit()
@@ -207,12 +223,14 @@ def show_my_videos(lang: str = 'ar'):
         fp   = v.get('filepath', '')
         name = v.get('filename', fp)
         dur  = v.get('duration')
-        size = v.get('size_mb', 0)
+        size = v.get('size_mb') or 0
         lbl  = v.get('label') or ''
+        lbl_source = v.get('label_source') or ''
         done = v.get('analyzed', 0)
+        needs_review = bool(lbl) and lbl_source == 'auto'
 
         with st.expander(
-            f"{'✅' if done else ('🏷️' if lbl else '📹')}  {name}"
+            f"{'✅' if done else ('🤖' if needs_review else ('🏷️' if lbl else '📹'))}  {name}"
             f"  |  {f'{dur:.0f}s' if dur else '?s'}"
             f"  |  {size:.1f} MB"
         ):
@@ -233,6 +251,13 @@ def show_my_videos(lang: str = 'ar'):
                         st.video(fp)
 
             with col_action:
+                if needs_review:
+                    st.caption(
+                        "🤖 اقتراح تلقائي من الكاشف — راجعه وأكِّده أو صحِّحه"
+                        if ar else
+                        "🤖 Auto-suggested by the detector — review and confirm or correct"
+                    )
+
                 # Label selector
                 cur_idx = LABELS.index(lbl) if lbl in LABELS else 0
                 new_lbl = st.selectbox(
@@ -243,6 +268,13 @@ def show_my_videos(lang: str = 'ar'):
                 if new_lbl != lbl:
                     _update_label(fp, new_lbl)
                     st.success("✓")
+                elif needs_review and st.button(
+                    "✓ تأكيد التصنيف" if ar else "✓ Confirm label",
+                    key=f"confirm_{fp}"
+                ):
+                    _update_label(fp, new_lbl)
+                    st.success("✓")
+                    st.rerun()
 
                 # Athlete ID (optional, anonymous) — groups clips from the
                 # same skater so training keeps one athlete's clips on one
@@ -276,20 +308,31 @@ def show_my_videos(lang: str = 'ar'):
 
     # ── Bulk train button ──────────────────────────────────────────────────
     st.divider()
-    labeled_count = sum(1 for v in videos if v.get('label'))
+    labeled_count = sum(
+        1 for v in videos if v.get('label') and v.get('label_source') != 'auto'
+    )
+    unreviewed_count = sum(
+        1 for v in videos if v.get('label') and v.get('label_source') == 'auto'
+    )
+    if unreviewed_count:
+        st.caption(
+            f"🤖 {unreviewed_count} فيديو باقتراح تلقائي بانتظار المراجعة (لا يُحتسب للتدريب حتى تُؤكَّد)"
+            if ar else
+            f"🤖 {unreviewed_count} videos have an unreviewed auto-suggestion (not counted until confirmed)"
+        )
     if labeled_count >= 10:
         st.success(
-            f"✅ لديك {labeled_count} فيديو مُصنَّف — يمكنك تدريب النموذج!"
+            f"✅ لديك {labeled_count} فيديو مُصنَّف (مؤكَّد يدوياً) — يمكنك تدريب النموذج!"
             if ar else
-            f"✅ You have {labeled_count} labeled videos — ready to train!"
+            f"✅ You have {labeled_count} confirmed labeled videos — ready to train!"
         )
         if st.button("🧠 ابدأ تدريب النموذج" if ar else "🧠 Train Model"):
             _train_model(videos, ar)
     else:
         st.info(
-            f"صنِّف {10 - labeled_count} فيديو إضافية لبدء تدريب النموذج"
+            f"صنِّف/أكِّد {10 - labeled_count} فيديو إضافية لبدء تدريب النموذج"
             if ar else
-            f"Label {10 - labeled_count} more videos to enable model training"
+            f"Label/confirm {10 - labeled_count} more videos to enable model training"
         )
 
     # ── Rescan button ──────────────────────────────────────────────────────
@@ -395,9 +438,21 @@ def _analyze_video(filepath: str, ar: bool):
 def _train_model(videos: List[Dict], ar: bool):
     import subprocess, sys
 
-    labeled = [v for v in videos if v.get('label') and Path(v['filepath']).exists()]
+    # Only train on coach-confirmed labels — an unreviewed auto-suggestion
+    # (label_source='auto') may be wrong and would poison the training set.
+    labeled = [v for v in videos
+               if v.get('label') and v.get('label_source') != 'auto'
+               and Path(v['filepath']).exists()]
+    skipped_unreviewed = sum(
+        1 for v in videos if v.get('label') and v.get('label_source') == 'auto'
+    )
     if len(labeled) < 10:
-        st.warning("عدد الفيديوهات المُصنَّفة غير كافٍ (10 على الأقل)")
+        st.warning("عدد الفيديوهات المُصنَّفة (المؤكَّدة يدوياً) غير كافٍ (10 على الأقل)")
+        if skipped_unreviewed:
+            st.info(
+                f"يوجد {skipped_unreviewed} فيديو باقتراح تلقائي غير مُراجَع — "
+                "راجعها وأكِّدها أولاً."
+            )
         return
 
     # Copy labeled videos to data/labeled with JSON sidecars
