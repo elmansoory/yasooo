@@ -208,6 +208,7 @@ def show_my_videos(lang: str = 'ar'):
         "ToeLoop_1", "ToeLoop_2", "ToeLoop_3", "ToeLoop_4",
         "Upright", "Sit", "Camel", "Layback", "Combination",
         "StepSequence", "Spiral", "None",
+        "Not_Skating",  # off-ice footage (gym/stretching/etc.) — excluded from training entirely
     ]
 
     # Show 20 per page
@@ -308,9 +309,7 @@ def show_my_videos(lang: str = 'ar'):
 
     # ── Bulk train button ──────────────────────────────────────────────────
     st.divider()
-    labeled_count = sum(
-        1 for v in videos if v.get('label') and v.get('label_source') != 'auto'
-    )
+    labeled_count = sum(1 for v in videos if _is_trainable(v))
     unreviewed_count = sum(
         1 for v in videos if v.get('label') and v.get('label_source') == 'auto'
     )
@@ -435,14 +434,20 @@ def _analyze_video(filepath: str, ar: bool):
         st.error(f"خطأ في التحليل: {e}" if ar else f"Analysis error: {e}")
 
 
+def _is_trainable(v: Dict) -> bool:
+    """Coach-confirmed AND an actual skating element — excludes unreviewed
+    auto-suggestions (label_source='auto') and off-ice footage (Not_Skating)."""
+    return bool(
+        v.get('label')
+        and v.get('label') != 'Not_Skating'
+        and v.get('label_source') != 'auto'
+    )
+
+
 def _train_model(videos: List[Dict], ar: bool):
     import subprocess, sys
 
-    # Only train on coach-confirmed labels — an unreviewed auto-suggestion
-    # (label_source='auto') may be wrong and would poison the training set.
-    labeled = [v for v in videos
-               if v.get('label') and v.get('label_source') != 'auto'
-               and Path(v['filepath']).exists()]
+    labeled = [v for v in videos if _is_trainable(v) and Path(v['filepath']).exists()]
     skipped_unreviewed = sum(
         1 for v in videos if v.get('label') and v.get('label_source') == 'auto'
     )

@@ -28,6 +28,26 @@ sys.path.insert(0, str(ROOT))
 
 DB_PATH = str(ROOT / "skating_database.db")
 
+# Filename keywords that strongly indicate off-ice footage (gym/conditioning/
+# stretching) rather than on-ice skating with jumps/spins. The jump/spin
+# detector has no concept of "off ice" — on real off-ice clips it was
+# observed to misread ordinary body motion as a low-confidence jump and
+# guess "Axel_1" almost every time, which is worse than no suggestion at
+# all. These clips are filtered out BEFORE running the (slow, and on this
+# content meaningless) pose analyzer — cheap and avoids the false guesses.
+_OFF_ICE_KEYWORDS = [
+    'workout', 'stretch', 'flexib', 'gym', 'fitness', 'cardio',
+    'warm up', 'warmup', 'warm-up', 'conditioning', 'home workout',
+    'ballet', 'yoga', 'pilates', 'abs', 'core workout', 'strength',
+    'تمارين', 'لياقة', 'إحماء', 'اطالة', 'إطالة',
+]
+
+
+def _looks_off_ice(filename: str) -> bool:
+    name = filename.lower()
+    return any(kw in name for kw in _OFF_ICE_KEYWORDS)
+
+
 # code prefix -> LABELS family name (matches my_videos_page.py's LABELS list)
 _JUMP_FAMILY = {
     'A': 'Axel', 'Lz': 'Lutz', 'F': 'Flip',
@@ -127,12 +147,25 @@ def main():
 
     print(f"معالجة {len(rows)} فيديو (دفعة بحد أقصى --limit={args.limit})...")
     suggested, skipped = 0, 0
+    off_ice = 0
     for i, (filepath,) in enumerate(rows, 1):
         name = Path(filepath).name
         print(f"  [{i}/{len(rows)}] {name}")
         if not Path(filepath).exists():
             print("    ⚠️  الملف غير موجود، تخطّي")
             skipped += 1
+            continue
+
+        if _looks_off_ice(name):
+            print("    → خارج الجليد على الأرجح (اسم الملف) — تخصيص Not_Skating بدون تحليل")
+            if not args.dry_run:
+                conn.execute(
+                    "UPDATE discovered_videos SET label='Not_Skating', label_source='auto' "
+                    "WHERE filepath=?",
+                    (filepath,)
+                )
+                conn.commit()
+            off_ice += 1
             continue
 
         label = suggest_label(analyzer, filepath)
@@ -150,8 +183,12 @@ def main():
         suggested += 1
 
     conn.close()
-    print(f"\n✓ اكتمل: {suggested} اقتراحاً {'(dry-run، لم يُكتب شيء)' if args.dry_run else 'مكتوباً'}، "
-          f"{skipped} تخطٍّ.")
+    print(f"\n✓ اكتمل: {suggested} اقتراح تزلج، {off_ice} صُنِّف Not_Skating تلقائياً (اسم الملف)، "
+          f"{skipped} تخطٍّ. {'(dry-run، لم يُكتب شيء)' if args.dry_run else ''}")
+    print(
+        "⚠️  فلترة \"خارج الجليد\" تعتمد على اسم الملف فقط — راجع صفحة \"🎬 فيديوهاتي\" "
+        "للتأكد من عدم تصنيف أي فيديو تزلج فعلي بالخطأ كـ Not_Skating (اسم ملف مضلِّل مثلاً)."
+    )
     print('افتح "🎬 فيديوهاتي" لمراجعة الاقتراحات (🤖) وتأكيدها أو تصحيحها.')
     print(f"شغّل السكربت مجدداً (--limit أعلى) لمعالجة الدفعة التالية من الفيديوهات غير المُصنَّفة.")
 
