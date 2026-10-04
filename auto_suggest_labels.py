@@ -103,12 +103,31 @@ def suggest_label(analyzer, filepath: str) -> str:
     spins = results.get('spins', [])
     steps = results.get('step_sequences', [])
 
+    # Confidence gate on JUMPS only: discovered live on the user's real
+    # library that a seated/standing person talking to camera (coach-
+    # explainer videos — nutrition tips, etiquette talks, etc.) can trip
+    # the jump detector's "airborne/tucked" pose heuristic (knees bent near
+    # hip while seated looks geometrically similar to a tucked jump),
+    # producing a confident-looking "Axel_1" on every single one of 6/6
+    # such clips tested. A low height_cm is exactly the detector's
+    # low-confidence fallback bucket (_classify_jump maps any weak/short
+    # detection to "Single Axel") — treat it as noise and fall through to
+    # 'None' instead of suggesting a specific (likely wrong) jump.
+    #
+    # No spin gate: unlike jumps, no false-positive evidence was observed
+    # for spins on the same real talking-head clips, and an early attempt
+    # at a rotations>=5 spin gate caused a regression — a real, previously
+    # correctly-suggested camel spin clip (confirmed by filename/manual
+    # ground truth) only registers 3.0 rotations from a short clip, so a
+    # strict floor loses real signal without evidence it filters any noise.
+    MIN_JUMP_HEIGHT_CM = 30   # matches _classify_jump's own goe>=0 floor
+
     if jumps:
-        # Highest scoring jump is the most likely intentional element in the clip.
         best = max(jumps, key=lambda j: j.get('final_score', 0))
-        label = _map_jump_code(best.get('code', ''))
-        if label:
-            return label
+        if best.get('height_cm', 0) >= MIN_JUMP_HEIGHT_CM:
+            label = _map_jump_code(best.get('code', ''))
+            if label:
+                return label
     if spins:
         best = max(spins, key=lambda s: s.get('final_score', 0))
         label = _map_spin_code(best.get('code', ''))
