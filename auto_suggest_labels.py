@@ -105,14 +105,21 @@ def suggest_label(analyzer, filepath: str) -> str:
 
     # Confidence gate on JUMPS only: discovered live on the user's real
     # library that a seated/standing person talking to camera (coach-
-    # explainer videos — nutrition tips, etiquette talks, etc.) can trip
-    # the jump detector's "airborne/tucked" pose heuristic (knees bent near
-    # hip while seated looks geometrically similar to a tucked jump),
-    # producing a confident-looking "Axel_1" on every single one of 6/6
-    # such clips tested. A low height_cm is exactly the detector's
-    # low-confidence fallback bucket (_classify_jump maps any weak/short
-    # detection to "Single Axel") — treat it as noise and fall through to
-    # 'None' instead of suggesting a specific (likely wrong) jump.
+    # explainer videos — nutrition tips, scoring explainers, etc.) can
+    # trip the jump detector's "airborne/tucked" pose heuristic, producing
+    # a confident-looking jump guess. A height_cm >= 30 floor alone turned
+    # out NOT to be enough — re-tested live against the user's real
+    # library and it still fired. Every single false positive observed
+    # across ~10 real talking-head clips mapped to the exact same bucket:
+    # _classify_jump's code '1A' (Single Axel), which is ALSO what any
+    # weak/short/noisy "airborne" detection falls into regardless of its
+    # height_cm reading (rotations < 1.3 -> always '1A', and height_cm is
+    # computed independently from a different signal, so it doesn't
+    # reliably gate this bucket). Excluding '1A' entirely from
+    # auto-suggestion removes the exact bucket every observed false
+    # positive came from — a real Single Axel clip now gets 'None'
+    # suggested instead of a wrong-but-confident-looking guess, which is
+    # the safer trade-off (still flagged for manual review either way).
     #
     # No spin gate: unlike jumps, no false-positive evidence was observed
     # for spins on the same real talking-head clips, and an early attempt
@@ -121,11 +128,13 @@ def suggest_label(analyzer, filepath: str) -> str:
     # ground truth) only registers 3.0 rotations from a short clip, so a
     # strict floor loses real signal without evidence it filters any noise.
     MIN_JUMP_HEIGHT_CM = 30   # matches _classify_jump's own goe>=0 floor
+    EXCLUDED_JUMP_CODES = {'1A'}  # the detector's noise-floor fallback bucket
 
     if jumps:
         best = max(jumps, key=lambda j: j.get('final_score', 0))
-        if best.get('height_cm', 0) >= MIN_JUMP_HEIGHT_CM:
-            label = _map_jump_code(best.get('code', ''))
+        code = best.get('code', '')
+        if code not in EXCLUDED_JUMP_CODES and best.get('height_cm', 0) >= MIN_JUMP_HEIGHT_CM:
+            label = _map_jump_code(code)
             if label:
                 return label
     if spins:
