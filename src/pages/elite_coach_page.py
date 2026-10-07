@@ -591,6 +591,50 @@ def _tab_drill_library(ar):
 
 
 # ---------------------------------------------------------------------------
+# Tab: Pillar Mind Map (six-pillar training program)
+# ---------------------------------------------------------------------------
+
+def _tab_pillar_map(ar):
+    from src.analysis.coaching_knowledge import list_pillars
+
+    title = "الخريطة الذهنية للتدريب" if ar else "Training Mind Map"
+    st.header(f"🗺️ {title}")
+    st.caption(
+        "ست ركائز مترابطة لبناء برنامج تدريب كامل — محتوى أصلي مستوحى من "
+        "مفاهيم عامة في تدريب التزلج الفني."
+        if ar else
+        "Six interconnected pillars for a complete training program — "
+        "original content informed by general figure skating coaching concepts."
+    )
+
+    pillars = list_pillars()
+    pillar_labels = [f"{p['title_ar']} / {p['title_en']}" for p in pillars]
+    chosen = st.radio(
+        "الركيزة" if ar else "Pillar", pillar_labels,
+        horizontal=True, label_visibility="collapsed"
+    )
+    pillar = pillars[pillar_labels.index(chosen)]
+
+    st.markdown(f"### {pillar['title_ar']} / {pillar['title_en']}")
+    st.markdown(f"_{pillar['summary_ar']}_")
+
+    if pillar.get('phases'):
+        st.markdown("**" + ("المراحل" if ar else "Phases") + ":**")
+        cols = st.columns(len(pillar['phases']))
+        for col, phase in zip(cols, pillar['phases']):
+            with col:
+                st.markdown(f"**{phase['ar']}**")
+                st.caption(phase['en'])
+                st.caption(phase['desc_ar'])
+
+    st.markdown("**" + ("الدريلات" if ar else "Drills") + ":**")
+    for drill in pillar.get('drills', []):
+        with st.expander(f"🏋️ {drill['title_ar']} / {drill['title_en']}"):
+            st.write(drill['desc_ar'])
+            st.caption(f"🔁 {drill['reps_ar']}")
+
+
+# ---------------------------------------------------------------------------
 # Tab 5: ISU Judges Guidelines
 # ---------------------------------------------------------------------------
 
@@ -965,6 +1009,7 @@ def show_elite_coach_page(lang="ar"):
         "🏒 " + ("التدريب على الجليد" if ar else "On-Ice Training"),
         "💪 " + ("التدريب خارج الجليد" if ar else "Off-Ice Conditioning"),
         "📋 " + ("مكتبة التمارين" if ar else "Drill Library"),
+        "🗺️ " + ("الخريطة الذهنية" if ar else "Mind Map"),
         "📖 " + ("دليل الحكام ISU" if ar else "ISU Judges' Guide"),
     ]
 
@@ -979,6 +1024,8 @@ def show_elite_coach_page(lang="ar"):
     with tabs[3]:
         _tab_drill_library(ar)
     with tabs[4]:
+        _tab_pillar_map(ar)
+    with tabs[5]:
         _tab_isu_guidelines(ar)
 
 

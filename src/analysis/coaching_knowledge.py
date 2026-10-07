@@ -443,3 +443,138 @@ def resolve_ballet_alignment_key(error: Dict) -> Optional[str]:
     if 'ذراع' in title or 'Port de Bras' in title or 'Arm' in title:
         return 'flat_port_de_bras'
     return None
+
+
+# ── Whole-program coaching map ──────────────────────────────────────────────
+# Original content written for YASOOO — six training pillars (jumps, spins,
+# edges, off-ice/flexibility, mental performance, season planning), each with
+# a phase breakdown and a short set of drills. Informed by general,
+# widely-known figure skating coaching concepts (jump phase sequencing,
+# ballet placement, spin-axis drills, periodization) — not a reproduction or
+# summary of any specific paid course or book. Powers the "🗺️ الخريطة
+# الذهنية" tab in elite_coach_page.py; see also the full illustrated version
+# published as a standalone Artifact.
+
+PILLAR_ORDER = ['jumps', 'spins', 'edges', 'off_ice', 'mental', 'season']
+
+PILLAR_PROGRAM: Dict[str, Dict] = {
+
+    'jumps': {
+        'title_ar': 'القفزات', 'title_en': 'Jumps',
+        'summary_ar': 'كل قفزة تمر بأربع مراحل متسلسلة — ضعف أي مرحلة ينعكس على المراحل التالية، حتى لو بدا الخطأ ظاهراً في الهواء أو الهبوط فقط.',
+        'phases': [
+            {'ar': 'الدخول', 'en': 'Entry',
+             'desc_ar': 'سرعة الدخول وزاوية الحافة تحددان كل ما يليها. دخول بطيء أو حافة مسطحة يجبران اللاعب على "صناعة" الارتفاع والدوران بقوة الذراعين وحدها.'},
+            {'ar': 'الإقلاع', 'en': 'Takeoff',
+             'desc_ar': 'لحظة الإقلاع تحدد سقف ارتفاع ودوران القفزة بالكامل. الذراعان تبدآن السحب للداخل في نفس لحظة مغادرة الجليد.'},
+            {'ar': 'وضعية الهواء', 'en': 'Air Position',
+             'desc_ar': 'الجسم يبقى ملتفاً ومشدوداً طوال الطيران ولا "يفتح" مبكراً — فتح مبكر يقصّ آخر ثلث دورة.'},
+            {'ar': 'الهبوط', 'en': 'Landing',
+             'desc_ar': 'تلامس بنصل واحد، ثم ثني الركبة للامتصاص، ثم فتح وضعية التحقق بعد لحظة — وليس في نفس الوقت.'},
+        ],
+        'drills': [
+            {'title_ar': 'قفزة الطبل المطوية', 'title_en': 'Tuck Jump',
+             'desc_ar': 'قفزة عمودية خارج الجليد مع سحب الركبتين للصدر فوراً عند مغادرة الأرض — يبني توقيت السحب المطلوب في الإقلاع الحقيقي.',
+             'reps_ar': '3 × 8 — خارج الجليد'},
+            {'title_ar': 'دريل نصف الدوران', 'title_en': 'Half-Rotation Drill',
+             'desc_ar': 'الإقلاع وأداء نصف دوران فقط ثم الهبوط المتحكَّم به — يعزل توقيت الإقلاع عن ضغط إنهاء القفزة.',
+             'reps_ar': '4 × 5 — يحتاج إشراف مدرب'},
+            {'title_ar': 'ثبات وضعية الهبوط', 'title_en': 'Landing Hold',
+             'desc_ar': 'تثبيت وضعية الهبوط 3 ثوانٍ كاملة بعد كل محاولة فردية قبل الحركة التالية.',
+             'reps_ar': 'كل محاولة — على الجليد'},
+        ],
+    },
+
+    'spins': {
+        'title_ar': 'الدورانات', 'title_en': 'Spins',
+        'summary_ar': 'الدوران المستقر لا يُبنى في الوضعية نفسها — جذره الحقيقي غالباً في حافة الدخول وموقع مركز الثقل.',
+        'phases': [
+            {'ar': 'حافة الدخول', 'en': 'Entry Edge',
+             'desc_ar': 'حافة عميقة وغرس واضح لقدم الدخول يمنحان الدوران زخمه الأساسي قبل بدء الوضعية.'},
+            {'ar': 'التمركز', 'en': 'Centering',
+             'desc_ar': 'نقل مركز الثقل لمحور ثابت فوق كرة القدم — أي انحراف هنا يظهر لاحقاً كدوران "متنقل".'},
+            {'ar': 'الوضعية', 'en': 'Position',
+             'desc_ar': 'الحفاظ على الوضعية (منتصبة/جلوس/جناح) دون فقدان سرعة الدوران أو استقرار المحور.'},
+            {'ar': 'الخروج', 'en': 'Exit',
+             'desc_ar': 'خروج متحكَّم به على حافة واضحة، لا إيقاف مفاجئ يكسر تدفق البرنامج.'},
+        ],
+        'drills': [
+            {'title_ar': 'الدوران على قطعة نقدية', 'title_en': 'Spin on a Dime',
+             'desc_ar': 'تخيّل عملة معدنية على الجليد والحفاظ على كرة القدم فوقها طوال الدوران بلا انزلاق.',
+             'reps_ar': '5 دورانات × 3 — على الجليد'},
+            {'title_ar': 'كرسي الدوران', 'title_en': 'Chair Spin Drill',
+             'desc_ar': 'الجلوس على كرسي دوّار مكتبي وممارسة سحب/فرد الذراعين للتحكم بسرعة الدوران.',
+             'reps_ar': '10 تكرار — خارج الجليد'},
+            {'title_ar': 'انغراس قدم الدخول', 'title_en': 'Plant & Hold',
+             'desc_ar': 'الدخول على حافة عميقة والتوقف عمداً قبل الدوران الكامل، مع التأكد أن القدم "تُغرَس" ولا تنزلق.',
+             'reps_ar': '6 محاولات — على الجليد'},
+        ],
+    },
+
+    'edges': {
+        'title_ar': 'الحواف والخطوات', 'title_en': 'Edges & Steps',
+        'summary_ar': 'جودة التزحلق الأساسية (قوة الدفع، عمق الحافة، التناسق) هي الأساس الذي تُبنى عليه كل العناصر الأخرى — ويُهمَل غالباً بعد مرحلة المبتدئين.',
+        'phases': [],
+        'drills': [
+            {'title_ar': 'عبور الأقدام بقوة', 'title_en': 'Power Crossovers',
+             'desc_ar': 'عبور متكرر حول دائرة مع التركيز على دفع كامل للقدم الخارجية قبل رفعها.',
+             'reps_ar': '3 دوائر × دورتين — على الجليد'},
+            {'title_ar': 'سلسلة الحافة العميقة', 'title_en': 'Deep Edge Chain',
+             'desc_ar': 'سلسلة حواف داخلية/خارجية متصلة بلا توقف، مع الحفاظ على انحناء ركبة ثابت.',
+             'reps_ar': '4 × طول الحلبة — على الجليد'},
+        ],
+    },
+
+    'off_ice': {
+        'title_ar': 'خارج الجليد والمرونة', 'title_en': 'Off-Ice & Flexibility',
+        'summary_ar': 'القوة والمرونة المبنيتان خارج الجليد هما ما يسمح بتنفيذ التقنية الصحيحة تحت الإرهاق لاحقاً في البرنامج.',
+        'phases': [],
+        'drills': [
+            {'title_ar': 'الباليه الأساسي', 'title_en': 'Barre Basics',
+             'desc_ar': 'تمارين تانديو وديفيلوبيه ورون دو جامب مع التركيز على التمركز قبل السرعة.',
+             'reps_ar': '20 دقيقة — 2–3 مرات أسبوعياً'},
+            {'title_ar': 'بروتوكول الثبات المركزي', 'title_en': 'Core Stability',
+             'desc_ar': 'ثلاث حركات لوح (أمامي/جانبي/مضاد للدوران)، كل منها لأقصى مدة ثابتة بوضعية صحيحة.',
+             'reps_ar': '3 × 30–45 ثانية — يومي'},
+            {'title_ar': 'تقدّم الانشقاق', 'title_en': 'Split Progression',
+             'desc_ar': 'تمدد تدريجي محكوم بالتنفس، والانتقال لدرجة أعمق فقط بعد ثبات الدرجة الحالية دون شد.',
+             'reps_ar': '3 × دقيقة لكل جانب — بعد الإحماء فقط'},
+        ],
+    },
+
+    'mental': {
+        'title_ar': 'الأداء الذهني', 'title_en': 'Mental Performance',
+        'summary_ar': 'التحضير الذهني ليس "إضافة اختيارية" — هو ما يحدد هل تُستخدَم التقنية المُتدرَّب عليها فعلياً تحت ضغط المنافسة.',
+        'phases': [],
+        'drills': [
+            {'title_ar': 'التصور الذهني', 'title_en': 'Visualization',
+             'desc_ar': 'تخيّل البرنامج كاملاً بسرعة طبيعية من منظور الجسد نفسه، مع تخيّل الإحساس العضلي لكل عنصر.',
+             'reps_ar': '5–10 دقائق — يومي'},
+            {'title_ar': 'روتين ما قبل العنصر', 'title_en': 'Pre-Element Routine',
+             'desc_ar': 'تسلسل ثابت وقصير (نفس، كلمة تنشيط، نظرة محددة) يُكرَّر قبل كل محاولة وكل عنصر في المنافسة.',
+             'reps_ar': 'كل محاولة — تدريب ومنافسة'},
+        ],
+    },
+
+    'season': {
+        'title_ar': 'تخطيط الموسم', 'title_en': 'Season Planning',
+        'summary_ar': 'توزيع نموذجي لمرحلة الموسم التنافسي — يُعدَّل حسب عمر اللاعب ومستواه وعدد ساعات الجليد المتاحة.',
+        'phases': [],
+        'drills': [
+            {'title_ar': 'إدارة الحمل التدريبي', 'title_en': 'Training Load Management',
+             'desc_ar': 'تحديد عدد محاولات القفزة الواحدة لكل جلسة وتسجيلها — الزيادة الأسبوعية في الحمل الكلي لا تتجاوز نسبة معتدلة.',
+             'reps_ar': 'يُسجَّل لكل لاعب'},
+            {'title_ar': 'إحماء الكاحل والورك', 'title_en': 'Ankle & Hip Warm-up',
+             'desc_ar': 'حركات دائرية ومقاومة خفيفة للكاحل والورك قبل أي جلسة جليد.',
+             'reps_ar': '5 دقائق — قبل كل جلسة'},
+        ],
+    },
+}
+
+
+def list_pillars() -> List[Dict]:
+    return [{'key': k, **PILLAR_PROGRAM[k]} for k in PILLAR_ORDER if k in PILLAR_PROGRAM]
+
+
+def get_pillar(key: str) -> Optional[Dict]:
+    return PILLAR_PROGRAM.get(key)
