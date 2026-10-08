@@ -39,7 +39,8 @@ _OFF_ICE_KEYWORDS = [
     'workout', 'stretch', 'flexib', 'gym', 'fitness', 'cardio',
     'warm up', 'warmup', 'warm-up', 'conditioning', 'home workout',
     'ballet', 'yoga', 'pilates', 'abs', 'core workout', 'strength',
-    'تمارين', 'لياقة', 'إحماء', 'اطالة', 'إطالة',
+    'off-ice', 'off ice', 'dryland', 'dry land', 'plyometric',
+    'تمارين', 'لياقة', 'إحماء', 'اطالة', 'إطالة', 'خارج الجليد',
 ]
 
 
