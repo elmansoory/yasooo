@@ -102,7 +102,6 @@ def suggest_label(analyzer, filepath: str) -> str:
 
     jumps = results.get('jumps', [])
     spins = results.get('spins', [])
-    steps = results.get('step_sequences', [])
 
     # Confidence gate on JUMPS only: discovered live on the user's real
     # library that a seated/standing person talking to camera (coach-
@@ -143,8 +142,14 @@ def suggest_label(analyzer, filepath: str) -> str:
         label = _map_spin_code(best.get('code', ''))
         if label:
             return label
-    if steps:
-        return 'StepSequence'
+    # No step-sequence auto-suggestion: detect_step_sequences() (ai_movement_engine.py)
+    # flags ANY >=3s segment where a person is visible and not jumping/spinning —
+    # it has no actual skating-specific signal, only "not airborne, pose detected".
+    # Confirmed live: conference/panel-discussion videos ("Healthy Skater" seminar
+    # talks — people sitting and talking, zero skating) got confident "StepSequence"
+    # suggestions on nearly every clip, the same unreliable-fallback pattern as the
+    # jump detector's '1A' bucket (see the height_cm/EXCLUDED_JUMP_CODES comment
+    # above). Always fall through to 'None' instead of trusting it.
     return 'None'
 
 
