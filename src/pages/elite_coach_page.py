@@ -635,6 +635,263 @@ def _tab_pillar_map(ar):
 
 
 # ---------------------------------------------------------------------------
+# Tab: Periodization Planner
+# ---------------------------------------------------------------------------
+
+def _ensure_periodization_table():
+    conn = _get_conn()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS periodization_phases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            season_label TEXT,
+            phase_name TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            volume INTEGER,
+            intensity INTEGER,
+            is_test_week INTEGER DEFAULT 0,
+            notes TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def _tab_periodization(ar):
+    import datetime
+
+    title = "مخطِّط التقسيم الموسمي" if ar else "Periodization Planner"
+    st.header(f"📈 {title}")
+    st.caption(
+        "خطّط حجم وشدة التدريب عبر مراحل الموسم، وحدّد أسابيع الاختبار."
+        if ar else
+        "Plan training volume and intensity across season phases, and mark test weeks."
+    )
+
+    _ensure_periodization_table()
+    conn = _get_conn()
+
+    seasons = pd.read_sql_query(
+        "SELECT DISTINCT season_label FROM periodization_phases ORDER BY season_label DESC", conn
+    )["season_label"].tolist()
+    default_season = f"{datetime.date.today().year}-{datetime.date.today().year + 1}"
+    season_options = seasons if seasons else [default_season]
+
+    col_sel, col_new = st.columns([2, 1])
+    with col_sel:
+        season = st.selectbox("الموسم" if ar else "Season", season_options, key="period_season_select")
+    with col_new:
+        new_season = st.text_input(
+            "أو أدخل موسماً جديداً" if ar else "Or enter a new season", "",
+            key="period_new_season"
+        )
+    if new_season.strip():
+        season = new_season.strip()
+
+    with st.expander("➕ " + ("إضافة مرحلة جديدة" if ar else "Add a new phase"), expanded=not seasons):
+        c1, c2 = st.columns(2)
+        with c1:
+            phase_name = st.text_input("اسم المرحلة" if ar else "Phase name", key="period_phase_name")
+            start_date = st.date_input("تاريخ البداية" if ar else "Start date", key="period_start")
+            volume = st.slider("الحجم" if ar else "Volume", 1, 10, 5, key="period_volume")
+        with c2:
+            end_date = st.date_input("تاريخ النهاية" if ar else "End date", key="period_end")
+            intensity = st.slider("الشدة" if ar else "Intensity", 1, 10, 5, key="period_intensity")
+            is_test = st.checkbox("أسبوع اختبار" if ar else "Test week", key="period_is_test")
+        notes = st.text_area("ملاحظات" if ar else "Notes", "", key="period_notes")
+
+        if st.button("💾 " + ("حفظ المرحلة" if ar else "Save phase"), key="period_save_btn"):
+            if phase_name.strip() and end_date >= start_date:
+                conn.execute(
+                    "INSERT INTO periodization_phases "
+                    "(season_label, phase_name, start_date, end_date, volume, intensity, is_test_week, notes) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (season, phase_name.strip(), start_date.isoformat(), end_date.isoformat(),
+                     volume, intensity, int(is_test), notes)
+                )
+                conn.commit()
+                st.success("✓")
+                st.rerun()
+            else:
+                st.warning(
+                    "أدخل اسم المرحلة وتأكد أن تاريخ النهاية بعد البداية"
+                    if ar else
+                    "Enter a phase name and make sure the end date is after the start date"
+                )
+
+    phases = pd.read_sql_query(
+        "SELECT * FROM periodization_phases WHERE season_label = ? ORDER BY start_date",
+        conn, params=(season,)
+    )
+    conn.close()
+
+    if phases.empty:
+        st.info("لا توجد مراحل لهذا الموسم بعد — أضف أول مرحلة أعلاه." if ar else
+                "No phases for this season yet — add the first one above.")
+        return
+
+    st.markdown("### " + ("مخطط الحجم والشدة" if ar else "Volume & Intensity Chart"))
+
+    x_dates, vol_y, int_y = [], [], []
+    for _, row in phases.iterrows():
+        # Plotly's date axis needs ISO strings here, not raw datetime.date
+        # objects — passing date objects directly produced a corrupted
+        # axis (ticks 1970-2020, points collapsed to one spot), confirmed
+        # live while testing this chart.
+        x_dates += [row["start_date"], row["end_date"]]
+        vol_y += [row["volume"], row["volume"]]
+        int_y += [row["intensity"], row["intensity"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x_dates, y=vol_y, mode="lines", name="Volume",
+                              line=dict(shape="hv", color="#3b82f6", width=3)))
+    fig.add_trace(go.Scatter(x=x_dates, y=int_y, mode="lines", name="Intensity",
+                              line=dict(shape="hv", color="#ef4444", width=3)))
+    for _, row in phases[phases["is_test_week"] == 1].iterrows():
+        fig.add_vline(x=row["start_date"], line_dash="dash", line_color="#f59e0b")
+    fig.update_layout(
+        yaxis=dict(range=[0, 11], title="1-10"),
+        xaxis=dict(title="التاريخ" if ar else "Date", type="date"),
+        height=380, margin=dict(l=10, r=10, t=10, b=10),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    if (phases["is_test_week"] == 1).any():
+        st.caption(("🟠 الخط المتقطع = أسبوع اختبار" if ar else "🟠 dashed line = test week"))
+
+    st.markdown("### " + ("مراحل الموسم" if ar else "Season Phases"))
+    show_df = phases[["phase_name", "start_date", "end_date", "volume", "intensity", "is_test_week", "notes"]].copy()
+    show_df.columns = (
+        ["المرحلة", "البداية", "النهاية", "الحجم", "الشدة", "اختبار؟", "ملاحظات"] if ar else
+        ["Phase", "Start", "End", "Volume", "Intensity", "Test?", "Notes"]
+    )
+    st.dataframe(show_df, use_container_width=True, hide_index=True)
+
+
+# ---------------------------------------------------------------------------
+# Tab: Physical Readiness Tracker
+# ---------------------------------------------------------------------------
+
+def _ensure_readiness_table():
+    conn = _get_conn()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS readiness_assessments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            skater_id INTEGER,
+            skater_name TEXT,
+            level TEXT,
+            assessment_date TEXT,
+            pillar TEXT,
+            exercise TEXT,
+            score INTEGER,
+            notes TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def _tab_readiness_tracker(ar):
+    import datetime
+    from src.analysis.readiness_rubric import PILLARS, LEVELS, SCORE_LABELS, LEVEL_UP_MIN_SCORE, target_for_level
+
+    title = "متتبّع الجاهزية البدنية" if ar else "Physical Readiness Tracker"
+    st.header(f"🧭 {title}")
+    st.caption(
+        "قيّم كل لاعب عبر 5 ركائز بدنية بمقياس موحَّد، وتابع أهليته للترقية."
+        if ar else
+        "Assess each skater across 5 physical pillars on one shared scale, and track level-up eligibility."
+    )
+
+    _ensure_readiness_table()
+
+    skaters_df = _load_skaters()
+    if skaters_df.empty:
+        skater_name = st.text_input(
+            "اسم اللاعب (لا يوجد لاعبون مسجّلون بعد)" if ar else
+            "Skater name (no registered skaters yet)",
+            key="readiness_skater_free"
+        )
+        skater_id = None
+    else:
+        names = skaters_df["name"].tolist()
+        chosen = st.selectbox("اللاعب" if ar else "Skater", names, key="readiness_skater_select")
+        skater_name = chosen
+        skater_id = int(skaters_df[skaters_df["name"] == chosen]["id"].iloc[0])
+
+    level = st.selectbox("المستوى" if ar else "Level", LEVELS, key="readiness_level_select")
+    assess_date = st.date_input("تاريخ التقييم" if ar else "Assessment date",
+                                 datetime.date.today(), key="readiness_date")
+
+    if not skater_name:
+        st.info("أدخل أو اختر اسم لاعب للمتابعة" if ar else "Enter or select a skater to continue")
+        return
+
+    st.markdown("---")
+    scores = {}
+    for pillar, exercises in PILLARS.items():
+        st.markdown(f"#### {pillar}")
+        for ex in exercises:
+            key = f"{pillar}::{ex['name_en']}"
+            target = target_for_level(ex, level)
+            unit = ex["unit_ar"] if ar else ex["unit_en"]
+            label = ex["name_ar"] if ar else ex["name_en"]
+            target_str = f" — {('الهدف' if ar else 'target')}: {target} {unit}" if target != "—" else ""
+            score = st.select_slider(
+                f"{label}{target_str}",
+                options=[1, 2, 3, 4],
+                format_func=lambda v: SCORE_LABELS[v]["ar"] if ar else SCORE_LABELS[v]["en"],
+                value=3, key=f"readiness_{key}"
+            )
+            scores[key] = {"pillar": pillar, "exercise": label, "score": score}
+
+    notes = st.text_area("ملاحظات عامة" if ar else "General notes", "", key="readiness_notes")
+
+    eligible = all(v["score"] >= LEVEL_UP_MIN_SCORE for v in scores.values())
+    if eligible:
+        st.success("✅ " + ("مؤهَّل للترقية بناءً على هذا التقييم" if ar else
+                             "Eligible for level-up based on this assessment"))
+    else:
+        st.warning("⏳ " + ("ليس بعد — بعض الركائز تحتاج تحسيناً" if ar else
+                            "Not yet — some pillars need improvement"))
+
+    if st.button("💾 " + ("حفظ التقييم" if ar else "Save assessment"), key="readiness_save_btn"):
+        conn = _get_conn()
+        for v in scores.values():
+            conn.execute(
+                "INSERT INTO readiness_assessments "
+                "(skater_id, skater_name, level, assessment_date, pillar, exercise, score, notes) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (skater_id, skater_name, level, assess_date.isoformat(),
+                 v["pillar"], v["exercise"], v["score"], notes)
+            )
+        conn.commit()
+        conn.close()
+        st.success("✓ " + ("تم الحفظ" if ar else "Saved"))
+        st.rerun()
+
+    st.markdown("---")
+    st.markdown("### " + ("سجل التقييمات" if ar else "Assessment History"))
+    conn = _get_conn()
+    hist = pd.read_sql_query(
+        "SELECT assessment_date, level, pillar, exercise, score, notes "
+        "FROM readiness_assessments WHERE skater_name = ? ORDER BY assessment_date DESC",
+        conn, params=(skater_name,)
+    )
+    conn.close()
+    if hist.empty:
+        st.info("لا يوجد سجل تقييمات بعد لهذا اللاعب" if ar else "No assessment history yet for this skater")
+        return
+    st.dataframe(hist, use_container_width=True, hide_index=True)
+
+    trend = hist.groupby(["assessment_date", "pillar"])["score"].mean().reset_index()
+    if trend["assessment_date"].nunique() > 1:
+        fig2 = px.line(trend, x="assessment_date", y="score", color="pillar", markers=True,
+                        range_y=[1, 4])
+        fig2.update_layout(height=320, margin=dict(l=10, r=10, t=10, b=10))
+        st.plotly_chart(fig2, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
 # Tab 5: ISU Judges Guidelines
 # ---------------------------------------------------------------------------
 
@@ -1010,6 +1267,8 @@ def show_elite_coach_page(lang="ar"):
         "💪 " + ("التدريب خارج الجليد" if ar else "Off-Ice Conditioning"),
         "📋 " + ("مكتبة التمارين" if ar else "Drill Library"),
         "🗺️ " + ("الخريطة الذهنية" if ar else "Mind Map"),
+        "📈 " + ("التقسيم الموسمي" if ar else "Periodization"),
+        "🧭 " + ("الجاهزية البدنية" if ar else "Readiness Tracker"),
         "📖 " + ("دليل الحكام ISU" if ar else "ISU Judges' Guide"),
     ]
 
@@ -1026,6 +1285,10 @@ def show_elite_coach_page(lang="ar"):
     with tabs[4]:
         _tab_pillar_map(ar)
     with tabs[5]:
+        _tab_periodization(ar)
+    with tabs[6]:
+        _tab_readiness_tracker(ar)
+    with tabs[7]:
         _tab_isu_guidelines(ar)
 
 
