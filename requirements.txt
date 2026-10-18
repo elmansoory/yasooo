@@ -1,5 +1,13 @@
 # Core Framework
-streamlit>=1.28.0
+# streamlit pinned to 1.38.0 specifically — a fresh install on
+# Windows/Python 3.11 pulled 1.66.0 (only a floor, >=1.28.0, was pinned
+# before) and crashed on startup serving static files: "RuntimeError:
+# Expected ASGI message 'http.response.start', but got 'http.response.body'"
+# in starlette's stream_file — blocked the app entirely, confirmed live
+# (page wouldn't load at all). 1.38.0 is confirmed working live; versions
+# between 1.38 and 1.66 were NOT individually tested, so don't loosen
+# this to a range without re-verifying on a real install first.
+streamlit==1.38.0
 python-dotenv>=1.0.0
 
 # Deep Learning & AI
