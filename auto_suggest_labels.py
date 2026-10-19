@@ -19,6 +19,7 @@ video_analysis_page.py) — الاقتراحات مفيدة كنقطة بداي�
 """
 
 import argparse
+import multiprocessing
 import sqlite3
 import sys
 from pathlib import Path
@@ -27,6 +28,16 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
 DB_PATH = str(ROOT / "skating_database.db")
+
+# Some corrupt video files hang the H.264 decoder indefinitely (repeated
+# "mmco: unref short failure" / "co located POCs unavailable" warnings
+# with no progress) rather than raising an exception the try/except in
+# suggest_label() could catch — confirmed live, a real file stalled the
+# whole batch for 5+ minutes with no way to recover short of Ctrl+C.
+# Each video is analyzed in its own subprocess with a hard wall-clock
+# timeout so a single bad file can only cost VIDEO_TIMEOUT_SEC, never
+# block the rest of the batch.
+VIDEO_TIMEOUT_SEC = 120
 
 # Filename keywords that strongly indicate off-ice footage (gym/conditioning/
 # stretching) rather than on-ice skating with jumps/spins. The jump/spin
@@ -153,6 +164,49 @@ def suggest_label(analyzer, filepath: str) -> str:
     return 'None'
 
 
+def _analyze_worker(filepath: str, result_queue: "multiprocessing.Queue"):
+    """Runs in a child process so a hung decoder can be killed outright —
+    a stuck C-extension call (cv2/ffmpeg) can't be interrupted from a
+    thread or a try/except in the parent process, only by terminating the
+    whole process. Imports happen inside the function: multiprocessing
+    on Windows uses 'spawn', which re-imports this module fresh in the
+    child without re-running anything already guarded by __main__.
+    """
+    try:
+        from src.pages.video_analysis_page import SkatingVideoAnalyzer
+        analyzer = SkatingVideoAnalyzer()
+        label = suggest_label(analyzer, filepath)
+        result_queue.put(label)
+    except Exception as e:
+        result_queue.put(f"__ERROR__:{e}")
+
+
+def suggest_label_with_timeout(filepath: str) -> str:
+    """Same return contract as suggest_label(), but runs with a hard
+    timeout — returns '' (skip) if the video hangs or crashes the worker."""
+    result_queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(target=_analyze_worker, args=(filepath, result_queue))
+    proc.start()
+    proc.join(timeout=VIDEO_TIMEOUT_SEC)
+
+    if proc.is_alive():
+        print(f"    ⚠️  تجاوز الحد الزمني ({VIDEO_TIMEOUT_SEC}s) — على الأرجح ملف تالف، إيقاف وتخطّي")
+        proc.terminate()
+        proc.join(timeout=10)
+        if proc.is_alive():
+            proc.kill()
+            proc.join()
+        return ''
+
+    if not result_queue.empty():
+        label = result_queue.get()
+        if isinstance(label, str) and label.startswith("__ERROR__:"):
+            print(f"    ⚠️  فشل التحليل: {label[len('__ERROR__:'):]}")
+            return ''
+        return label
+    return ''  # process exited without putting a result (e.g. crashed silently)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--limit', type=int, default=30,
@@ -175,9 +229,6 @@ def main():
         print("لا توجد فيديوهات بدون تصنيف حالياً (أو كلها عولجت في دفعات سابقة).")
         conn.close()
         return
-
-    from src.pages.video_analysis_page import SkatingVideoAnalyzer
-    analyzer = SkatingVideoAnalyzer()
 
     print(f"معالجة {len(rows)} فيديو (دفعة بحد أقصى --limit={args.limit})...")
     suggested, skipped = 0, 0
@@ -202,7 +253,7 @@ def main():
             off_ice += 1
             continue
 
-        label = suggest_label(analyzer, filepath)
+        label = suggest_label_with_timeout(filepath)
         if not label:
             skipped += 1
             continue
